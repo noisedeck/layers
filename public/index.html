@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Layers — Media Editor</title>
+    <meta name="description" content="Layer-based media editor powered by the Noisemaker shader pipeline.">
+    <meta name="keywords" content="layers, media, editor, shader, effects, blend modes">
+    <!-- Preload fonts -->
+    <link rel="preload" href="/fonts/Nunito.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="https://fonts.noisedeck.app/fonts/nunito/Nunito[wght].woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="css/fonts.css">
+    <link rel="stylesheet" href="css/colors.css">
+    <link rel="stylesheet" href="css/menu.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/layers.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/loading.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-modal">
+            <div class="loading-brand">
+                <svg class="loading-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor">
+                    <rect x="10" y="60" width="80" height="10" rx="2" opacity="0.4"/>
+                    <rect x="10" y="45" width="80" height="10" rx="2" opacity="0.6"/>
+                    <rect x="10" y="30" width="80" height="10" rx="2" opacity="0.8"/>
+                    <rect x="10" y="15" width="80" height="10" rx="2"/>
+                </svg>
+                <h1 class="loading-title"><span>Layers</span></h1>
+                <p class="loading-tagline">Media Editor</p>
+                <div class="loading-status">
+                    <div class="loading-spinner"></div>
+                    <span>Initializing</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app">
+        <!-- Menu Bar -->
+        <div id="menu">
+            <div id="menuBackdrop"></div>
+            <div id="menuLeft">
+                <!-- Logo Menu -->
+                <div class="menu">
+                    <div class="menu-title">
+                        <svg id="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor" style="height: 1.25em; width: 1.25em;">
+                            <rect x="10" y="60" width="80" height="10" rx="2" opacity="0.4"/>
+                            <rect x="10" y="45" width="80" height="10" rx="2" opacity="0.6"/>
+                            <rect x="10" y="30" width="80" height="10" rx="2" opacity="0.8"/>
+                            <rect x="10" y="15" width="80" height="10" rx="2"/>
+                        </svg>
+                    </div>
+                    <div class="menu-items hide">
+                        <div id="aboutMenuItem">about Layers</div>
+                    </div>
+                </div>
+
+                <!-- File Menu -->
+                <div class="menu">
+                    <div class="menu-title">file</div>
+                    <div class="menu-items hide">
+                        <div id="openMenuItem">open...</div>
+                        <hr class="menu-seperator">
+                        <div id="savePngMenuItem">quick save as png</div>
+                        <div id="saveJpgMenuItem">quick save as jpg</div>
+                    </div>
+                </div>
+
+                <!-- Program Menu -->
+                <div class="menu">
+                    <div class="menu-title">program</div>
+                    <div class="menu-items hide">
+                        <div id="copyProgramMenuItem">copy program</div>
+                        <hr class="menu-seperator">
+                        <div id="importFromUrlMenuItem" class="disabled">import from url...</div>
+                        <div id="sharePubliclyMenuItem">share publicly...</div>
+                        <hr class="menu-seperator">
+                        <div id="editInNoisedeckMenuItem">edit in Noisedeck...</div>
+                        <div id="editInPolymorphicMenuItem">edit in Polymorphic...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="menuCenter">
+                <span id="menuFilename">untitled</span>
+            </div>
+
+            <div id="menuRight">
+                <button id="playPauseBtn" class="menu-icon-btn icon-material" title="Play/Pause (Space)">pause</button>
+            </div>
+        </div>
+
+        <!-- Canvas Panel -->
+        <div id="canvas-panel">
+            <div class="canvas-container">
+                <canvas id="canvas" width="1024" height="1024"></canvas>
+            </div>
+        </div>
+
+        <!-- Layers Panel -->
+        <div id="layers-panel">
+            <div class="layers-header">
+                <h2>Layers</h2>
+                <button class="add-layer-btn" id="addLayerBtn" title="Add layer">
+                    <span class="icon-material">add</span>
+                </button>
+            </div>
+            <div class="layers-list">
+                <layer-stack></layer-stack>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

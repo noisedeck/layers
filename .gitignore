@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# Test artifacts
+test-results/
+playwright-report/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Vendor
+public/js/noisemaker/vendor/

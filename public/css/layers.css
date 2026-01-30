@@ -1,0 +1,345 @@
+/**
+ * Layers UI Styles
+ * Photoshop-style layer stack
+ */
+
+/* =========================================================================
+   Layer Item
+   ========================================================================= */
+
+.layer-item {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border-muted);
+    border-radius: var(--radius-md);
+    margin-bottom: 6px;
+    overflow: hidden;
+    transition: all var(--transition-fast);
+    cursor: pointer;
+}
+
+.layer-item:hover {
+    border-color: var(--color-border);
+}
+
+.layer-item.selected {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 1px var(--color-accent);
+}
+
+.layer-item.dragging {
+    opacity: 0.5;
+    border-style: dashed;
+}
+
+.layer-item.drag-over {
+    border-color: var(--color-accent);
+    background: var(--color-accent-muted);
+}
+
+/* Layer Row (main info) */
+.layer-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+}
+
+/* Drag Handle */
+.layer-drag-handle {
+    color: var(--color-text-muted);
+    cursor: grab;
+    padding: 2px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0.5;
+    transition: opacity var(--transition-fast);
+}
+
+.layer-drag-handle:hover {
+    opacity: 1;
+}
+
+.layer-drag-handle:active {
+    cursor: grabbing;
+}
+
+.base-layer .layer-drag-handle {
+    visibility: hidden;
+}
+
+/* Visibility Toggle */
+.layer-visibility {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.layer-visibility:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
+}
+
+.layer-visibility.visible {
+    color: var(--color-accent);
+}
+
+.layer-visibility .icon-material {
+    font-size: 18px;
+}
+
+/* Layer Thumbnail */
+.layer-thumbnail {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-elevated);
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.layer-thumbnail img,
+.layer-thumbnail canvas {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.layer-thumbnail .icon-material {
+    font-size: 20px;
+    color: var(--color-text-muted);
+}
+
+/* Layer Info */
+.layer-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.layer-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: text;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+}
+
+.layer-name:hover {
+    background: var(--color-bg-hover);
+}
+
+.layer-name.editing {
+    background: rgba(0, 0, 0, 0.4);
+    border-color: var(--color-accent);
+    outline: none;
+}
+
+.layer-name[contenteditable="true"] {
+    cursor: text;
+}
+
+.layer-type {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+}
+
+.layer-type.media {
+    color: var(--color-secondary);
+}
+
+.layer-type.effect {
+    color: var(--color-accent);
+}
+
+/* Layer Delete Button */
+.layer-delete {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0;
+}
+
+.layer-item:hover .layer-delete {
+    opacity: 1;
+}
+
+.layer-delete:hover {
+    color: var(--color-error);
+    background: var(--color-error-muted);
+}
+
+.layer-delete .icon-material {
+    font-size: 16px;
+}
+
+/* Base layer cannot be deleted */
+.layer-item.base-layer .layer-delete {
+    display: none;
+}
+
+/* =========================================================================
+   Layer Controls Row (blend mode, opacity)
+   ========================================================================= */
+
+.layer-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px 10px;
+    padding-left: calc(10px + 4px + 18px + 8px); /* align with name */
+    border-top: 1px solid var(--color-border-muted);
+    background: rgba(0, 0, 0, 0.15);
+}
+
+/* Blend Mode Select */
+.layer-blend-mode {
+    flex: 0 0 auto;
+    min-width: 100px;
+    padding: 4px 24px 4px 8px;
+    font-family: var(--font-body);
+    font-size: 11px;
+    background-color: rgba(0, 0, 0, 0.3);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394a3b8' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 6px center;
+    border: 1px solid var(--color-border-muted);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    appearance: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.layer-blend-mode:hover {
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
+}
+
+.layer-blend-mode:focus {
+    outline: none;
+    border-color: var(--color-accent);
+}
+
+/* Opacity Slider */
+.layer-opacity-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.layer-opacity {
+    flex: 1;
+    height: 4px;
+    background: var(--color-border);
+    border: none;
+    border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.layer-opacity::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    background: var(--color-accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.4);
+}
+
+.layer-opacity-value {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--color-text-muted);
+    min-width: 32px;
+    text-align: right;
+}
+
+/* =========================================================================
+   Layer Stack (reversed order - top layer first visually)
+   ========================================================================= */
+
+layer-stack {
+    display: flex;
+    flex-direction: column;
+}
+
+/* =========================================================================
+   Drag & Drop Indicators
+   ========================================================================= */
+
+.drop-indicator {
+    height: 2px;
+    background: var(--color-accent);
+    margin: -1px 8px;
+    border-radius: 1px;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+}
+
+.drop-indicator.active {
+    opacity: 1;
+}
+
+/* =========================================================================
+   Effect Layer Specific
+   ========================================================================= */
+
+.layer-item.effect-layer .layer-thumbnail {
+    background: linear-gradient(135deg, var(--color-accent-muted) 0%, var(--color-bg-elevated) 100%);
+}
+
+/* =========================================================================
+   Locked Layer
+   ========================================================================= */
+
+.layer-item.locked {
+    opacity: 0.6;
+}
+
+.layer-item.locked .layer-controls {
+    pointer-events: none;
+}
+
+.layer-lock-icon {
+    color: var(--color-warning);
+    font-size: 14px;
+}

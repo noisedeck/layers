@@ -1,0 +1,81 @@
+/**
+ * Effect Workspace Color Theme
+ * Futuristic dark theme with cyan/blue accents
+ */
+
+:root {
+    /* Base colors - deep space dark */
+    --color-bg: #08090c;
+    --color-bg-elevated: #0f1114;
+    --color-bg-hover: #181b20;
+    --color-bg-active: #1f2328;
+    --color-bg-overlay: rgba(8, 9, 12, 0.92);
+    
+    /* Glass effect backgrounds */
+    --color-glass: rgba(15, 17, 20, 0.85);
+    --color-glass-border: rgba(255, 255, 255, 0.06);
+    
+    /* Border colors */
+    --color-border: #1f2328;
+    --color-border-muted: #151719;
+    --color-border-focus: #00d4ff;
+    --color-border-glow: rgba(0, 212, 255, 0.4);
+    
+    /* Text colors */
+    --color-text-primary: #f0f4f8;
+    --color-text-secondary: #94a3b8;
+    --color-text-muted: #64748b;
+    --color-text-placeholder: #475569;
+    
+    /* Primary accent - electric cyan */
+    --color-accent: #00d4ff;
+    --color-accent-hover: #33ddff;
+    --color-accent-muted: rgba(0, 212, 255, 0.12);
+    --color-accent-glow: 0 0 20px rgba(0, 212, 255, 0.3);
+    
+    /* Secondary accent - violet/purple */
+    --color-secondary: #a855f7;
+    --color-secondary-hover: #c084fc;
+    --color-secondary-muted: rgba(168, 85, 247, 0.12);
+    
+    /* Semantic colors */
+    --color-success: #22c55e;
+    --color-success-muted: rgba(34, 197, 94, 0.12);
+    --color-warning: #f59e0b;
+    --color-warning-muted: rgba(245, 158, 11, 0.12);
+    --color-error: #ef4444;
+    --color-error-muted: rgba(239, 68, 68, 0.12);
+    
+    /* Syntax highlighting - vibrant, readable */
+    --syntax-keyword: #f472b6;
+    --syntax-function: #a78bfa;
+    --syntax-string: #34d399;
+    --syntax-number: #38bdf8;
+    --syntax-comment: #64748b;
+    --syntax-operator: #f472b6;
+    --syntax-variable: #fbbf24;
+    
+    /* UI sizing */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+    --radius-xl: 16px;
+    
+    /* Shadows - subtle glow effect */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+    --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.7);
+    --shadow-glow: 0 0 30px rgba(0, 212, 255, 0.15);
+    --shadow-glow-strong: 0 0 50px rgba(0, 212, 255, 0.25);
+    
+    /* Animation - quick, snappy fades */
+    --transition-instant: 0.08s ease-out;
+    --transition-fast: 0.12s ease-out;
+    --transition-normal: 0.2s ease-out;
+    --transition-slow: 0.35s ease-out;
+    
+    /* Grid/pattern colors */
+    --grid-line: rgba(0, 212, 255, 0.08);
+    --grid-line-accent: rgba(0, 212, 255, 0.2);
+}
