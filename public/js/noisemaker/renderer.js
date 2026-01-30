@@ -233,6 +233,9 @@ export class LayersRenderer {
         // Get visible media layers in order (should match DSL generation order)
         const visibleMediaLayers = this._layers.filter(l => l.visible && l.sourceType === 'media')
 
+        // Collect step parameter updates for imageSize
+        const stepParameterValues = {}
+
         // Match layers to step indices and upload textures
         for (let i = 0; i < visibleMediaLayers.length && i < uniqueStepIndices.length; i++) {
             const layer = visibleMediaLayers[i]
@@ -246,15 +249,29 @@ export class LayersRenderer {
 
             // The texture ID format expected by the pipeline is: imageTex_step_N
             const textureId = `imageTex_step_${stepIndex}`
-            console.log(`[LayersRenderer] Uploading texture ${textureId} for layer ${layer.id}`)
+            console.log(`[LayersRenderer] Uploading texture ${textureId} for layer ${layer.id}, dimensions: ${media.width}x${media.height}`)
 
             try {
                 if (this._renderer.updateTextureFromSource) {
-                    this._renderer.updateTextureFromSource(textureId, media.element, { flipY: true })
+                    this._renderer.updateTextureFromSource(textureId, media.element, { flipY: false })
+                }
+                
+                // Set imageSize uniform for this media step
+                if (media.width > 0 && media.height > 0) {
+                    const stepKey = `step_${stepIndex}`
+                    stepParameterValues[stepKey] = {
+                        imageSize: [media.width, media.height]
+                    }
+                    console.log(`[LayersRenderer] Setting imageSize for ${stepKey}:`, media.width, media.height)
                 }
             } catch (err) {
                 console.warn(`[LayersRenderer] Failed to upload texture ${textureId}:`, err)
             }
+        }
+
+        // Apply all step parameter updates at once
+        if (Object.keys(stepParameterValues).length > 0 && this._renderer.applyStepParameterValues) {
+            this._renderer.applyStepParameterValues(stepParameterValues)
         }
     }
 
@@ -267,6 +284,8 @@ export class LayersRenderer {
      */
     async loadMedia(layerId, file, mediaType) {
         const url = URL.createObjectURL(file)
+        let width = 0
+        let height = 0
 
         if (mediaType === 'image') {
             const img = new Image()
@@ -275,7 +294,9 @@ export class LayersRenderer {
                 img.onerror = reject
                 img.src = url
             })
-            this._mediaTextures.set(layerId, { type: 'image', element: img, url })
+            width = img.naturalWidth || img.width
+            height = img.naturalHeight || img.height
+            this._mediaTextures.set(layerId, { type: 'image', element: img, url, width, height })
         } else if (mediaType === 'video') {
             const video = document.createElement('video')
             video.loop = true
@@ -286,9 +307,13 @@ export class LayersRenderer {
                 video.onerror = reject
                 video.src = url
             })
+            width = video.videoWidth
+            height = video.videoHeight
             video.play()
-            this._mediaTextures.set(layerId, { type: 'video', element: video, url })
+            this._mediaTextures.set(layerId, { type: 'video', element: video, url, width, height })
         }
+        
+        return { width, height }
     }
 
     /**

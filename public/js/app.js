@@ -43,8 +43,9 @@ class LayersApp {
 
         // Create renderer
         this._renderer = new LayersRenderer(this._canvas, {
-            width: 1024,
-            height: 1024,
+            // Initial size - will be updated when media is loaded
+            width: this._canvas.width || 1024,
+            height: this._canvas.height || 1024,
             loopDuration: 10,
             onError: (err) => {
                 console.error('[Layers] Render error:', err)
@@ -118,8 +119,13 @@ class LayersApp {
 
         // Load media into renderer
         try {
-            await this._renderer.loadMedia(layer.id, file, mediaType)
-            console.log('[Layers] Media loaded successfully')
+            const dimensions = await this._renderer.loadMedia(layer.id, file, mediaType)
+            console.log('[Layers] Media loaded successfully, dimensions:', dimensions)
+            
+            // Resize canvas to match base layer media dimensions
+            if (dimensions.width > 0 && dimensions.height > 0) {
+                this._resizeCanvas(dimensions.width, dimensions.height)
+            }
         } catch (err) {
             console.error('[Layers] Failed to load media:', err)
             toast.error('Failed to load media: ' + err.message)
@@ -276,6 +282,23 @@ class LayersApp {
         if (el) {
             el.textContent = filename.replace(/\.[^.]+$/, '')
         }
+    }
+
+    /**
+     * Resize canvas to match media dimensions
+     * @param {number} width - New width
+     * @param {number} height - New height
+     * @private
+     */
+    _resizeCanvas(width, height) {
+        console.log('[Layers] Resizing canvas to:', width, height)
+        
+        // Update canvas element
+        this._canvas.width = width
+        this._canvas.height = height
+        
+        // Update renderer
+        this._renderer.resize(width, height)
     }
 
     /**

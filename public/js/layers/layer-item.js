@@ -6,6 +6,7 @@
  */
 
 import { BLEND_MODES } from './blend-modes.js'
+import './effect-params.js'
 
 /**
  * LayerItem - Web component for a single layer
@@ -16,6 +17,7 @@ class LayerItem extends HTMLElement {
         super()
         this._layer = null
         this._selected = false
+        this._paramsExpanded = false
     }
 
     connectedCallback() {
@@ -51,6 +53,9 @@ class LayerItem extends HTMLElement {
     set selected(selected) {
         this._selected = selected
         this.classList.toggle('selected', selected)
+        
+        // Show/hide effect params based on selection
+        this._updateParamsVisibility(selected)
     }
 
     /**
@@ -123,7 +128,42 @@ class LayerItem extends HTMLElement {
                     <span class="layer-opacity-value">${layer.opacity}%</span>
                 </div>
             </div>
+            ${isEffect ? '<effect-params class="layer-effect-params"></effect-params>' : ''}
         `
+        
+        // Initialize effect params if this is an effect layer
+        if (isEffect) {
+            this._initEffectParams()
+        }
+    }
+    
+    /**
+     * Initialize effect params component
+     * @private
+     */
+    _initEffectParams() {
+        const paramsEl = this.querySelector('effect-params')
+        if (paramsEl && this._layer?.effectId) {
+            paramsEl.setEffect(
+                this._layer.effectId,
+                this._layer.id,
+                this._layer.effectParams || {}
+            )
+            // Hide by default unless selected
+            paramsEl.style.display = this._selected ? 'block' : 'none'
+        }
+    }
+    
+    /**
+     * Update params visibility based on selection
+     * @param {boolean} visible - Whether params should be visible
+     * @private
+     */
+    _updateParamsVisibility(visible) {
+        const paramsEl = this.querySelector('effect-params')
+        if (paramsEl) {
+            paramsEl.style.display = visible ? 'block' : 'none'
+        }
     }
 
     /**
@@ -147,8 +187,8 @@ class LayerItem extends HTMLElement {
                 return
             }
 
-            // Select layer on click (anywhere else)
-            if (!e.target.closest('.layer-controls')) {
+            // Select layer on click (anywhere else except controls and params)
+            if (!e.target.closest('.layer-controls') && !e.target.closest('effect-params')) {
                 this._emitSelect()
             }
         })
@@ -181,6 +221,27 @@ class LayerItem extends HTMLElement {
         this.addEventListener('dragover', (e) => this._handleDragOver(e))
         this.addEventListener('dragleave', (e) => this._handleDragLeave(e))
         this.addEventListener('drop', (e) => this._handleDrop(e))
+        
+        // Effect parameter changes (from effect-params component)
+        this.addEventListener('param-change', (e) => {
+            e.stopPropagation()
+            this._handleParamChange(e.detail)
+        })
+    }
+    
+    /**
+     * Handle effect parameter change
+     * @param {object} detail - Event detail with paramName, value, params
+     * @private
+     */
+    _handleParamChange(detail) {
+        if (!this._layer) return
+        
+        // Update layer's effectParams
+        this._layer.effectParams = { ...detail.params }
+        
+        // Emit as a standard layer-change event
+        this._emitChange('effectParams', this._layer.effectParams)
     }
 
     /**
