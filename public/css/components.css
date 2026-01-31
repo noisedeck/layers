@@ -566,7 +566,7 @@ dialog[open] {
     width: 480px;
 }
 
-.open-dialog .media-options {
+.media-options {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;

@@ -832,4 +832,22 @@ export class LayersRenderer {
 
         return effects
     }
+
+    /**
+     * Get effect definition by ID (loads if needed)
+     * @param {string} effectId - Effect ID (namespace/name)
+     * @returns {Promise<object|null>} Effect definition with globals, or null if not found
+     */
+    async getEffectDefinition(effectId) {
+        if (!effectId) return null
+
+        try {
+            // Load the effect (this registers it too)
+            const effect = await this._renderer.loadEffect(effectId)
+            return effect?.instance || null
+        } catch (err) {
+            console.warn(`[LayersRenderer] Failed to load effect ${effectId}:`, err)
+            return null
+        }
+    }
 }

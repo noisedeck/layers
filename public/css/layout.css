@@ -31,18 +31,6 @@ html, body {
     overflow: hidden;
 }
 
-/* Menu spans full width */
-#menu {
-    grid-row: 1;
-    grid-column: 1 / -1;
-    width: 100%;
-    border-radius: 0;
-}
-
-#menuBackdrop {
-    border-radius: 0;
-}
-
 /* Canvas Panel */
 #canvas-panel {
     grid-row: 2;

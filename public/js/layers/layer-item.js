@@ -53,9 +53,6 @@ class LayerItem extends HTMLElement {
     set selected(selected) {
         this._selected = selected
         this.classList.toggle('selected', selected)
-        
-        // Show/hide effect params based on selection
-        this._updateParamsVisibility(selected)
     }
 
     /**
@@ -120,6 +117,9 @@ class LayerItem extends HTMLElement {
                 </button>
             </div>
             <div class="layer-controls">
+                ${isEffect ? `<button class="layer-params-toggle ${this._paramsExpanded ? 'expanded' : ''}" title="Toggle parameters">
+                    <span class="icon-material">arrow_right</span>
+                </button>` : ''}
                 <select class="layer-blend-mode" title="Blend mode">
                     ${blendOptions}
                 </select>
@@ -149,20 +149,24 @@ class LayerItem extends HTMLElement {
                 this._layer.id,
                 this._layer.effectParams || {}
             )
-            // Hide by default unless selected
-            paramsEl.style.display = this._selected ? 'block' : 'none'
+            // Apply expanded state via class
+            this.classList.toggle('params-expanded', this._paramsExpanded)
         }
     }
-    
+
     /**
-     * Update params visibility based on selection
-     * @param {boolean} visible - Whether params should be visible
+     * Toggle params expanded state
      * @private
      */
-    _updateParamsVisibility(visible) {
-        const paramsEl = this.querySelector('effect-params')
-        if (paramsEl) {
-            paramsEl.style.display = visible ? 'block' : 'none'
+    _toggleParamsExpanded() {
+        this._paramsExpanded = !this._paramsExpanded
+
+        // Toggle classes for CSS-based show/hide
+        this.classList.toggle('params-expanded', this._paramsExpanded)
+
+        const toggleBtn = this.querySelector('.layer-params-toggle')
+        if (toggleBtn) {
+            toggleBtn.classList.toggle('expanded', this._paramsExpanded)
         }
     }
 
@@ -184,6 +188,13 @@ class LayerItem extends HTMLElement {
             if (deleteBtn) {
                 e.stopPropagation()
                 this._handleDelete()
+                return
+            }
+
+            const paramsToggle = e.target.closest('.layer-params-toggle')
+            if (paramsToggle) {
+                e.stopPropagation()
+                this._toggleParamsExpanded()
                 return
             }
 

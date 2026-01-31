@@ -4,7 +4,8 @@
   "description": "Layer-based media editor powered by Noisemaker shader pipeline",
   "type": "module",
   "scripts": {
-    "dev": "npx http-server public -p 3002 -c-1"
+    "dev": "npx http-server public -p 3002 -c-1",
+    "test": "npx playwright test"
   },
   "devDependencies": {
     "playwright": "^1.58.1"

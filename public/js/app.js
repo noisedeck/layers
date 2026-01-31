@@ -8,6 +8,7 @@
 import { LayersRenderer } from './noisemaker/renderer.js'
 import { createMediaLayer, createEffectLayer } from './layers/layer-model.js'
 import './layers/layer-stack.js'
+import { EffectParams } from './layers/effect-params.js'
 import { openDialog } from './ui/open-dialog.js'
 import { addLayerDialog } from './ui/add-layer-dialog.js'
 import { aboutDialog } from './ui/about-dialog.js'
@@ -57,6 +58,11 @@ class LayersApp {
         try {
             await this._renderer.init()
             console.log('[Layers] Renderer initialized')
+
+            // Set up effect loader for effect-params components
+            EffectParams.setEffectLoader(async (effectId) => {
+                return await this._renderer.getEffectDefinition(effectId)
+            })
         } catch (err) {
             console.error('[Layers] Failed to initialize renderer:', err)
             toast.error('Failed to initialize renderer')

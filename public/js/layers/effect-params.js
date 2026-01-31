@@ -7,12 +7,23 @@
 
 import { getEffect } from '../noisemaker/bundle.js'
 
+// Static effect loader function (set by app after renderer init)
+let effectLoader = null
+
 /**
  * EffectParams - Web component for effect parameter editing
  * Single-column layout inspired by noisedeck controls
  * @extends HTMLElement
  */
 class EffectParams extends HTMLElement {
+    /**
+     * Set the effect loader function
+     * @param {function} loader - Async function: (effectId) => effectDef
+     */
+    static setEffectLoader(loader) {
+        effectLoader = loader
+    }
+
     constructor() {
         super()
         this._effectId = null
@@ -20,6 +31,7 @@ class EffectParams extends HTMLElement {
         this._params = {}
         this._effectDef = null
         this._controls = new Map()
+        this._loading = false
     }
 
     connectedCallback() {
@@ -36,11 +48,26 @@ class EffectParams extends HTMLElement {
      * @param {string} layerId - Layer ID for events
      * @param {object} params - Current parameter values
      */
-    setEffect(effectId, layerId, params = {}) {
+    async setEffect(effectId, layerId, params = {}) {
         this._effectId = effectId
         this._layerId = layerId
         this._params = { ...params }
+
+        // Try synchronous first (already loaded)
         this._effectDef = effectId ? getEffect(effectId) : null
+
+        // If not found and we have a loader, load async
+        if (!this._effectDef && effectId && effectLoader) {
+            this._loading = true
+            this._render() // Show loading state
+            try {
+                this._effectDef = await effectLoader(effectId)
+            } catch (err) {
+                console.warn(`[effect-params] Failed to load ${effectId}:`, err)
+            }
+            this._loading = false
+        }
+
         this._render()
     }
 
@@ -71,14 +98,33 @@ class EffectParams extends HTMLElement {
     _render() {
         this._controls.clear()
 
-        if (!this._effectDef || !this._effectDef.globals) {
+        // Loading state
+        if (this._loading) {
+            this.innerHTML = '<div class="effect-params-loading">Loading parameters...</div>'
+            this.classList.remove('empty')
+            return
+        }
+
+        if (!this._effectDef) {
             this.innerHTML = ''
             this.classList.add('empty')
             return
         }
 
+        const globals = this._effectDef.globals || {}
+
+        // Check if there are any visible parameters
+        const visibleParams = Object.entries(globals).filter(([_, spec]) =>
+            !spec.ui?.hidden && !spec.internal
+        )
+
+        if (visibleParams.length === 0) {
+            this.innerHTML = '<div class="effect-params-empty">No adjustable parameters</div>'
+            this.classList.remove('empty')
+            return
+        }
+
         this.classList.remove('empty')
-        const globals = this._effectDef.globals
 
         // Build the controls container
         this.innerHTML = `
