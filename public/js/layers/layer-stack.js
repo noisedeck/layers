@@ -129,7 +129,7 @@ class LayerStack extends HTMLElement {
     /**
      * Handle layer reorder
      * @param {string} sourceId - ID of layer being moved
-     * @param {string} targetId - ID of layer to move above
+     * @param {string} targetId - ID of layer to move above (in visual terms)
      * @private
      */
     _handleReorder(sourceId, targetId) {
@@ -137,15 +137,21 @@ class LayerStack extends HTMLElement {
         const targetIndex = this._layers.findIndex(l => l.id === targetId)
 
         if (sourceIndex === -1 || targetIndex === -1) return
-        if (sourceIndex === 0 || targetIndex === 0) return // Can't move base layer
+        if (sourceIndex === 0) return // Can't move base layer
+        if (sourceIndex === targetIndex) return // No-op
 
         // Remove source layer
         const [sourceLayer] = this._layers.splice(sourceIndex, 1)
 
-        // Calculate new index (account for removal)
-        let newIndex = targetIndex
-        if (sourceIndex < targetIndex) {
-            newIndex--
+        // Calculate new index
+        // When sourceIndex < targetIndex, target shifts down by 1 after removal
+        // When sourceIndex > targetIndex, target index stays the same
+        // In both cases, we want to insert at the target's current position
+        let newIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+
+        // Don't allow dropping at base layer position (index 0)
+        if (newIndex <= 0) {
+            newIndex = 1  // Insert just above base layer
         }
 
         // Insert at new position

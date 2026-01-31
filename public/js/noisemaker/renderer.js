@@ -742,9 +742,18 @@ export class LayersRenderer {
         const manifest = this._renderer.manifest || {}
         const effects = []
 
+        // Namespaces to hide from UI
+        const hiddenNamespaces = ['3d', 'points', 'render', 'synth', 'synth3d', 'mixer', 'filter3d']
+
         for (const [effectId, entry] of Object.entries(manifest)) {
             if (entry.starter) {
                 const [namespace, name] = effectId.split('/')
+
+                // Skip hidden namespaces (exact match, startsWith classic, or contains 3d)
+                if (hiddenNamespaces.includes(namespace) || namespace.startsWith('classic') || namespace.includes('3d')) {
+                    continue
+                }
+
                 effects.push({
                     effectId,
                     namespace,
@@ -774,8 +783,17 @@ export class LayersRenderer {
         const manifest = this._renderer.manifest || {}
         const effects = []
 
+        // Namespaces to hide from UI
+        const hiddenNamespaces = ['3d', 'points', 'render', 'synth', 'synth3d', 'mixer', 'filter3d']
+
         for (const [effectId, entry] of Object.entries(manifest)) {
             const [namespace, name] = effectId.split('/')
+
+            // Skip hidden namespaces (exact match, startsWith classic, or contains 3d)
+            if (hiddenNamespaces.includes(namespace) || namespace.startsWith('classic') || namespace.includes('3d')) {
+                continue
+            }
+
             effects.push({
                 effectId,
                 namespace,
@@ -806,14 +824,14 @@ export class LayersRenderer {
         const manifest = this._renderer.manifest || {}
         const effects = []
 
-        // Namespaces to exclude (starters generate content, mixers need two inputs)
-        const excludedNamespaces = ['synth', 'synth3d', 'mixer', 'points', 'render']
+        // Namespaces to exclude
+        const excludedNamespaces = ['synth', 'synth3d', 'mixer', 'points', 'render', '3d', 'filter3d']
 
         for (const [effectId, entry] of Object.entries(manifest)) {
             const [namespace, name] = effectId.split('/')
 
-            // Skip excluded namespaces
-            if (excludedNamespaces.includes(namespace)) {
+            // Skip excluded namespaces (exact match, startsWith classic, or contains 3d)
+            if (excludedNamespaces.includes(namespace) || namespace.startsWith('classic') || namespace.includes('3d')) {
                 continue
             }
 

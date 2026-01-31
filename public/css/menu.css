@@ -284,3 +284,27 @@
 .menu-icon-btn.active {
     color: var(--accent3);
 }
+
+/* Responsive: full-width menu when layers panel moves below */
+@media (max-width: 910px) {
+    #menu {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    #menuBackdrop {
+        border-radius: 0;
+    }
+}
+
+/* Mobile: ensure full-width menu */
+@media (max-width: 700px) {
+    #menu {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    #menuBackdrop {
+        border-radius: 0;
+    }
+}

@@ -26,8 +26,8 @@ function normalizeForSearch(str) {
     return (str || '').toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
-// Namespaces and tags to hide from the filter view
-const HIDDEN_NAMESPACES = new Set(['3d', 'points', 'classicFractal', 'classicPattern', 'render', 'synth'])
+// Namespaces and tags to hide from the UI
+const HIDDEN_NAMESPACES = new Set(['3d', 'points', 'classicFractal', 'classicPattern', 'render', 'synth', 'synth3d', 'mixer', 'filter3d'])
 const HIDDEN_TAGS = new Set(['3d', 'points', 'classic', 'render', 'synth'])
 
 /**
@@ -36,7 +36,7 @@ const HIDDEN_TAGS = new Set(['3d', 'points', 'classic', 'render', 'synth'])
  * @returns {boolean}
  */
 function isHiddenNamespace(ns) {
-    return HIDDEN_NAMESPACES.has(ns) || ns.startsWith('classic')
+    return HIDDEN_NAMESPACES.has(ns) || ns.startsWith('classic') || ns.includes('3d')
 }
 
 /**
@@ -318,21 +318,29 @@ class EffectPicker {
     _applyFilter() {
         const q = normalizeForSearch(this._filterText)
 
+        // Get effects that are not in hidden namespaces
+        const visibleEffects = this._effects.filter(effect => {
+            const ns = effect.namespace || 'other'
+            return !isHiddenNamespace(ns)
+        })
+
         if (!q) {
-            this._filteredEffects = this._effects
+            this._filteredEffects = visibleEffects
             return
         }
 
         const terms = q.split(' ').filter(Boolean)
 
-        this._filteredEffects = this._effects.filter(effect => {
+        this._filteredEffects = visibleEffects.filter(effect => {
+            // Only include visible tags in the searchable haystack
+            const visibleTags = (effect.tags || []).filter(tag => !isHiddenTag(tag))
             const haystack = normalizeForSearch([
                 effect.namespace,
                 camelToSpaceCase(effect.namespace),
                 effect.name,
                 camelToSpaceCase(effect.name),
                 effect.description || '',
-                (effect.tags || []).join(' ')
+                visibleTags.join(' ')
             ].join(' '))
 
             return terms.every(term => haystack.includes(term))

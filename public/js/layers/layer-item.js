@@ -18,6 +18,7 @@ class LayerItem extends HTMLElement {
         this._layer = null
         this._selected = false
         this._paramsExpanded = false
+        this._dragFromHandle = false
     }
 
     connectedCallback() {
@@ -235,7 +236,11 @@ class LayerItem extends HTMLElement {
             }
         })
 
-        // Drag and drop
+        // Drag and drop - track if mousedown was on handle
+        this.addEventListener('mousedown', (e) => {
+            this._dragFromHandle = !!e.target.closest('.layer-drag-handle')
+        })
+
         this.addEventListener('dragstart', (e) => this._handleDragStart(e))
         this.addEventListener('dragend', (e) => this._handleDragEnd(e))
         this.addEventListener('dragover', (e) => this._handleDragOver(e))
@@ -391,7 +396,7 @@ class LayerItem extends HTMLElement {
 
     _handleDragStart(e) {
         // Only allow drag from the drag handle
-        if (this.hasAttribute('base') || !e.target.closest('.layer-drag-handle')) {
+        if (!this._layer || this.hasAttribute('base') || !this._dragFromHandle) {
             e.preventDefault()
             return
         }
@@ -402,6 +407,7 @@ class LayerItem extends HTMLElement {
 
     _handleDragEnd(e) {
         this.classList.remove('dragging')
+        this._dragFromHandle = false
     }
 
     _handleDragOver(e) {
