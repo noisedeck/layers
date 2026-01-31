@@ -3,17 +3,10 @@
   "version": "0.1.0",
   "description": "Layer-based media editor powered by Noisemaker shader pipeline",
   "type": "module",
-  "main": "server/index.js",
   "scripts": {
-    "start": "node server/index.js",
-    "dev": "nodemon server/index.js"
-  },
-  "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^4.21.0"
+    "dev": "npx http-server public -p 3002 -c-1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.0",
     "playwright": "^1.58.1"
   },
   "engines": {
