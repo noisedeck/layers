@@ -57,6 +57,9 @@ export class LayersRenderer {
 
         // Media textures (loaded from files)
         this._mediaTextures = new Map()
+
+        // Layer to step index mapping (populated after compile)
+        this._layerStepMap = new Map()
     }
 
     // =========================================================================
@@ -170,6 +173,12 @@ export class LayersRenderer {
         try {
             // Build DSL from layers
             const dsl = this._buildDsl()
+
+            // Skip recompilation if DSL hasn't changed
+            if (dsl === this._currentDsl) {
+                return { success: true }
+            }
+
             this._currentDsl = dsl
 
             console.log('[LayersRenderer] Built DSL:', dsl)
@@ -192,8 +201,14 @@ export class LayersRenderer {
             // Compile the DSL
             await this._renderer.compile(dsl)
 
+            // Build layer-to-step mapping after compile
+            this._buildLayerStepMap()
+
             // Upload media textures after compile (pipeline must exist first)
             this._uploadMediaTextures()
+
+            // Apply initial parameter values
+            this._applyAllLayerParams()
 
             return { success: true }
         } catch (err) {
@@ -201,6 +216,134 @@ export class LayersRenderer {
             return {
                 success: false,
                 error: err.message || String(err)
+            }
+        }
+    }
+
+    /**
+     * Build mapping from layer IDs to pipeline step indices
+     * @private
+     */
+    _buildLayerStepMap() {
+        this._layerStepMap.clear()
+
+        const pipeline = this._renderer.pipeline
+        if (!pipeline?.graph?.passes) return
+
+        const visibleLayers = this._layers.filter(l => l.visible)
+
+        // Find step indices for each effect type
+        // Effects appear in DSL order, so we can match by position
+        let effectLayerIndex = 0
+        for (const layer of visibleLayers) {
+            if (layer.sourceType === 'effect') {
+                // Find the Nth effect pass in the pipeline
+                const effectPasses = pipeline.graph.passes.filter(p => {
+                    // Match by effect name
+                    const effectName = layer.effectId?.split('/')[1]
+                    return p.effectFunc === effectName || p.effectKey === effectName
+                })
+
+                // Use position-based matching since same effect can appear multiple times
+                let matchCount = 0
+                for (const pass of pipeline.graph.passes) {
+                    const effectName = layer.effectId?.split('/')[1]
+                    if (pass.effectFunc === effectName || pass.effectKey === effectName) {
+                        if (matchCount === effectLayerIndex) {
+                            this._layerStepMap.set(layer.id, pass.stepIndex)
+                            break
+                        }
+                        matchCount++
+                    }
+                }
+                effectLayerIndex++
+            }
+        }
+
+        console.log('[LayersRenderer] Layer step map:', Object.fromEntries(this._layerStepMap))
+    }
+
+    /**
+     * Update parameters for a specific layer without recompiling
+     * @param {string} layerId - Layer ID
+     * @param {object} params - Parameter values to update
+     */
+    updateLayerParams(layerId, params) {
+        const stepIndex = this._layerStepMap.get(layerId)
+        if (stepIndex === undefined) {
+            console.warn(`[LayersRenderer] No step index for layer ${layerId}`)
+            return
+        }
+
+        const stepKey = `step_${stepIndex}`
+        const stepParams = { [stepKey]: params }
+
+        if (this._renderer.applyStepParameterValues) {
+            this._renderer.applyStepParameterValues(stepParams)
+        }
+    }
+
+    /**
+     * Update the DSL string from current layers without recompiling.
+     * Call this after parameter-only changes to keep DSL in sync and
+     * prevent spurious rebuilds on subsequent structural changes.
+     */
+    syncDsl() {
+        if (this._layers.length > 0) {
+            this._currentDsl = this._buildDsl()
+        }
+    }
+
+    /**
+     * Update opacity for a layer (updates blendMode mixAmt)
+     * @param {string} layerId - Layer ID
+     * @param {number} opacity - Opacity 0-100
+     */
+    updateLayerOpacity(layerId, opacity) {
+        // Opacity is applied via blendMode's mixAmt parameter
+        // The blendMode step comes after the layer's effect step
+        // For now, we need to find the blendMode step that uses this layer
+        const pipeline = this._renderer.pipeline
+        if (!pipeline?.graph?.passes) return
+
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer) return
+
+        const layerIndex = this._layers.filter(l => l.visible).indexOf(layer)
+        if (layerIndex <= 0) return // Base layer has no blendMode
+
+        // Find the blendMode pass for this layer
+        // blendMode passes follow each non-base layer
+        const blendPasses = pipeline.graph.passes.filter(p =>
+            p.effectFunc === 'blendMode' || p.effectKey === 'blendMode'
+        )
+
+        // The Nth non-base layer uses the Nth blendMode pass
+        const blendPassIndex = layerIndex - 1
+        if (blendPassIndex < blendPasses.length) {
+            const blendPass = blendPasses[blendPassIndex]
+            const mixAmt = this._opacityToMixAmt(opacity)
+            const stepKey = `step_${blendPass.stepIndex}`
+
+            if (this._renderer.applyStepParameterValues) {
+                this._renderer.applyStepParameterValues({
+                    [stepKey]: { mixAmt }
+                })
+            }
+        }
+    }
+
+    /**
+     * Apply all layer parameters to the pipeline
+     * @private
+     */
+    _applyAllLayerParams() {
+        for (const layer of this._layers) {
+            if (layer.sourceType === 'effect' && layer.effectParams) {
+                this.updateLayerParams(layer.id, layer.effectParams)
+            }
+            if (layer.visible && this._layers.indexOf(layer) > 0) {
+                this.updateLayerOpacity(layer.id, layer.opacity)
             }
         }
     }

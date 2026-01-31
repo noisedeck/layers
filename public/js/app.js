@@ -212,7 +212,7 @@ class LayersApp {
     }
 
     /**
-     * Handle layer changes (visibility, blend mode, opacity)
+     * Handle layer changes (visibility, blend mode, opacity, effectParams)
      * @param {object} detail - Change detail
      * @private
      */
@@ -225,8 +225,32 @@ class LayersApp {
             layer[detail.property] = detail.value
         }
 
-        // Rebuild
-        await this._rebuild()
+        // Determine if this requires a full rebuild or just a parameter update
+        switch (detail.property) {
+            case 'effectParams':
+                // Update parameters directly without recompiling
+                this._renderer.updateLayerParams(detail.layerId, detail.value)
+                // Keep DSL in sync to prevent spurious rebuild on next structural change
+                this._renderer.syncDsl()
+                break
+
+            case 'opacity':
+                // Update opacity via blendMode uniform
+                this._renderer.updateLayerOpacity(detail.layerId, detail.value)
+                // Keep DSL in sync to prevent spurious rebuild on next structural change
+                this._renderer.syncDsl()
+                break
+
+            case 'visibility':
+            case 'blendMode':
+                // Structural changes require full rebuild
+                await this._rebuild()
+                break
+
+            default:
+                // Unknown property - rebuild to be safe
+                await this._rebuild()
+        }
     }
 
     /**
