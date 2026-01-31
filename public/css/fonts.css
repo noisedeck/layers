@@ -41,6 +41,15 @@
     font-display: swap;
 }
 
+/* Cormorant Upright - Accent/display font */
+@font-face {
+    font-family: 'Cormorant Upright';
+    src: url('/fonts/CormorantUpright-SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+
 /* Font family definitions */
 :root {
     --font-display: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
@@ -48,6 +57,7 @@
     --font-mono: 'Noto Sans Mono', 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
     --font-icon: 'Material Symbols Outlined';
     --font-logotype: 'Victor Mono', 'SF Mono', 'Monaco', monospace;
+    --font-accent: 'Cormorant Upright', 'Times New Roman', serif;
 }
 
 /* Material Symbols base style */

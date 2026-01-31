@@ -17,12 +17,12 @@
     --ui-chrome-shadow-blend: 72%;
     --ui-chrome-shadow-shade: 28%;
     
-    /* Noisedeck colors */
-    --color2: #101522;
+    /* Menu colors - neutral */
+    --color2: #141414;
     --color6: #d9deeb;
     --color7: #f6f8ff;
-    --accent3: #a5b8ff;
-    --accent4: #dce6ff;
+    --accent3: #94a3b8;
+    --accent4: #cbd5e1;
 }
 
 /* Menu Bar Styles */

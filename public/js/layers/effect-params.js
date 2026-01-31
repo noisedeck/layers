@@ -114,8 +114,10 @@ class EffectParams extends HTMLElement {
         const globals = this._effectDef.globals || {}
 
         // Check if there are any visible parameters
+        // Skip vec2/vec3 types as they're not properly supported yet
+        const unsupportedTypes = ['vec2', 'vec3']
         const visibleParams = Object.entries(globals).filter(([_, spec]) =>
-            !spec.ui?.hidden && !spec.internal
+            !spec.ui?.hidden && !spec.internal && !unsupportedTypes.includes(spec.type)
         )
 
         if (visibleParams.length === 0) {
@@ -138,8 +140,8 @@ class EffectParams extends HTMLElement {
 
         // Create controls for each parameter
         for (const [paramName, spec] of Object.entries(globals)) {
-            // Skip hidden or internal parameters
-            if (spec.ui?.hidden || spec.internal) continue
+            // Skip hidden, internal, or unsupported type parameters
+            if (spec.ui?.hidden || spec.internal || unsupportedTypes.includes(spec.type)) continue
 
             const controlGroup = this._createControlGroup(paramName, spec)
             if (controlGroup) {

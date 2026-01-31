@@ -76,6 +76,8 @@ class LayerItem extends HTMLElement {
         const layer = this._layer
         const isVisible = layer.visible
         const isEffect = layer.sourceType === 'effect'
+        const isMedia = layer.sourceType === 'media'
+        const hasParams = isEffect || isMedia  // Both effect and media layers have params
         const isBase = this.hasAttribute('base')
 
         // Build blend mode options
@@ -117,7 +119,7 @@ class LayerItem extends HTMLElement {
                 </button>
             </div>
             <div class="layer-controls">
-                ${isEffect ? `<button class="layer-params-toggle ${this._paramsExpanded ? 'expanded' : ''}" title="Toggle parameters">
+                ${hasParams ? `<button class="layer-params-toggle ${this._paramsExpanded ? 'expanded' : ''}" title="Toggle parameters">
                     <span class="icon-material">arrow_right</span>
                 </button>` : ''}
                 <select class="layer-blend-mode" title="Blend mode">
@@ -128,11 +130,11 @@ class LayerItem extends HTMLElement {
                     <span class="layer-opacity-value">${layer.opacity}%</span>
                 </div>
             </div>
-            ${isEffect ? '<effect-params class="layer-effect-params"></effect-params>' : ''}
+            ${hasParams ? '<effect-params class="layer-effect-params"></effect-params>' : ''}
         `
         
-        // Initialize effect params if this is an effect layer
-        if (isEffect) {
+        // Initialize effect params if this layer has parameters
+        if (hasParams) {
             this._initEffectParams()
         }
     }
@@ -143,9 +145,16 @@ class LayerItem extends HTMLElement {
      */
     _initEffectParams() {
         const paramsEl = this.querySelector('effect-params')
-        if (paramsEl && this._layer?.effectId) {
+        if (!paramsEl || !this._layer) return
+
+        // Use effectId for effects, 'synth/media' for media layers
+        const effectId = this._layer.sourceType === 'effect'
+            ? this._layer.effectId
+            : 'synth/media'
+
+        if (effectId) {
             paramsEl.setEffect(
-                this._layer.effectId,
+                effectId,
                 this._layer.id,
                 this._layer.effectParams || {}
             )

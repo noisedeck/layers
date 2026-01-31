@@ -301,31 +301,34 @@ export class LayersRenderer {
 
         const visibleLayers = this._layers.filter(l => l.visible)
 
-        // Find step indices for each effect type
-        // Effects appear in DSL order, so we can match by position
-        let effectLayerIndex = 0
-        for (const layer of visibleLayers) {
-            if (layer.sourceType === 'effect') {
-                // Find the Nth effect pass in the pipeline
-                const effectPasses = pipeline.graph.passes.filter(p => {
-                    // Match by effect name
-                    const effectName = layer.effectId?.split('/')[1]
-                    return p.effectFunc === effectName || p.effectKey === effectName
-                })
+        // Track how many times we've seen each effect type
+        const effectTypeCounts = {}
 
-                // Use position-based matching since same effect can appear multiple times
-                let matchCount = 0
-                for (const pass of pipeline.graph.passes) {
-                    const effectName = layer.effectId?.split('/')[1]
-                    if (pass.effectFunc === effectName || pass.effectKey === effectName) {
-                        if (matchCount === effectLayerIndex) {
-                            this._layerStepMap.set(layer.id, pass.stepIndex)
-                            break
-                        }
-                        matchCount++
+        for (const layer of visibleLayers) {
+            let effectName = null
+
+            if (layer.sourceType === 'effect') {
+                effectName = layer.effectId?.split('/')[1]
+            } else if (layer.sourceType === 'media') {
+                effectName = 'media'
+            }
+
+            if (!effectName) continue
+
+            // How many of this effect type have we seen before?
+            const seenCount = effectTypeCounts[effectName] || 0
+            effectTypeCounts[effectName] = seenCount + 1
+
+            // Find the Nth occurrence of this effect in the pipeline
+            let matchCount = 0
+            for (const pass of pipeline.graph.passes) {
+                if (pass.effectFunc === effectName || pass.effectKey === effectName) {
+                    if (matchCount === seenCount) {
+                        this._layerStepMap.set(layer.id, pass.stepIndex)
+                        break
                     }
+                    matchCount++
                 }
-                effectLayerIndex++
             }
         }
 
@@ -408,7 +411,8 @@ export class LayersRenderer {
      */
     _applyAllLayerParams() {
         for (const layer of this._layers) {
-            if (layer.sourceType === 'effect' && layer.effectParams) {
+            // Apply effect params for both effect and media layers
+            if (layer.effectParams && Object.keys(layer.effectParams).length > 0) {
                 this.updateLayerParams(layer.id, layer.effectParams)
             }
             if (layer.visible && this._layers.indexOf(layer) > 0) {
@@ -628,7 +632,7 @@ export class LayersRenderer {
                         lines.push(`${effectCall}.write(o${currentOutput})`)
                     } else {
                         // Filter as base - generate solid color first, then apply filter
-                        lines.push(`solid(r: 0, g: 0, b: 0).${effectCall}.write(o${currentOutput})`)
+                        lines.push(`solid(color: [0, 0, 0]).${effectCall}.write(o${currentOutput})`)
                     }
                 } else {
                     // Non-base layer
@@ -681,6 +685,11 @@ export class LayersRenderer {
             .map(([key, value]) => {
                 if (typeof value === 'string') {
                     return `${key}: "${value}"`
+                }
+                if (Array.isArray(value)) {
+                    // Use vec constructors for array types (vec2, vec3, vec4)
+                    const vecType = `vec${value.length}`
+                    return `${key}: ${vecType}(${value.join(', ')})`
                 }
                 return `${key}: ${value}`
             })

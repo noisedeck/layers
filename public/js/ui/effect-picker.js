@@ -26,6 +26,28 @@ function normalizeForSearch(str) {
     return (str || '').toLowerCase().replace(/\s+/g, ' ').trim()
 }
 
+// Namespaces and tags to hide from the filter view
+const HIDDEN_NAMESPACES = new Set(['3d', 'points', 'classicFractal', 'classicPattern', 'render', 'synth'])
+const HIDDEN_TAGS = new Set(['3d', 'points', 'classic', 'render', 'synth'])
+
+/**
+ * Check if a namespace should be hidden
+ * @param {string} ns - Namespace name
+ * @returns {boolean}
+ */
+function isHiddenNamespace(ns) {
+    return HIDDEN_NAMESPACES.has(ns) || ns.startsWith('classic')
+}
+
+/**
+ * Check if a tag should be hidden
+ * @param {string} tag - Tag name
+ * @returns {boolean}
+ */
+function isHiddenTag(tag) {
+    return HIDDEN_TAGS.has(tag) || tag.startsWith('classic')
+}
+
 /**
  * EffectPicker - Searchable effect selection UI
  */
@@ -86,7 +108,7 @@ class EffectPicker {
     }
 
     /**
-     * Render the effect list
+     * Render the effect list or filter view
      * @private
      */
     _renderEffectList() {
@@ -94,6 +116,12 @@ class EffectPicker {
         if (!listEl) return
 
         listEl.innerHTML = ''
+
+        // If no search term, show tags and namespaces
+        if (!this._filterText) {
+            this._renderFilterView(listEl)
+            return
+        }
 
         if (this._filteredEffects.length === 0) {
             listEl.innerHTML = '<div class="effect-empty">No effects found</div>'
@@ -110,11 +138,12 @@ class EffectPicker {
             byNamespace[ns].push(effect)
         })
 
-        // Render groups
+        // Render groups (use display name for hidden namespaces)
         Object.keys(byNamespace).sort().forEach(ns => {
+            const displayName = isHiddenNamespace(ns) ? 'other' : camelToSpaceCase(ns)
             const header = document.createElement('div')
             header.className = 'effect-group-header'
-            header.textContent = camelToSpaceCase(ns)
+            header.textContent = displayName
             listEl.appendChild(header)
 
             byNamespace[ns].sort((a, b) => a.name.localeCompare(b.name)).forEach(effect => {
@@ -128,15 +157,18 @@ class EffectPicker {
                 item.appendChild(name)
 
                 if (effect.tags && effect.tags.length > 0) {
-                    const tags = document.createElement('span')
-                    tags.className = 'effect-tags'
-                    effect.tags.slice(0, 3).forEach(tag => {
-                        const tagEl = document.createElement('span')
-                        tagEl.className = 'effect-tag'
-                        tagEl.textContent = tag
-                        tags.appendChild(tagEl)
-                    })
-                    item.appendChild(tags)
+                    const visibleTags = effect.tags.filter(tag => !isHiddenTag(tag))
+                    if (visibleTags.length > 0) {
+                        const tags = document.createElement('span')
+                        tags.className = 'effect-tags'
+                        visibleTags.slice(0, 3).forEach(tag => {
+                            const tagEl = document.createElement('span')
+                            tagEl.className = 'effect-tag'
+                            tagEl.textContent = tag
+                            tags.appendChild(tagEl)
+                        })
+                        item.appendChild(tags)
+                    }
                 }
 
                 if (effect.description) {
@@ -149,6 +181,71 @@ class EffectPicker {
                 listEl.appendChild(item)
             })
         })
+    }
+
+    /**
+     * Render the filter view (namespaces and tags)
+     * @param {HTMLElement} listEl - List container
+     * @private
+     */
+    _renderFilterView(listEl) {
+        // Collect namespaces (excluding hidden ones)
+        const namespaces = new Set()
+        const tagCounts = {}
+
+        this._effects.forEach(effect => {
+            const ns = effect.namespace || 'other'
+            if (!isHiddenNamespace(ns)) {
+                namespaces.add(ns)
+            }
+            if (effect.tags) {
+                effect.tags.forEach(tag => {
+                    if (!isHiddenTag(tag)) {
+                        tagCounts[tag] = (tagCounts[tag] || 0) + 1
+                    }
+                })
+            }
+        })
+
+        // Render namespaces
+        const nsHeader = document.createElement('div')
+        nsHeader.className = 'effect-group-header'
+        nsHeader.textContent = 'namespaces'
+        listEl.appendChild(nsHeader)
+
+        const nsContainer = document.createElement('div')
+        nsContainer.className = 'effect-filter-chips'
+        Array.from(namespaces).sort().forEach(ns => {
+            const chip = document.createElement('span')
+            chip.className = 'effect-filter-chip effect-filter-namespace'
+            chip.textContent = camelToSpaceCase(ns)
+            chip.dataset.filter = ns
+            nsContainer.appendChild(chip)
+        })
+        listEl.appendChild(nsContainer)
+
+        // Render tags sorted by frequency (excluding hidden ones)
+        const sortedTags = Object.entries(tagCounts)
+            .sort((a, b) => b[1] - a[1])
+            .map(([tag]) => tag)
+
+        if (sortedTags.length > 0) {
+            const tagHeader = document.createElement('div')
+            tagHeader.className = 'effect-group-header'
+            tagHeader.textContent = 'tags'
+            listEl.appendChild(tagHeader)
+
+            const tagContainer = document.createElement('div')
+            tagContainer.className = 'effect-filter-chips'
+            sortedTags.forEach(tag => {
+                const chip = document.createElement('span')
+                chip.className = 'effect-filter-chip effect-filter-tag'
+                chip.textContent = tag
+                chip.dataset.filter = tag
+                tagContainer.appendChild(chip)
+            })
+            listEl.appendChild(tagContainer)
+        }
     }
 
     /**
@@ -199,6 +296,17 @@ class EffectPicker {
                     this._renderEffectList()
                     clearBtn.classList.toggle('hidden', !this._filterText)
                 }
+            }
+
+            // Filter chip click sets search
+            const chip = e.target.closest('.effect-filter-chip')
+            if (chip) {
+                const filter = chip.dataset.filter
+                searchInput.value = filter
+                this._filterText = filter
+                this._applyFilter()
+                this._renderEffectList()
+                clearBtn.classList.toggle('hidden', !this._filterText)
             }
         })
     }
@@ -322,7 +430,7 @@ const EFFECT_PICKER_STYLES = `
 }
 
 .effect-item:hover {
-    background: rgba(0, 212, 255, 0.1);
+    background: rgba(210, 98, 0, 0.1);
 }
 
 .effect-item:last-child {
@@ -343,14 +451,14 @@ const EFFECT_PICKER_STYLES = `
 .effect-tag {
     font-size: 10px;
     padding: 2px 6px;
-    background: rgba(0, 212, 255, 0.15);
+    background: rgba(210, 98, 0, 0.15);
     color: var(--color-accent);
     border-radius: var(--radius-sm);
     cursor: pointer;
 }
 
 .effect-tag:hover {
-    background: rgba(0, 212, 255, 0.25);
+    background: rgba(210, 98, 0, 0.25);
 }
 
 .effect-description {
@@ -367,6 +475,34 @@ const EFFECT_PICKER_STYLES = `
     text-align: center;
     color: var(--color-text-muted);
     font-style: italic;
+}
+
+.effect-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+}
+
+.effect-filter-chip {
+    font-size: 12px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--color-border-muted);
+    border-radius: var(--radius-md);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.effect-filter-chip:hover {
+    background: rgba(210, 98, 0, 0.15);
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+.effect-filter-namespace {
+    font-weight: 500;
 }
 `
 

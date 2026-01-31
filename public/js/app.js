@@ -12,9 +12,11 @@ import { EffectParams } from './layers/effect-params.js'
 import { openDialog } from './ui/open-dialog.js'
 import { addLayerDialog } from './ui/add-layer-dialog.js'
 import { aboutDialog } from './ui/about-dialog.js'
-import { shareModal } from './ui/share-modal.js'
+import { saveProjectDialog } from './ui/save-project-dialog.js'
+import { projectManagerDialog } from './ui/project-manager-dialog.js'
 import { toast } from './ui/toast.js'
 import { exportPng, exportJpg, getTimestampedFilename } from './utils/export.js'
+import { saveProject, loadProject } from './utils/project-storage.js'
 
 /**
  * Main application class
@@ -25,6 +27,8 @@ class LayersApp {
         this._layerStack = null
         this._layers = []
         this._initialized = false
+        this._currentProjectId = null
+        this._currentProjectName = null
     }
 
     /**
@@ -97,15 +101,102 @@ class LayersApp {
     }
 
     /**
-     * Show the open dialog to select initial media
+     * Show the open dialog to select initial base layer
      * @private
      */
     _showOpenDialog() {
         openDialog.show({
+            isBaseLayer: true,
             onOpen: async (file, mediaType) => {
                 await this._handleOpenMedia(file, mediaType)
+            },
+            onSolid: async () => {
+                await this._handleCreateSolidBase()
+            },
+            onGradient: async () => {
+                await this._handleCreateGradientBase()
+            },
+            onTransparent: async () => {
+                await this._handleCreateTransparentBase()
             }
         })
+    }
+
+    /**
+     * Create a solid color base layer
+     * @private
+     */
+    async _handleCreateSolidBase() {
+        console.log('[Layers] Creating solid base layer')
+
+        const layer = createEffectLayer('synth/solid')
+        layer.name = 'Solid'
+        layer.effectParams = { color: [0.2, 0.2, 0.2], alpha: 1 }
+        this._layers = [layer]
+
+        // Set default canvas size
+        this._resizeCanvas(1024, 1024)
+
+        this._updateLayerStack()
+        await this._rebuild()
+        this._renderer.start()
+
+        // Reset project state
+        this._currentProjectId = null
+        this._currentProjectName = null
+        this._updateFilename('untitled')
+        toast.success('Created solid base layer')
+    }
+
+    /**
+     * Create a gradient base layer
+     * @private
+     */
+    async _handleCreateGradientBase() {
+        console.log('[Layers] Creating gradient base layer')
+
+        const layer = createEffectLayer('synth/gradient')
+        layer.name = 'Gradient'
+        this._layers = [layer]
+
+        // Set default canvas size
+        this._resizeCanvas(1024, 1024)
+
+        this._updateLayerStack()
+        await this._rebuild()
+        this._renderer.start()
+
+        // Reset project state
+        this._currentProjectId = null
+        this._currentProjectName = null
+        this._updateFilename('untitled')
+        toast.success('Created gradient base layer')
+    }
+
+    /**
+     * Create a transparent base layer
+     * @private
+     */
+    async _handleCreateTransparentBase() {
+        console.log('[Layers] Creating transparent base layer')
+
+        const layer = createEffectLayer('synth/solid')
+        layer.name = 'Transparent'
+        layer.effectParams = { color: [0, 0, 0], alpha: 0 }
+        this._layers = [layer]
+
+        // Set default canvas size
+        this._resizeCanvas(1024, 1024)
+
+        this._updateLayerStack()
+        await this._rebuild()
+        this._renderer.start()
+
+        // Reset project state
+        this._currentProjectId = null
+        this._currentProjectName = null
+        this._updateFilename('untitled')
+        toast.success('Created transparent base layer')
     }
 
     /**
@@ -145,7 +236,9 @@ class LayersApp {
         await this._rebuild()
         this._renderer.start()
 
-        // Update filename in menu
+        // Reset project state and update filename
+        this._currentProjectId = null
+        this._currentProjectName = null
         this._updateFilename(file.name)
 
         toast.success(`Opened ${file.name}`)
@@ -189,6 +282,19 @@ class LayersApp {
         await this._rebuild()
 
         toast.success(`Added layer: ${layer.name}`)
+    }
+
+    /**
+     * Reset all layers (for new project)
+     * @private
+     */
+    _resetLayers() {
+        this._layers.forEach(l => {
+            if (l.sourceType === 'media') {
+                this._renderer.unloadMedia(l.id)
+            }
+        })
+        this._layers = []
     }
 
     /**
@@ -367,17 +473,33 @@ class LayersApp {
         // File menu
         document.getElementById('openMenuItem')?.addEventListener('click', () => {
             openDialog.show({
+                isBaseLayer: true,
                 onOpen: async (file, mediaType) => {
                     // Reset layers and load new base
-                    this._layers.forEach(l => {
-                        if (l.sourceType === 'media') {
-                            this._renderer.unloadMedia(l.id)
-                        }
-                    })
-                    this._layers = []
+                    this._resetLayers()
                     await this._handleOpenMedia(file, mediaType)
+                },
+                onSolid: async () => {
+                    this._resetLayers()
+                    await this._handleCreateSolidBase()
+                },
+                onGradient: async () => {
+                    this._resetLayers()
+                    await this._handleCreateGradientBase()
+                },
+                onTransparent: async () => {
+                    this._resetLayers()
+                    await this._handleCreateTransparentBase()
                 }
             })
+        })
+
+        document.getElementById('saveProjectMenuItem')?.addEventListener('click', () => {
+            this._showSaveProjectDialog()
+        })
+
+        document.getElementById('loadProjectMenuItem')?.addEventListener('click', () => {
+            this._showLoadProjectDialog()
         })
 
         document.getElementById('savePngMenuItem')?.addEventListener('click', () => {
@@ -386,26 +508,6 @@ class LayersApp {
 
         document.getElementById('saveJpgMenuItem')?.addEventListener('click', () => {
             this._quickSaveJpg()
-        })
-
-        // Program menu
-        document.getElementById('copyProgramMenuItem')?.addEventListener('click', () => {
-            this._copyProgram()
-        })
-
-        document.getElementById('sharePubliclyMenuItem')?.addEventListener('click', () => {
-            shareModal.show({
-                dsl: this._renderer.currentDsl,
-                canvas: this._canvas
-            })
-        })
-
-        document.getElementById('editInNoisedeckMenuItem')?.addEventListener('click', () => {
-            this._editInNoisedeck()
-        })
-
-        document.getElementById('editInPolymorphicMenuItem')?.addEventListener('click', () => {
-            this._editInPolymorphic()
         })
 
         // Add layer button
@@ -445,7 +547,14 @@ class LayersApp {
      */
     _setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
-            // Don't handle if in input
+            // Ctrl/Cmd+S - save project (allow in inputs)
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault()
+                this._showSaveProjectDialog()
+                return
+            }
+
+            // Don't handle other shortcuts if in input
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true') {
                 return
             }
@@ -509,6 +618,114 @@ class LayersApp {
     }
 
     /**
+     * Show the save project dialog
+     * @private
+     */
+    _showSaveProjectDialog() {
+        saveProjectDialog.show({
+            projectId: this._currentProjectId,
+            projectName: this._currentProjectName || 'untitled',
+            onSave: async (projectId, projectName) => {
+                await this._saveProject(projectId, projectName)
+            }
+        })
+    }
+
+    /**
+     * Show the load project dialog
+     * @private
+     */
+    _showLoadProjectDialog() {
+        projectManagerDialog.show({
+            onLoad: async (projectId) => {
+                await this._loadProject(projectId)
+            }
+        })
+    }
+
+    /**
+     * Save the current project
+     * @param {string|null} projectId - Existing project ID (for update)
+     * @param {string} projectName - Project name
+     * @private
+     */
+    async _saveProject(projectId, projectName) {
+        try {
+            const savedId = await saveProject({
+                name: projectName,
+                canvasWidth: this._canvas.width,
+                canvasHeight: this._canvas.height,
+                layers: this._layers
+            }, projectId)
+
+            this._currentProjectId = savedId
+            this._currentProjectName = projectName
+            this._updateFilename(projectName)
+
+            toast.success('Project saved')
+        } catch (err) {
+            console.error('[Layers] Failed to save project:', err)
+            toast.error('Failed to save project')
+            throw err
+        }
+    }
+
+    /**
+     * Load a project
+     * @param {string} projectId - Project ID
+     * @private
+     */
+    async _loadProject(projectId) {
+        try {
+            const result = await loadProject(projectId)
+            if (!result) {
+                toast.error('Project not found')
+                return
+            }
+
+            const { project, mediaFiles } = result
+
+            // Reset current layers
+            this._resetLayers()
+
+            // Resize canvas
+            if (project.canvasWidth && project.canvasHeight) {
+                this._resizeCanvas(project.canvasWidth, project.canvasHeight)
+            }
+
+            // Restore layers
+            this._layers = project.layers
+
+            // Load media for each media layer
+            for (const layer of this._layers) {
+                if (layer.sourceType === 'media') {
+                    const file = mediaFiles.get(layer.id)
+                    if (file) {
+                        layer.mediaFile = file
+                        await this._renderer.loadMedia(layer.id, file, layer.mediaType)
+                    }
+                }
+            }
+
+            // Update state
+            this._currentProjectId = project.id
+            this._currentProjectName = project.name
+            this._updateFilename(project.name)
+
+            // Update UI and rebuild
+            this._updateLayerStack()
+            await this._rebuild()
+            this._renderer.start()
+
+            toast.success(`Loaded "${project.name}"`)
+        } catch (err) {
+            console.error('[Layers] Failed to load project:', err)
+            toast.error('Failed to load project')
+            throw err
+        }
+    }
+
+    /**
      * Quick save as PNG
      * @private
      */
@@ -528,55 +745,6 @@ class LayersApp {
         toast.success('Saved as JPG')
     }
 
-    /**
-     * Copy program to clipboard
-     * @private
-     */
-    async _copyProgram() {
-        const dsl = this._renderer.currentDsl
-        if (!dsl) {
-            toast.warning('No program to copy')
-            return
-        }
-
-        try {
-            await navigator.clipboard.writeText(dsl)
-            toast.success('Copied to clipboard')
-        } catch (err) {
-            console.error('Failed to copy:', err)
-            toast.error('Failed to copy')
-        }
-    }
-
-    /**
-     * Open in Noisedeck
-     * @private
-     */
-    _editInNoisedeck() {
-        const dsl = this._renderer.currentDsl
-        if (!dsl) {
-            toast.warning('No program to edit')
-            return
-        }
-
-        const encoded = encodeURIComponent(dsl)
-        window.open(`https://noisedeck.app/?dsl=${encoded}`, '_blank')
-    }
-
-    /**
-     * Open in Polymorphic
-     * @private
-     */
-    _editInPolymorphic() {
-        const dsl = this._renderer.currentDsl
-        if (!dsl) {
-            toast.warning('No program to edit')
-            return
-        }
-
-        const encoded = encodeURIComponent(dsl)
-        window.open(`https://polymorphic.noisedeck.app/?dsl=${encoded}`, '_blank')
-    }
 }
 
 // Initialize app when DOM is ready

@@ -82,10 +82,9 @@ html, body {
 }
 
 .layers-header h2 {
-    font-size: 14px;
+    font-family: var(--font-accent);
+    font-size: 16px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
     color: var(--color-text-secondary);
     margin: 0;
 }
@@ -93,7 +92,7 @@ html, body {
 .layers-header .add-layer-btn {
     background: none;
     border: none;
-    color: var(--color-accent);
+    color: var(--color-ui);
     cursor: pointer;
     padding: 4px;
     line-height: 1;
@@ -105,7 +104,8 @@ html, body {
 }
 
 .layers-header .add-layer-btn:hover {
-    background: var(--color-accent-muted);
+    color: var(--color-ui-hover);
+    background: var(--color-ui-muted);
 }
 
 .layers-header .add-layer-btn .icon-material {

@@ -165,8 +165,6 @@
 
 .layer-type {
     font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     color: var(--color-text-muted);
 }
 
@@ -259,7 +257,7 @@
 /* Blend Mode Select */
 .layer-blend-mode {
     flex: 0 0 auto;
-    min-width: 100px;
+    min-width: 70px;
     padding: 4px 24px 4px 8px;
     font-family: var(--font-body);
     font-size: 11px;
@@ -308,10 +306,10 @@
     -webkit-appearance: none;
     width: 12px;
     height: 12px;
-    background: var(--color-accent);
+    background: var(--color-ui);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 0 6px rgba(0, 212, 255, 0.4);
+    box-shadow: var(--color-ui-glow);
 }
 
 .layer-opacity-value {
@@ -320,6 +318,11 @@
     color: var(--color-text-muted);
     min-width: 32px;
     text-align: right;
+}
+
+/* Shorter slider when expando toggle is present */
+.layer-params-toggle ~ .layer-blend-mode ~ .layer-opacity-container .layer-opacity {
+    max-width: 100px;
 }
 
 /* =========================================================================
@@ -407,8 +410,6 @@ effect-params {
 
 .effect-params-title {
     font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
     color: var(--color-text-muted);
     font-weight: 600;
 }
@@ -459,17 +460,17 @@ effect-params {
 }
 
 .control-slider:hover {
-    background: color-mix(in srgb, var(--color-accent) 20%, var(--color-border) 80%);
+    background: color-mix(in srgb, var(--color-ui) 30%, var(--color-border) 70%);
 }
 
 .control-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 12px;
     height: 12px;
-    background: var(--color-accent);
+    background: var(--color-ui);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 0 6px rgba(0, 212, 255, 0.4);
+    box-shadow: var(--color-ui-glow);
     transition: transform var(--transition-fast);
 }
 
@@ -480,7 +481,7 @@ effect-params {
 .control-slider::-moz-range-thumb {
     width: 12px;
     height: 12px;
-    background: var(--color-accent);
+    background: var(--color-ui);
     border: none;
     border-radius: 50%;
     cursor: pointer;
@@ -537,7 +538,7 @@ effect-params {
 }
 
 .control-toggle.active .toggle-track {
-    background: color-mix(in srgb, var(--color-accent) 40%, var(--color-border) 60%);
+    background: color-mix(in srgb, var(--color-ui) 50%, var(--color-border) 50%);
 }
 
 .toggle-thumb {
@@ -553,7 +554,7 @@ effect-params {
 
 .control-toggle.active .toggle-thumb {
     left: 18px;
-    background: var(--color-accent);
+    background: var(--color-ui-hover);
 }
 
 /* Color picker control */
@@ -594,8 +595,6 @@ effect-params {
     padding: 4px 12px;
     font-size: 10px;
     font-family: var(--font-body);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--color-border-muted);
     border-radius: var(--radius-sm);

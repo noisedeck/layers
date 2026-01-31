@@ -1,26 +1,34 @@
 /**
  * About Dialog
- * About Layers modal
+ *
+ * Displays application info, version, and deployment metadata.
  *
  * @module ui/about-dialog
  */
 
 /**
- * AboutDialog - About modal
+ * AboutDialog class
  */
 class AboutDialog {
     constructor() {
         this._dialog = null
+        this._metadata = null
+        this._metadataFetched = false
     }
 
     /**
      * Show the about dialog
      */
-    show() {
+    async show() {
         if (!this._dialog) {
             this._createDialog()
         }
         this._dialog.showModal()
+
+        // Fetch deployment metadata if not already fetched
+        if (!this._metadataFetched) {
+            await this._fetchDeploymentMetadata()
+        }
     }
 
     /**
@@ -33,6 +41,90 @@ class AboutDialog {
     }
 
     /**
+     * Fetch deployment metadata from server
+     * @private
+     */
+    async _fetchDeploymentMetadata() {
+        const defaults = { gitHash: 'LOCAL', deployed: 'n/a' }
+
+        try {
+            const response = await fetch('./deployment-meta.json', { cache: 'no-store' })
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`)
+            }
+            const data = await response.json()
+            const rawHash = typeof data?.git_hash === 'string' ? data.git_hash.trim() : ''
+            const rawDate = typeof data?.date === 'number' || typeof data?.date === 'string'
+                ? data.date
+                : null
+            const normalizedHash = rawHash ? rawHash.replace(/\s+/g, '').slice(0, 8) : 'LOCAL'
+            const normalizedTimestamp = this._normalizeTimestamp(rawDate)
+            const formattedDate = typeof normalizedTimestamp === 'number'
+                ? this._formatDate(normalizedTimestamp)
+                : 'n/a'
+
+            this._metadata = {
+                gitHash: normalizedHash || 'LOCAL',
+                deployed: formattedDate
+            }
+        } catch (error) {
+            console.warn('[AboutDialog] Failed to fetch deployment metadata:', error)
+            this._metadata = defaults
+        }
+
+        this._metadataFetched = true
+        this._updateBuildInfo()
+    }
+
+    /**
+     * Normalize timestamp value
+     * @private
+     */
+    _normalizeTimestamp(value) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+            return value
+        }
+        if (typeof value === 'string' && value.trim()) {
+            const parsed = Number(value.trim())
+            if (Number.isFinite(parsed)) {
+                return parsed
+            }
+        }
+        return null
+    }
+
+    /**
+     * Format date from unix timestamp
+     * @private
+     */
+    _formatDate(timestampSeconds) {
+        if (!Number.isFinite(timestampSeconds)) return 'n/a'
+        const date = new Date(timestampSeconds * 1000)
+        if (Number.isNaN(date.getTime())) return 'n/a'
+
+        const pad = (value, length = 2) => String(Math.trunc(value)).padStart(length, '0')
+        const year = String(date.getFullYear()).padStart(4, '0')
+        const month = pad(date.getMonth() + 1)
+        const day = pad(date.getDate())
+        const hour = pad(date.getHours())
+        const minute = pad(date.getMinutes())
+
+        return `${year}-${month}-${day} ${hour}:${minute}`
+    }
+
+    /**
+     * Update build info in the dialog
+     * @private
+     */
+    _updateBuildInfo() {
+        if (!this._dialog) return
+        const buildInfoEl = this._dialog.querySelector('.about-modal-build')
+        if (buildInfoEl && this._metadata) {
+            buildInfoEl.textContent = `build: ${this._metadata.gitHash} / deployed: ${this._metadata.deployed}`
+        }
+    }
+
+    /**
      * Create the dialog element
      * @private
      */
@@ -41,25 +133,21 @@ class AboutDialog {
         this._dialog.className = 'about-modal'
         this._dialog.innerHTML = `
             <div class="about-modal-content">
-                <div class="about-modal-graphic">
-                    <svg class="about-modal-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="currentColor">
-                        <rect x="10" y="60" width="80" height="10" rx="2" opacity="0.4"/>
-                        <rect x="10" y="45" width="80" height="10" rx="2" opacity="0.6"/>
-                        <rect x="10" y="30" width="80" height="10" rx="2" opacity="0.8"/>
-                        <rect x="10" y="15" width="80" height="10" rx="2"/>
+                <div class="about-modal-graphic" role="presentation">
+                    <svg class="about-modal-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" fill="currentColor">
+                        <g transform="translate(0,600) scale(0.1,-0.1)">
+                            <path d="M840 5478 c-10 -18 -120 -204 -244 -413 l-225 -380 1314 -3 c723 -1 1907 -1 2630 0 l1315 3 -236 390 c-130 215 -241 400 -247 413 l-10 22 -2139 0 -2139 0 -19 -32z"/>
+                            <path d="M659 4118 c-111 -189 -222 -376 -246 -415 l-43 -73 2630 0 2630 0 -249 413 -249 412 -2135 3 -2135 2 -203 -342z"/>
+                            <path d="M858 3403 c-8 -10 -90 -146 -183 -303 -92 -157 -199 -337 -237 -400 l-68 -115 1315 -3 c723 -1 1907 -1 2630 0 l1314 3 -251 418 -251 417 -2127 0 c-2013 0 -2128 -1 -2142 -17z"/>
+                            <path d="M619 1959 c-134 -226 -245 -414 -247 -418 -1 -3 1179 -6 2623 -6 1743 0 2625 3 2625 10 0 6 -110 192 -244 415 l-244 405 -2135 3 -2134 2 -244 -411z"/>
+                            <path d="M714 1073 c-81 -137 -191 -322 -245 -413 l-99 -165 1315 -3 c723 -1 1906 -1 2629 0 l1315 3 -248 410 -247 410 -2137 3 -2136 2 -147 -247z"/>
+                        </g>
                     </svg>
                 </div>
                 <div class="about-modal-details" tabindex="-1">
-                    <h1 class="about-modal-title">Layers</h1>
-                    <p class="about-modal-tagline">Layer-based media editor</p>
-                    <p class="about-modal-copyright">
-                        Powered by the
-                        <a href="https://github.com/noisedeck/noisemaker" target="_blank" rel="noopener" class="about-modal-link">Noisemaker</a>
-                        shader pipeline
-                    </p>
-                    <p class="about-modal-copyright">
-                        Part of the <a href="https://noisedeck.app" target="_blank" rel="noopener" class="about-modal-link">Noisedeck</a> family
-                    </p>
+                    <div class="about-modal-title">Layers</div>
+                    <div class="about-modal-copyright">&copy; 2026 <a href="https://noisefactor.io/" class="about-modal-link" target="_blank" rel="noopener">Noise Factor LLC.</a></div>
+                    <div class="about-modal-build">build: local / deployed: n/a</div>
                 </div>
             </div>
         `

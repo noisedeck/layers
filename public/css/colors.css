@@ -4,34 +4,40 @@
  */
 
 :root {
-    /* Base colors - deep space dark */
-    --color-bg: #08090c;
-    --color-bg-elevated: #0f1114;
-    --color-bg-hover: #181b20;
-    --color-bg-active: #1f2328;
-    --color-bg-overlay: rgba(8, 9, 12, 0.92);
-    
+    /* Base colors - neutral dark */
+    --color-bg: #0a0a0a;
+    --color-bg-elevated: #121212;
+    --color-bg-hover: #1a1a1a;
+    --color-bg-active: #222222;
+    --color-bg-overlay: rgba(10, 10, 10, 0.92);
+
     /* Glass effect backgrounds */
-    --color-glass: rgba(15, 17, 20, 0.85);
+    --color-glass: rgba(18, 18, 18, 0.85);
     --color-glass-border: rgba(255, 255, 255, 0.06);
-    
+
     /* Border colors */
-    --color-border: #1f2328;
-    --color-border-muted: #151719;
-    --color-border-focus: #00d4ff;
-    --color-border-glow: rgba(0, 212, 255, 0.4);
-    
+    --color-border: #222222;
+    --color-border-muted: #181818;
+    --color-border-focus: #94a3b8;
+    --color-border-glow: rgba(148, 163, 184, 0.4);
+
     /* Text colors */
     --color-text-primary: #f0f4f8;
     --color-text-secondary: #94a3b8;
     --color-text-muted: #64748b;
     --color-text-placeholder: #475569;
-    
-    /* Primary accent - electric cyan */
-    --color-accent: #00d4ff;
-    --color-accent-hover: #33ddff;
-    --color-accent-muted: rgba(0, 212, 255, 0.12);
-    --color-accent-glow: 0 0 20px rgba(0, 212, 255, 0.3);
+
+    /* Primary accent - neutral slate (for highlights and dialogs only) */
+    --color-accent: #94a3b8;
+    --color-accent-hover: #cbd5e1;
+    --color-accent-muted: rgba(148, 163, 184, 0.12);
+    --color-accent-glow: 0 0 20px rgba(148, 163, 184, 0.3);
+
+    /* UI color - neutral (for normal interactive elements) */
+    --color-ui: #64748b;
+    --color-ui-hover: #94a3b8;
+    --color-ui-muted: rgba(100, 116, 139, 0.15);
+    --color-ui-glow: 0 0 6px rgba(100, 116, 139, 0.4);
     
     /* Secondary accent - violet/purple */
     --color-secondary: #a855f7;
@@ -42,7 +48,7 @@
     --color-success: #22c55e;
     --color-success-muted: rgba(34, 197, 94, 0.12);
     --color-warning: #f59e0b;
-    --color-warning-muted: rgba(245, 158, 11, 0.12);
+    --color-warning-muted: rgba(210, 98, 0, 0.12);
     --color-error: #ef4444;
     --color-error-muted: rgba(239, 68, 68, 0.12);
     
@@ -66,16 +72,16 @@
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
     --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
     --shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.7);
-    --shadow-glow: 0 0 30px rgba(0, 212, 255, 0.15);
-    --shadow-glow-strong: 0 0 50px rgba(0, 212, 255, 0.25);
-    
+    --shadow-glow: 0 0 30px rgba(148, 163, 184, 0.15);
+    --shadow-glow-strong: 0 0 50px rgba(148, 163, 184, 0.25);
+
     /* Animation - quick, snappy fades */
     --transition-instant: 0.08s ease-out;
     --transition-fast: 0.12s ease-out;
     --transition-normal: 0.2s ease-out;
     --transition-slow: 0.35s ease-out;
-    
+
     /* Grid/pattern colors */
-    --grid-line: rgba(0, 212, 255, 0.08);
-    --grid-line-accent: rgba(0, 212, 255, 0.2);
+    --grid-line: rgba(148, 163, 184, 0.08);
+    --grid-line-accent: rgba(148, 163, 184, 0.2);
 }
