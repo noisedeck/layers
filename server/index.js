@@ -27,6 +27,7 @@ function cspMiddleware(req, res, next) {
         "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdnjs.cloudflare.com",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
+        "media-src 'self' blob:",
         "font-src 'self' data: https://fonts.noisedeck.app",
         "connect-src 'self' http://localhost:* https://sharing.noisedeck.app",
         "worker-src 'self' blob:"

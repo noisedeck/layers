@@ -58,6 +58,9 @@ export class LayersRenderer {
         // Media textures (loaded from files)
         this._mediaTextures = new Map()
 
+        // Video update loop RAF handle
+        this._videoUpdateRAF = null
+
         // Layer to step index mapping (populated after compile)
         this._layerStepMap = new Map()
     }
@@ -111,6 +114,7 @@ export class LayersRenderer {
      * Start the render loop
      */
     start() {
+        this._startVideoUpdateLoop()
         this._renderer.start()
     }
 
@@ -118,7 +122,72 @@ export class LayersRenderer {
      * Stop the render loop
      */
     stop() {
+        this._stopVideoUpdateLoop()
         this._renderer.stop()
+    }
+
+    /**
+     * Start the video texture update loop
+     * @private
+     */
+    _startVideoUpdateLoop() {
+        if (this._videoUpdateRAF) return
+
+        const updateVideoTextures = () => {
+            this._updateVideoTextures()
+            this._videoUpdateRAF = requestAnimationFrame(updateVideoTextures)
+        }
+        this._videoUpdateRAF = requestAnimationFrame(updateVideoTextures)
+    }
+
+    /**
+     * Stop the video texture update loop
+     * @private
+     */
+    _stopVideoUpdateLoop() {
+        if (this._videoUpdateRAF) {
+            cancelAnimationFrame(this._videoUpdateRAF)
+            this._videoUpdateRAF = null
+        }
+    }
+
+    /**
+     * Update all video textures for the current frame
+     * @private
+     */
+    _updateVideoTextures() {
+        const pipeline = this._renderer.pipeline
+        if (!pipeline?.graph?.passes) return
+
+        // Find all media effect passes
+        const mediaStepIndices = []
+        for (const pass of pipeline.graph.passes) {
+            if (pass.effectFunc === 'media' || pass.effectKey === 'media') {
+                mediaStepIndices.push(pass.stepIndex)
+            }
+        }
+        const uniqueStepIndices = [...new Set(mediaStepIndices)]
+
+        // Get visible media layers in order
+        const visibleMediaLayers = this._layers.filter(l => l.visible && l.sourceType === 'media')
+
+        // Update video textures
+        for (let i = 0; i < visibleMediaLayers.length && i < uniqueStepIndices.length; i++) {
+            const layer = visibleMediaLayers[i]
+            const stepIndex = uniqueStepIndices[i]
+            const media = this._mediaTextures.get(layer.id)
+
+            if (!media || media.type !== 'video') continue
+
+            const textureId = `imageTex_step_${stepIndex}`
+            try {
+                if (this._renderer.updateTextureFromSource) {
+                    this._renderer.updateTextureFromSource(textureId, media.element, { flipY: false })
+                }
+            } catch (err) {
+                // Silently ignore texture update errors during playback
+            }
+        }
     }
 
     /**
@@ -445,15 +514,30 @@ export class LayersRenderer {
             video.loop = true
             video.muted = true
             video.playsInline = true
+            video.crossOrigin = 'anonymous'
             await new Promise((resolve, reject) => {
-                video.onloadeddata = resolve
-                video.onerror = reject
+                video.onloadedmetadata = resolve
+                video.onerror = () => {
+                    const mediaError = video.error
+                    const message = mediaError
+                        ? `Video error: ${mediaError.message || 'Code ' + mediaError.code}`
+                        : 'Unknown video error'
+                    reject(new Error(message))
+                }
                 video.src = url
+                video.load()
             })
             width = video.videoWidth
             height = video.videoHeight
-            video.play()
             this._mediaTextures.set(layerId, { type: 'video', element: video, url, width, height })
+
+            // Start playback - await to catch autoplay policy errors
+            try {
+                await video.play()
+            } catch (playError) {
+                console.warn('[LayersRenderer] Video autoplay blocked:', playError.message)
+                // Video is still loaded, user interaction may start it later
+            }
         }
         
         return { width, height }
