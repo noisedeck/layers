@@ -807,7 +807,7 @@ class LayersApp {
                 return
             }
 
-            // Ctrl/Cmd+C - copy selection
+            // Cmd+C - copy selection
             if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
                 if (this._selectionManager?.hasSelection()) {
                     e.preventDefault()
@@ -816,7 +816,7 @@ class LayersApp {
                 }
             }
 
-            // Ctrl/Cmd+V - paste
+            // Cmd+V - paste
             if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
                 e.preventDefault()
                 this._handlePaste()
@@ -972,46 +972,40 @@ class LayersApp {
 
         const { blob } = result
 
-        // Determine position
+        // Load pasted image to get dimensions
+        const img = new Image()
+        const url = URL.createObjectURL(blob)
+        await new Promise((resolve, reject) => {
+            img.onload = resolve
+            img.onerror = reject
+            img.src = url
+        })
+        URL.revokeObjectURL(url)
+
+        // Determine position: use copy origin, or center
         let x, y
         if (this._copyOrigin) {
             x = this._copyOrigin.x
             y = this._copyOrigin.y
         } else {
-            // Center of canvas
-            const img = await createImageBitmap(blob)
             x = Math.round((this._canvas.width - img.width) / 2)
             y = Math.round((this._canvas.height - img.height) / 2)
         }
 
-        // Create file from blob for the layer system
-        const file = new File([blob], 'pasted-image.png', { type: 'image/png' })
+        // Place image on canvas-sized transparent background at correct position
+        // (image pixels unchanged, just positioned on larger canvas)
+        const canvasWidth = this._canvas.width
+        const canvasHeight = this._canvas.height
+        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const ctx = offscreen.getContext('2d')
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight)
+        ctx.drawImage(img, x, y)
 
-        // Create media layer
-        const layer = createMediaLayer(file, 'image')
-        layer.name = 'Pasted'
+        // Convert to file and add as layer
+        const positionedBlob = await offscreen.convertToBlob({ type: 'image/png' })
+        const file = new File([positionedBlob], 'pasted-image.png', { type: 'image/png' })
 
-        // Store position in effectParams for the renderer
-        layer.effectParams = {
-            ...layer.effectParams,
-            position: [x, y]
-        }
-
-        // Add layer
-        this._layers.push(layer)
-
-        // Load media
-        await this._renderer.loadMedia(layer.id, file, 'image')
-
-        // Update and rebuild
-        this._updateLayerStack()
-        await this._rebuild()
-        this._markDirty()
-
-        // Clear copy origin for next paste
-        this._copyOrigin = null
-
-        toast.success('Pasted as new layer')
+        await this._handleAddMediaLayer(file, 'image')
     }
 
     /**
