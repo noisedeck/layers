@@ -10,7 +10,7 @@
 .layer-item {
     display: flex;
     flex-direction: column;
-    background: #1a1a1a;
+    background: var(--color-bg-active);
     border: 1px solid var(--color-border-muted);
     border-radius: var(--radius-md);
     margin-bottom: 6px;

@@ -192,7 +192,7 @@
    ========================================================================= */
 
 dialog {
-    background: rgba(18, 18, 18, 0.95);
+    background: var(--color-bg-overlay);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: none;
@@ -604,7 +604,7 @@ dialog[open] {
 
 .confirm-dialog {
     width: 360px;
-    background: rgba(18, 18, 18, 0.95);
+    background: var(--color-bg-overlay);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: none;
@@ -637,7 +637,7 @@ dialog[open] {
 
 .open-dialog {
     width: 560px;
-    background: rgba(18, 18, 18, 0.95);
+    background: var(--color-bg-overlay);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: none;
