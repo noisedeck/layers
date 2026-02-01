@@ -840,6 +840,22 @@ class LayersApp {
                 const current = this._selectionManager?.currentTool
                 this._setSelectionTool(current === 'rectangle' ? 'oval' : 'rectangle')
             }
+
+            // Escape - clear selection
+            if (e.key === 'Escape') {
+                if (this._selectionManager?.hasSelection()) {
+                    e.preventDefault()
+                    this._selectionManager.clearSelection()
+                }
+            }
+
+            // Cmd/Ctrl+D - deselect
+            if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+                if (this._selectionManager?.hasSelection()) {
+                    e.preventDefault()
+                    this._selectionManager.clearSelection()
+                }
+            }
         })
     }
 
