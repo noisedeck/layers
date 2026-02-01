@@ -31,6 +31,7 @@ class LayersApp {
         this._currentProjectId = null
         this._currentProjectName = null
         this._isDirty = false
+        this._zoomMode = 'fit' // 'fit', '50', '100', '200'
     }
 
     /**
@@ -122,6 +123,9 @@ class LayersApp {
         this._setupMenuHandlers()
         this._setupLayerStackHandlers()
         this._setupKeyboardShortcuts()
+
+        // Apply default zoom mode
+        this._applyZoom()
 
         // Hide loading screen and show open dialog
         this._hideLoadingScreen()
@@ -493,6 +497,86 @@ class LayersApp {
         
         // Update renderer
         this._renderer.resize(width, height)
+
+        // Re-apply current zoom mode
+        this._applyZoom()
+    }
+
+    /**
+     * Apply the current zoom mode to the canvas
+     * @private
+     */
+    _applyZoom() {
+        const canvas = this._canvas
+        if (!canvas) return
+
+        // Update menu checkmarks
+        const modes = ['fit', '50', '100', '200']
+        const menuIds = {
+            'fit': 'fitInWindowMenuItem',
+            '50': 'zoom50MenuItem',
+            '100': 'zoom100MenuItem',
+            '200': 'zoom200MenuItem'
+        }
+        modes.forEach(mode => {
+            const el = document.getElementById(menuIds[mode])
+            if (el) {
+                el.classList.toggle('checked', mode === this._zoomMode)
+            }
+        })
+
+        if (this._zoomMode === 'fit') {
+            // Fit in window - use CSS max-width/max-height
+            canvas.style.width = ''
+            canvas.style.height = ''
+            canvas.style.maxWidth = '100%'
+            canvas.style.maxHeight = '100%'
+        } else {
+            // Specific percentage
+            const percent = parseInt(this._zoomMode) / 100
+            canvas.style.maxWidth = 'none'
+            canvas.style.maxHeight = 'none'
+            canvas.style.width = (canvas.width * percent) + 'px'
+            canvas.style.height = (canvas.height * percent) + 'px'
+        }
+    }
+
+    /**
+     * Set zoom mode
+     * @param {string} mode - 'fit', '50', '100', or '200'
+     * @private
+     */
+    _setZoom(mode) {
+        this._zoomMode = mode
+        this._applyZoom()
+    }
+
+    /**
+     * Zoom in one step
+     * @private
+     */
+    _zoomIn() {
+        const steps = ['fit', '50', '100', '200']
+        const currentIndex = steps.indexOf(this._zoomMode)
+        // If at fit or not found, go to 100%. Otherwise go to next step.
+        if (this._zoomMode === 'fit') {
+            this._setZoom('100')
+        } else if (currentIndex < steps.length - 1) {
+            this._setZoom(steps[currentIndex + 1])
+        }
+    }
+
+    /**
+     * Zoom out one step
+     * @private
+     */
+    _zoomOut() {
+        const steps = ['fit', '50', '100', '200']
+        const currentIndex = steps.indexOf(this._zoomMode)
+        // If at fit, stay at fit. Otherwise go to previous step.
+        if (currentIndex > 0) {
+            this._setZoom(steps[currentIndex - 1])
+        }
     }
 
     /**
@@ -587,6 +671,31 @@ class LayersApp {
 
         document.getElementById('saveJpgMenuItem')?.addEventListener('click', () => {
             this._quickSaveJpg()
+        })
+
+        // View menu - Zoom
+        document.getElementById('zoomInMenuItem')?.addEventListener('click', () => {
+            this._zoomIn()
+        })
+
+        document.getElementById('zoomOutMenuItem')?.addEventListener('click', () => {
+            this._zoomOut()
+        })
+
+        document.getElementById('fitInWindowMenuItem')?.addEventListener('click', () => {
+            this._setZoom('fit')
+        })
+
+        document.getElementById('zoom50MenuItem')?.addEventListener('click', () => {
+            this._setZoom('50')
+        })
+
+        document.getElementById('zoom100MenuItem')?.addEventListener('click', () => {
+            this._setZoom('100')
+        })
+
+        document.getElementById('zoom200MenuItem')?.addEventListener('click', () => {
+            this._setZoom('200')
         })
 
         // Add layer button
