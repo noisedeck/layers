@@ -726,6 +726,12 @@ class LayersApp {
             this._setZoom('200')
         })
 
+        // Add text layer button
+        document.getElementById('addTextLayerBtn')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAddEffectLayer('filter/text')
+        })
+
         // Add layer button
         document.getElementById('addLayerBtn')?.addEventListener('click', () => {
             this._showAddLayerDialog()

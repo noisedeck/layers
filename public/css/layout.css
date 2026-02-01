@@ -98,6 +98,11 @@ html, body {
     margin: 0;
 }
 
+.layers-header-buttons {
+    display: flex;
+    gap: 2px;
+}
+
 .layers-header .add-layer-btn {
     background: none;
     border: none;
