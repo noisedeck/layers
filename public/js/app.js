@@ -124,6 +124,13 @@ class LayersApp {
         this._setupLayerStackHandlers()
         this._setupKeyboardShortcuts()
 
+        // Recalculate fit on window resize
+        window.addEventListener('resize', () => {
+            if (this._zoomMode === 'fit') {
+                this._applyZoom()
+            }
+        })
+
         // Apply default zoom mode
         this._applyZoom()
 
@@ -526,11 +533,28 @@ class LayersApp {
         })
 
         if (this._zoomMode === 'fit') {
-            // Fit in window - use CSS max-width/max-height
-            canvas.style.width = ''
-            canvas.style.height = ''
-            canvas.style.maxWidth = '100%'
-            canvas.style.maxHeight = '100%'
+            // Fit in window - calculate size to maintain aspect ratio
+            const container = canvas.parentElement
+            const containerWidth = container.clientWidth
+            const containerHeight = container.clientHeight
+            const canvasAspect = canvas.width / canvas.height
+            const containerAspect = containerWidth / containerHeight
+
+            let displayWidth, displayHeight
+            if (canvasAspect > containerAspect) {
+                // Canvas is wider than container - fit to width
+                displayWidth = containerWidth
+                displayHeight = containerWidth / canvasAspect
+            } else {
+                // Canvas is taller than container - fit to height
+                displayHeight = containerHeight
+                displayWidth = containerHeight * canvasAspect
+            }
+
+            canvas.style.maxWidth = 'none'
+            canvas.style.maxHeight = 'none'
+            canvas.style.width = displayWidth + 'px'
+            canvas.style.height = displayHeight + 'px'
         } else {
             // Specific percentage
             const percent = parseInt(this._zoomMode) / 100

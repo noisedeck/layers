@@ -21,7 +21,7 @@
     --color2: #555555;
     --color6: #d0d0d0;
     --color7: #f0f0f0;
-    --accent3: #909090;
+    --accent3: #b0b0b0;
     --accent4: #c0c0c0;
 
     /* Menu bar gradient */
@@ -213,6 +213,11 @@
     color: var(--accent4);
 }
 
+.menu-title:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent);
+}
+
 .menu-separator {
     width: 1px;
     height: 100%;
@@ -259,6 +264,11 @@
 .menu-items div:hover {
     background-color: transparent;
     color: var(--accent4);
+}
+
+.menu-items div:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent);
 }
 
 .menu-item-with-shortcut {
@@ -317,6 +327,11 @@
 
 .menu-icon-btn:hover {
     color: var(--accent4);
+}
+
+.menu-icon-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-accent);
 }
 
 .menu-icon-btn.active {

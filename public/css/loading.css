@@ -53,7 +53,7 @@
     height: 64px;
     margin-bottom: 16px;
     color: var(--color-text-primary);
-    filter: drop-shadow(0 0 20px rgba(210, 98, 0, 0.4));
+    filter: drop-shadow(0 0 20px color-mix(in srgb, var(--color-accent) 40%, transparent));
     animation: title-glow 3s ease-in-out infinite alternate;
 }
 
@@ -64,8 +64,8 @@
     color: var(--color-text-primary);
     margin: 0;
     text-shadow:
-        0 0 40px rgba(210, 98, 0, 0.4),
-        0 0 80px rgba(210, 98, 0, 0.2);
+        0 0 40px color-mix(in srgb, var(--color-accent) 40%, transparent),
+        0 0 80px color-mix(in srgb, var(--color-accent) 20%, transparent);
     animation: title-glow 3s ease-in-out infinite alternate;
     display: flex;
     flex-direction: column;
@@ -80,13 +80,13 @@
 @keyframes title-glow {
     0% {
         text-shadow:
-            0 0 40px rgba(210, 98, 0, 0.3),
-            0 0 80px rgba(210, 98, 0, 0.15);
+            0 0 40px color-mix(in srgb, var(--color-accent) 30%, transparent),
+            0 0 80px color-mix(in srgb, var(--color-accent) 15%, transparent);
     }
     100% {
         text-shadow:
-            0 0 50px rgba(210, 98, 0, 0.5),
-            0 0 100px rgba(210, 98, 0, 0.25);
+            0 0 50px color-mix(in srgb, var(--color-accent) 50%, transparent),
+            0 0 100px color-mix(in srgb, var(--color-accent) 25%, transparent);
     }
 }
 
