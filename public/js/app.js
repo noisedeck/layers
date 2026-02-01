@@ -170,6 +170,30 @@ class LayersApp {
     }
 
     /**
+     * Create a base layer and initialize the project
+     * @param {object} layer - Layer object to use as base
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
+     * @param {string} successMessage - Toast message on success
+     * @private
+     */
+    async _initializeBaseLayer(layer, width, height, successMessage) {
+        this._layers = [layer]
+        this._resizeCanvas(width, height)
+        this._updateLayerStack()
+        await this._rebuild()
+        this._renderer.start()
+
+        this._currentProjectId = null
+        this._currentProjectName = null
+        this._updateFilename('untitled')
+        this._markDirty()
+
+        openDialog.element.close()
+        toast.success(successMessage)
+    }
+
+    /**
      * Create a solid color base layer
      * @param {number} width - Canvas width
      * @param {number} height - Canvas height
@@ -181,24 +205,8 @@ class LayersApp {
         const layer = createEffectLayer('synth/solid')
         layer.name = 'Solid'
         layer.effectParams = { color: [0.2, 0.2, 0.2], alpha: 1 }
-        this._layers = [layer]
 
-        // Set canvas size
-        this._resizeCanvas(width, height)
-
-        this._updateLayerStack()
-        await this._rebuild()
-        this._renderer.start()
-
-        // Reset project state
-        this._currentProjectId = null
-        this._currentProjectName = null
-        this._updateFilename('untitled')
-        this._markDirty()
-
-        // Close the open dialog
-        openDialog.element.close()
-        toast.success('Created solid base layer')
+        await this._initializeBaseLayer(layer, width, height, 'Created solid base layer')
     }
 
     /**
@@ -212,24 +220,8 @@ class LayersApp {
 
         const layer = createEffectLayer('synth/gradient')
         layer.name = 'Gradient'
-        this._layers = [layer]
 
-        // Set canvas size
-        this._resizeCanvas(width, height)
-
-        this._updateLayerStack()
-        await this._rebuild()
-        this._renderer.start()
-
-        // Reset project state
-        this._currentProjectId = null
-        this._currentProjectName = null
-        this._updateFilename('untitled')
-        this._markDirty()
-
-        // Close the open dialog
-        openDialog.element.close()
-        toast.success('Created gradient base layer')
+        await this._initializeBaseLayer(layer, width, height, 'Created gradient base layer')
     }
 
     /**
@@ -244,24 +236,8 @@ class LayersApp {
         const layer = createEffectLayer('synth/solid')
         layer.name = 'Transparent'
         layer.effectParams = { color: [0, 0, 0], alpha: 0 }
-        this._layers = [layer]
 
-        // Set canvas size
-        this._resizeCanvas(width, height)
-
-        this._updateLayerStack()
-        await this._rebuild()
-        this._renderer.start()
-
-        // Reset project state
-        this._currentProjectId = null
-        this._currentProjectName = null
-        this._updateFilename('untitled')
-        this._markDirty()
-
-        // Close the open dialog
-        openDialog.element.close()
-        toast.success('Created transparent base layer')
+        await this._initializeBaseLayer(layer, width, height, 'Created transparent base layer')
     }
 
     /**

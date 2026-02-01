@@ -734,43 +734,57 @@ export class LayersRenderer {
     // =========================================================================
 
     /**
-     * Get all starter effects from manifest
-     * @returns {Array<{effectId: string, namespace: string, name: string, description?: string, tags?: string[]}>}
+     * Check if a namespace should be hidden from the UI
+     * @param {string} namespace - Namespace to check
+     * @param {Array<string>} hiddenList - List of namespaces to hide
+     * @returns {boolean} True if namespace should be hidden
+     * @private
      */
-    getStarterEffects() {
-        const manifest = this._renderer.manifest || {}
-        const effects = []
+    _isHiddenNamespace(namespace, hiddenList) {
+        return hiddenList.includes(namespace) ||
+            namespace.startsWith('classic') ||
+            namespace.includes('3d')
+    }
 
-        // Namespaces to hide from UI
-        const hiddenNamespaces = ['3d', 'points', 'render', 'synth', 'synth3d', 'mixer', 'filter3d']
-
-        for (const [effectId, entry] of Object.entries(manifest)) {
-            if (entry.starter) {
-                const [namespace, name] = effectId.split('/')
-
-                // Skip hidden namespaces (exact match, startsWith classic, or contains 3d)
-                if (hiddenNamespaces.includes(namespace) || namespace.startsWith('classic') || namespace.includes('3d')) {
-                    continue
-                }
-
-                effects.push({
-                    effectId,
-                    namespace,
-                    name,
-                    description: entry.description || '',
-                    tags: entry.tags || []
-                })
-            }
-        }
-
-        // Sort by namespace then name
+    /**
+     * Sort effects by namespace then name
+     * @param {Array} effects - Effects array to sort
+     * @private
+     */
+    _sortEffects(effects) {
         effects.sort((a, b) => {
             if (a.namespace !== b.namespace) {
                 return a.namespace.localeCompare(b.namespace)
             }
             return a.name.localeCompare(b.name)
         })
+    }
 
+    /**
+     * Get all starter effects from manifest
+     * @returns {Array<{effectId: string, namespace: string, name: string, description?: string, tags?: string[]}>}
+     */
+    getStarterEffects() {
+        const manifest = this._renderer.manifest || {}
+        const effects = []
+        const hiddenNamespaces = ['3d', 'points', 'render', 'synth', 'synth3d', 'mixer', 'filter3d']
+
+        for (const [effectId, entry] of Object.entries(manifest)) {
+            if (!entry.starter) continue
+
+            const [namespace, name] = effectId.split('/')
+            if (this._isHiddenNamespace(namespace, hiddenNamespaces)) continue
+
+            effects.push({
+                effectId,
+                namespace,
+                name,
+                description: entry.description || '',
+                tags: entry.tags || []
+            })
+        }
+
+        this._sortEffects(effects)
         return effects
     }
 
@@ -781,17 +795,11 @@ export class LayersRenderer {
     getAllEffects() {
         const manifest = this._renderer.manifest || {}
         const effects = []
-
-        // Namespaces to hide from UI
         const hiddenNamespaces = ['3d', 'points', 'render', 'synth', 'synth3d', 'mixer', 'filter3d']
 
         for (const [effectId, entry] of Object.entries(manifest)) {
             const [namespace, name] = effectId.split('/')
-
-            // Skip hidden namespaces (exact match, startsWith classic, or contains 3d)
-            if (hiddenNamespaces.includes(namespace) || namespace.startsWith('classic') || namespace.includes('3d')) {
-                continue
-            }
+            if (this._isHiddenNamespace(namespace, hiddenNamespaces)) continue
 
             effects.push({
                 effectId,
@@ -803,14 +811,7 @@ export class LayersRenderer {
             })
         }
 
-        // Sort by namespace then name
-        effects.sort((a, b) => {
-            if (a.namespace !== b.namespace) {
-                return a.namespace.localeCompare(b.namespace)
-            }
-            return a.name.localeCompare(b.name)
-        })
-
+        this._sortEffects(effects)
         return effects
     }
 
@@ -822,22 +823,13 @@ export class LayersRenderer {
     getLayerEffects() {
         const manifest = this._renderer.manifest || {}
         const effects = []
-
-        // Namespaces to exclude
         const excludedNamespaces = ['synth', 'synth3d', 'mixer', 'points', 'render', '3d', 'filter3d']
 
         for (const [effectId, entry] of Object.entries(manifest)) {
+            if (entry.starter) continue
+
             const [namespace, name] = effectId.split('/')
-
-            // Skip excluded namespaces (exact match, startsWith classic, or contains 3d)
-            if (excludedNamespaces.includes(namespace) || namespace.startsWith('classic') || namespace.includes('3d')) {
-                continue
-            }
-
-            // Skip starter effects (they generate content, not process it)
-            if (entry.starter) {
-                continue
-            }
+            if (this._isHiddenNamespace(namespace, excludedNamespaces)) continue
 
             effects.push({
                 effectId,
@@ -848,14 +840,7 @@ export class LayersRenderer {
             })
         }
 
-        // Sort by namespace then name
-        effects.sort((a, b) => {
-            if (a.namespace !== b.namespace) {
-                return a.namespace.localeCompare(b.namespace)
-            }
-            return a.name.localeCompare(b.name)
-        })
-
+        this._sortEffects(effects)
         return effects
     }
 

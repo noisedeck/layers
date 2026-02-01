@@ -222,14 +222,6 @@ class EffectParams extends HTMLElement {
             case 'textarea':
                 return this._createTextInput(paramName, spec, currentValue)
             default:
-                // Default to slider for numeric types
-                if (spec.type === 'float' || spec.type === 'int') {
-                    return this._createSlider(paramName, spec, currentValue)
-                }
-                // Default to text input for string types
-                if (spec.type === 'string' && !spec.choices) {
-                    return this._createTextInput(paramName, spec, currentValue)
-                }
                 return null
         }
     }
@@ -244,6 +236,7 @@ class EffectParams extends HTMLElement {
         if (spec.choices) return 'dropdown'
         if (spec.type === 'boolean') return 'toggle'
         if (spec.type === 'color' || spec.type === 'vec4') return 'color'
+        if (spec.type === 'string') return 'text'
         if (spec.type === 'float' || spec.type === 'int') return 'slider'
         return 'slider'
     }

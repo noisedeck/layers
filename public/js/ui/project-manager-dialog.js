@@ -357,23 +357,19 @@ class ProjectManagerDialog {
      * @private
      */
     _formatDate(timestamp) {
+        const MS_PER_MINUTE = 60000
+        const MS_PER_HOUR = 3600000
+        const MS_PER_DAY = 86400000
+        const MS_PER_WEEK = 604800000
+
         const date = new Date(timestamp)
-        const now = new Date()
-        const diff = now - date
+        const diff = Date.now() - date
 
-        // Within last 24 hours - show relative time
-        if (diff < 86400000) {
-            if (diff < 60000) return 'Just now'
-            if (diff < 3600000) return `${Math.floor(diff / 60000)} minutes ago`
-            return `${Math.floor(diff / 3600000)} hours ago`
-        }
+        if (diff < MS_PER_MINUTE) return 'Just now'
+        if (diff < MS_PER_HOUR) return `${Math.floor(diff / MS_PER_MINUTE)} minutes ago`
+        if (diff < MS_PER_DAY) return `${Math.floor(diff / MS_PER_HOUR)} hours ago`
+        if (diff < MS_PER_WEEK) return date.toLocaleDateString(undefined, { weekday: 'long' })
 
-        // Within last week - show day name
-        if (diff < 604800000) {
-            return date.toLocaleDateString(undefined, { weekday: 'long' })
-        }
-
-        // Older - show date
         return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
     }
 

@@ -86,15 +86,11 @@ class LayerItem extends HTMLElement {
             `<option value="${mode.id}" ${layer.blendMode === mode.id ? 'selected' : ''}>${mode.name}</option>`
         ).join('')
 
-        // Determine icon
-        let thumbnailContent
-        if (isEffect) {
-            thumbnailContent = '<span class="icon-material">auto_awesome</span>'
-        } else if (layer.mediaType === 'video') {
-            thumbnailContent = '<span class="icon-material">videocam</span>'
-        } else {
-            thumbnailContent = '<span class="icon-material">image</span>'
-        }
+        // Determine icon based on layer type
+        const iconName = isEffect ? 'auto_awesome'
+            : layer.mediaType === 'video' ? 'videocam'
+            : 'image'
+        const thumbnailContent = `<span class="icon-material">${iconName}</span>`
 
         this.className = `layer-item ${isEffect ? 'effect-layer' : 'media-layer'} ${isBase ? 'base-layer' : ''} ${layer.locked ? 'locked' : ''}`
         this.dataset.layerId = layer.id

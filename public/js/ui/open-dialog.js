@@ -188,13 +188,16 @@ class OpenDialog {
     }
 
     _showCanvasSizeDialog(type) {
+        const callbacks = {
+            solid: this._onSolid,
+            gradient: this._onGradient,
+            transparent: this._onTransparent
+        }
+
         canvasSizeDialog.show({
             isRequired: true,
             onConfirm: (width, height) => {
-                const callback = type === 'solid' ? this._onSolid
-                    : type === 'gradient' ? this._onGradient
-                    : this._onTransparent
-
+                const callback = callbacks[type]
                 if (callback) {
                     callback(width, height)
                 }

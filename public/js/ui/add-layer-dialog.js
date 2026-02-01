@@ -155,14 +155,16 @@ class AddLayerDialog {
         mediaSection.classList.toggle('hidden', mode !== 'media')
         effectSection.classList.toggle('hidden', mode !== 'effect')
 
-        // Update title
+        const titles = {
+            choose: 'Add Layer',
+            media: 'Add Media Layer',
+            effect: 'Add Effect Layer'
+        }
+
         const title = this._dialog.querySelector('.dialog-header h2')
-        if (mode === 'choose') {
-            title.textContent = 'Add Layer'
-        } else if (mode === 'media') {
-            title.textContent = 'Add Media Layer'
-        } else if (mode === 'effect') {
-            title.textContent = 'Add Effect Layer'
+        title.textContent = titles[mode] || 'Add Layer'
+
+        if (mode === 'effect') {
             this._showEffectPicker()
         }
     }

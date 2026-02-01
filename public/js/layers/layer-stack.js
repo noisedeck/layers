@@ -136,28 +136,22 @@ class LayerStack extends HTMLElement {
         const sourceIndex = this._layers.findIndex(l => l.id === sourceId)
         const targetIndex = this._layers.findIndex(l => l.id === targetId)
 
-        if (sourceIndex === -1 || targetIndex === -1) return
-        if (sourceIndex === 0) return // Can't move base layer
-        if (sourceIndex === targetIndex) return // No-op
+        const isInvalidMove = sourceIndex === -1 ||
+            targetIndex === -1 ||
+            sourceIndex === 0 ||
+            sourceIndex === targetIndex
 
-        // Remove source layer
+        if (isInvalidMove) return
+
         const [sourceLayer] = this._layers.splice(sourceIndex, 1)
 
-        // Calculate new index
-        // When sourceIndex < targetIndex, target shifts down by 1 after removal
-        // When sourceIndex > targetIndex, target index stays the same
-        // In both cases, we want to insert at the target's current position
-        let newIndex = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
+        // After removal, indices shift: adjust target if source was before it
+        const adjustedTarget = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
 
-        // Don't allow dropping at base layer position (index 0)
-        if (newIndex <= 0) {
-            newIndex = 1  // Insert just above base layer
-        }
+        // Ensure we never place a layer at or before the base layer (index 0)
+        const newIndex = Math.max(1, adjustedTarget)
 
-        // Insert at new position
         this._layers.splice(newIndex, 0, sourceLayer)
-
-        // Re-render and emit event
         this._render()
         this._updateSelection()
 

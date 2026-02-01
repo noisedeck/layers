@@ -90,6 +90,19 @@ class ConfirmDialog {
     }
 
     /**
+     * Resolve the dialog promise and hide
+     * @param {boolean} result - The result to resolve with
+     * @private
+     */
+    _resolve(result) {
+        this._hide()
+        if (this._resolvePromise) {
+            this._resolvePromise(result)
+            this._resolvePromise = null
+        }
+    }
+
+    /**
      * Set up event listeners
      * @private
      */
@@ -97,21 +110,8 @@ class ConfirmDialog {
         const cancelBtn = this._modal.querySelector('#confirm-cancel')
         const confirmBtn = this._modal.querySelector('#confirm-ok')
 
-        cancelBtn.addEventListener('click', () => {
-            this._hide()
-            if (this._resolvePromise) {
-                this._resolvePromise(false)
-                this._resolvePromise = null
-            }
-        })
-
-        confirmBtn.addEventListener('click', () => {
-            this._hide()
-            if (this._resolvePromise) {
-                this._resolvePromise(true)
-                this._resolvePromise = null
-            }
-        })
+        cancelBtn.addEventListener('click', () => this._resolve(false))
+        confirmBtn.addEventListener('click', () => this._resolve(true))
     }
 }
 
