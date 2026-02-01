@@ -18,6 +18,7 @@ import { confirmDialog } from './ui/confirm-dialog.js'
 import { toast } from './ui/toast.js'
 import { exportPng, exportJpg, getTimestampedFilename } from './utils/export.js'
 import { saveProject, loadProject } from './utils/project-storage.js'
+import { registerServiceWorker } from './sw-register.js'
 
 /**
  * Main application class
@@ -74,6 +75,9 @@ class LayersApp {
     async init() {
         console.log('[Layers] Initializing...')
 
+        // Register service worker for PWA support
+        registerServiceWorker()
+
         // Get DOM elements
         this._canvas = document.getElementById('canvas')
         this._layerStack = document.querySelector('layer-stack')
@@ -83,16 +87,7 @@ class LayersApp {
             return
         }
 
-        // Pre-create WebGL context with alpha enabled for transparency
-        // Use premultipliedAlpha: false so alpha blends correctly with CSS background
-        // preserveDrawingBuffer allows reading pixels after render
-        this._canvas.getContext('webgl2', {
-            alpha: true,
-            premultipliedAlpha: false,
-            preserveDrawingBuffer: true
-        })
-
-        // Create renderer
+        // Create renderer (let it create its own WebGL context)
         this._renderer = new LayersRenderer(this._canvas, {
             // Initial size - will be updated when media is loaded
             width: this._canvas.width || 1024,
@@ -190,9 +185,15 @@ class LayersApp {
      */
     async _initializeBaseLayer(layer, width, height, successMessage) {
         this._layers = [layer]
-        this._resizeCanvas(width, height)
         this._updateLayerStack()
+        // Set canvas dimensions first
+        this._resizeCanvas(width, height)
+        // Wait for any pending microtasks (canvas observer uses queueMicrotask)
+        await new Promise(resolve => queueMicrotask(resolve))
+        // Compile pipeline at correct dimensions
         await this._rebuild()
+        // Wait for next frame to ensure WebGL state is stable
+        await new Promise(resolve => requestAnimationFrame(resolve))
         this._renderer.start()
 
         this._currentProjectId = null
@@ -267,14 +268,10 @@ class LayersApp {
         console.log('[Layers] this._layers is now:', this._layers)
 
         // Load media into renderer
+        let dimensions = { width: 0, height: 0 }
         try {
-            const dimensions = await this._renderer.loadMedia(layer.id, file, mediaType)
+            dimensions = await this._renderer.loadMedia(layer.id, file, mediaType)
             console.log('[Layers] Media loaded successfully, dimensions:', dimensions)
-            
-            // Resize canvas to match base layer media dimensions
-            if (dimensions.width > 0 && dimensions.height > 0) {
-                this._resizeCanvas(dimensions.width, dimensions.height)
-            }
         } catch (err) {
             console.error('[Layers] Failed to load media:', err)
             toast.error('Failed to load media: ' + err.message)
@@ -284,8 +281,18 @@ class LayersApp {
         // Update layer stack
         this._updateLayerStack()
 
-        // Rebuild and start rendering
+        // Resize canvas to match base layer media dimensions
+        if (dimensions.width > 0 && dimensions.height > 0) {
+            this._resizeCanvas(dimensions.width, dimensions.height)
+        }
+
+        // Wait for any pending microtasks (canvas observer uses queueMicrotask)
+        await new Promise(resolve => queueMicrotask(resolve))
+        // Compile pipeline at correct dimensions
         await this._rebuild()
+
+        // Wait for next frame to ensure WebGL state is stable
+        await new Promise(resolve => requestAnimationFrame(resolve))
         this._renderer.start()
 
         // Reset project state and update filename
@@ -958,7 +965,11 @@ class LayersApp {
 
             // Update UI and rebuild
             this._updateLayerStack()
+            // Wait for any pending microtasks (canvas observer uses queueMicrotask)
+            await new Promise(resolve => queueMicrotask(resolve))
             await this._rebuild()
+            // Wait for next frame to ensure WebGL state is stable
+            await new Promise(resolve => requestAnimationFrame(resolve))
             this._renderer.start()
             this._markClean()
 

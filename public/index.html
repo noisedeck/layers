@@ -6,6 +6,13 @@
     <title>Layers — Media Editor</title>
     <meta name="description" content="Layer-based media editor powered by the Noisemaker shader pipeline.">
     <meta name="keywords" content="layers, media, editor, shader, effects, blend modes">
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#333333">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Layers">
+    <link rel="apple-touch-icon" href="/img/icon-192.svg">
     <!-- Preload fonts -->
     <link rel="preload" href="/fonts/Nunito.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="/fonts/CormorantUpright-SemiBold.woff2" as="font" type="font/woff2" crossorigin>
@@ -110,7 +117,7 @@
         <!-- Canvas Panel -->
         <div id="canvas-panel">
             <div class="canvas-container">
-                <canvas id="canvas" width="512" height="512"></canvas>
+                <canvas id="canvas" width="1024" height="1024"></canvas>
             </div>
         </div>
 

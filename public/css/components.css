@@ -197,6 +197,31 @@
     color: var(--color-accent);
 }
 
+/* Toast action button (for updates, etc.) */
+.toast-action {
+    margin-left: 12px;
+    padding: 6px 12px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--color-text-inverse);
+    background: var(--color-accent);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.toast-action:hover {
+    background: var(--color-accent-hover);
+}
+
+.toast-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 /* =========================================================================
    Native Dialog Styles
    ========================================================================= */
