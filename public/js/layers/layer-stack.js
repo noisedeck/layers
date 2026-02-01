@@ -29,7 +29,6 @@ class LayerStack extends HTMLElement {
      * @param {Array} layers - Array of layer objects (bottom to top order)
      */
     set layers(layers) {
-        console.log('[LayerStack] set layers called with:', layers)
         this._layers = layers || []
         this._render()
     }
@@ -64,7 +63,6 @@ class LayerStack extends HTMLElement {
      * @private
      */
     _render() {
-        console.log('[LayerStack] _render called, layers count:', this._layers.length)
         this.innerHTML = ''
 
         if (this._layers.length === 0) {

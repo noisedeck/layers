@@ -254,7 +254,7 @@ export class LayersRenderer {
 
             this._currentDsl = dsl
 
-            console.log('[LayersRenderer] Built DSL:', dsl)
+            console.debug('[LayersRenderer] Built DSL:', dsl)
 
             // Extract and load required effects
             const effectData = extractEffectNamesFromDsl(dsl, this._renderer.manifest || {})
@@ -339,7 +339,6 @@ export class LayersRenderer {
             }
         }
 
-        console.log('[LayersRenderer] Layer step map:', Object.fromEntries(this._layerStepMap))
     }
 
     /**
@@ -485,7 +484,6 @@ export class LayersRenderer {
         
         // Deduplicate (multiple passes may have same stepIndex)
         const uniqueStepIndices = [...new Set(mediaStepIndices)]
-        console.log('[LayersRenderer] Found media step indices:', uniqueStepIndices)
 
         // Get visible media layers in order (should match DSL generation order)
         const visibleMediaLayers = this._layers.filter(l => l.visible && l.sourceType === 'media')
@@ -506,7 +504,6 @@ export class LayersRenderer {
 
             // The texture ID format expected by the pipeline is: imageTex_step_N
             const textureId = `imageTex_step_${stepIndex}`
-            console.log(`[LayersRenderer] Uploading texture ${textureId} for layer ${layer.id}, dimensions: ${media.width}x${media.height}`)
 
             try {
                 if (this._renderer.updateTextureFromSource) {
@@ -519,7 +516,6 @@ export class LayersRenderer {
                     stepParameterValues[stepKey] = {
                         imageSize: [media.width, media.height]
                     }
-                    console.log(`[LayersRenderer] Setting imageSize for ${stepKey}:`, media.width, media.height)
                 }
             } catch (err) {
                 console.warn(`[LayersRenderer] Failed to upload texture ${textureId}:`, err)

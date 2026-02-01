@@ -73,7 +73,7 @@ class LayersApp {
      * Initialize the application
      */
     async init() {
-        console.log('[Layers] Initializing...')
+        console.debug('[Layers] Initializing...')
 
         // Register service worker for PWA support
         registerServiceWorker()
@@ -102,7 +102,6 @@ class LayersApp {
         // Initialize renderer
         try {
             await this._renderer.init()
-            console.log('[Layers] Renderer initialized')
 
             // Set up effect loader for effect-params components
             EffectParams.setEffectLoader(async (effectId) => {
@@ -134,7 +133,7 @@ class LayersApp {
         this._showOpenDialog()
 
         this._initialized = true
-        console.log('[Layers] Ready')
+        console.debug('[Layers] Ready')
     }
 
     /**
@@ -212,8 +211,6 @@ class LayersApp {
      * @private
      */
     async _handleCreateSolidBase(width = 1024, height = 1024) {
-        console.log('[Layers] Creating solid base layer', width, 'x', height)
-
         const layer = createEffectLayer('synth/solid')
         layer.name = 'Solid'
         layer.effectParams = { color: [0.2, 0.2, 0.2], alpha: 1 }
@@ -228,8 +225,6 @@ class LayersApp {
      * @private
      */
     async _handleCreateGradientBase(width = 1024, height = 1024) {
-        console.log('[Layers] Creating gradient base layer', width, 'x', height)
-
         const layer = createEffectLayer('synth/gradient')
         layer.name = 'Gradient'
 
@@ -243,8 +238,6 @@ class LayersApp {
      * @private
      */
     async _handleCreateTransparentBase(width = 1024, height = 1024) {
-        console.log('[Layers] Creating transparent base layer', width, 'x', height)
-
         const layer = createEffectLayer('synth/solid')
         layer.name = 'Transparent'
         layer.effectParams = { color: [0, 0, 0], alpha: 0 }
@@ -259,19 +252,14 @@ class LayersApp {
      * @private
      */
     async _handleOpenMedia(file, mediaType) {
-        console.log('[Layers] Opening media:', file.name, mediaType)
-
         // Create base layer
         const layer = createMediaLayer(file, mediaType)
-        console.log('[Layers] Created layer:', layer)
         this._layers = [layer]
-        console.log('[Layers] this._layers is now:', this._layers)
 
         // Load media into renderer
         let dimensions = { width: 0, height: 0 }
         try {
             dimensions = await this._renderer.loadMedia(layer.id, file, mediaType)
-            console.log('[Layers] Media loaded successfully, dimensions:', dimensions)
         } catch (err) {
             console.error('[Layers] Failed to load media:', err)
             toast.error('Failed to load media: ' + err.message)
@@ -313,8 +301,6 @@ class LayersApp {
      * @private
      */
     async _handleAddMediaLayer(file, mediaType) {
-        console.log('[Layers] Adding media layer:', file.name, mediaType)
-
         const layer = createMediaLayer(file, mediaType)
         this._layers.push(layer)
 
@@ -335,8 +321,6 @@ class LayersApp {
      * @private
      */
     async _handleAddEffectLayer(effectId) {
-        console.log('[Layers] Adding effect layer:', effectId)
-
         const layer = createEffectLayer(effectId)
         this._layers.push(layer)
 
@@ -394,8 +378,6 @@ class LayersApp {
      * @private
      */
     async _handleLayerChange(detail) {
-        console.log('[Layers] Layer change:', detail)
-
         // Update layer in our array
         const layer = this._layers.find(l => l.id === detail.layerId)
         if (layer) {
@@ -446,7 +428,6 @@ class LayersApp {
      * @private
      */
     async _handleLayerReorder(newLayers) {
-        console.log('[Layers] Reordering layers')
         this._layers = newLayers
         await this._rebuild()
         this._markDirty()
@@ -457,15 +438,12 @@ class LayersApp {
      * @private
      */
     _updateLayerStack() {
-        console.log('[Layers] _updateLayerStack called, layers:', this._layers.length)
-
         // Re-query in case the element wasn't ready before
         if (!this._layerStack) {
             this._layerStack = document.querySelector('layer-stack')
         }
 
         if (this._layerStack) {
-            console.log('[Layers] Setting layer-stack.layers to', this._layers)
             this._layerStack.layers = this._layers
         } else {
             console.error('[Layers] layer-stack element not found!')
@@ -503,8 +481,6 @@ class LayersApp {
      * @private
      */
     _resizeCanvas(width, height) {
-        console.log('[Layers] Resizing canvas to:', width, height)
-        
         // Update canvas element
         this._canvas.width = width
         this._canvas.height = height
