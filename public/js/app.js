@@ -925,7 +925,7 @@ class LayersApp {
 
         if (rectItem) rectItem.classList.toggle('checked', tool === 'rectangle')
         if (ovalItem) ovalItem.classList.toggle('checked', tool === 'oval')
-        if (icon) icon.textContent = tool === 'rectangle' ? 'crop_square' : 'circle'
+        if (icon) icon.textContent = tool === 'rectangle' ? 'square' : 'lens'
     }
 
     /**
