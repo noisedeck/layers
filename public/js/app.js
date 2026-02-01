@@ -988,7 +988,6 @@ class LayersApp {
         const file = new File([blob], 'pasted-image.png', { type: 'image/png' })
 
         // Create media layer
-        const { createMediaLayer } = await import('./layers/layer-model.js')
         const layer = createMediaLayer(file, 'image')
         layer.name = 'Pasted'
 
