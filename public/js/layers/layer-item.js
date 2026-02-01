@@ -206,7 +206,7 @@ class LayerItem extends HTMLElement {
 
             // Select layer on click (anywhere else except controls and params)
             if (!e.target.closest('.layer-controls') && !e.target.closest('effect-params')) {
-                this._emitSelect()
+                this._emitSelect(e)
             }
         })
 
@@ -374,12 +374,18 @@ class LayerItem extends HTMLElement {
 
     /**
      * Emit select event
+     * @param {MouseEvent} [e] - Original mouse event for modifier keys
      * @private
      */
-    _emitSelect() {
+    _emitSelect(e) {
         this.dispatchEvent(new CustomEvent('layer-select', {
             bubbles: true,
-            detail: { layerId: this._layer.id }
+            detail: {
+                layerId: this._layer.id,
+                ctrlKey: e?.ctrlKey || false,
+                metaKey: e?.metaKey || false,
+                shiftKey: e?.shiftKey || false
+            }
         }))
     }
 
