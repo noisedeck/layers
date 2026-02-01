@@ -59,6 +59,9 @@ export class LayersRenderer {
         // Media textures (loaded from files)
         this._mediaTextures = new Map()
 
+        // Text canvases for filter/text effects (layerId -> canvas state)
+        this._textCanvases = new Map()
+
         // Video update loop RAF handle
         this._videoUpdateRAF = null
 
@@ -277,6 +280,9 @@ export class LayersRenderer {
             // Upload media textures after compile (pipeline must exist first)
             this._uploadMediaTextures()
 
+            // Upload text textures for filter/text effects
+            this._uploadTextTextures()
+
             // Apply initial parameter values
             this._applyAllLayerParams()
 
@@ -353,6 +359,14 @@ export class LayersRenderer {
 
         if (this._renderer.applyStepParameterValues) {
             this._renderer.applyStepParameterValues(stepParams)
+        }
+
+        // If this is a text effect, re-render the text texture
+        const layer = this._layers.find(l => l.id === layerId)
+        if (layer && this._isTextEffect(layer.effectId)) {
+            // Merge with existing params to get full state
+            const fullParams = { ...(layer.effectParams || {}), ...params }
+            this._renderTextCanvas(layerId, fullParams)
         }
     }
 
@@ -572,6 +586,179 @@ export class LayersRenderer {
                 media.element.src = ''
             }
             this._mediaTextures.delete(layerId)
+        }
+    }
+
+    // =========================================================================
+    // Text Texture Management
+    // =========================================================================
+
+    /**
+     * Check if an effect requires a text texture
+     * @param {string} effectId - Effect ID
+     * @returns {boolean}
+     * @private
+     */
+    _isTextEffect(effectId) {
+        if (!effectId) return false
+        const manifest = this._renderer.manifest || {}
+        const entry = manifest[effectId]
+        return entry?.externalTexture === 'textTex'
+    }
+
+    /**
+     * Initialize and upload text textures for all text effect layers
+     * @private
+     */
+    _uploadTextTextures() {
+        const pipeline = this._renderer.pipeline
+        if (!pipeline?.graph?.passes) return
+
+        // Find all filter/text effect passes (filter namespace with text func)
+        const textPasses = []
+        for (const pass of pipeline.graph.passes) {
+            if (pass.effectNamespace === 'filter' && pass.effectFunc === 'text') {
+                textPasses.push(pass.stepIndex)
+            }
+        }
+        const uniqueStepIndices = [...new Set(textPasses)]
+
+        // Get visible text effect layers
+        const textLayers = this._layers.filter(l =>
+            l.visible && l.sourceType === 'effect' && this._isTextEffect(l.effectId)
+        )
+
+        // Match layers to step indices
+        for (let i = 0; i < textLayers.length && i < uniqueStepIndices.length; i++) {
+            const layer = textLayers[i]
+            const stepIndex = uniqueStepIndices[i]
+
+            // Create canvas if needed
+            if (!this._textCanvases.has(layer.id)) {
+                const canvas = document.createElement('canvas')
+                this._textCanvases.set(layer.id, {
+                    canvas,
+                    stepIndex
+                })
+            } else {
+                // Update step index
+                const state = this._textCanvases.get(layer.id)
+                state.stepIndex = stepIndex
+            }
+
+            // Render text to canvas and upload
+            this._renderTextCanvas(layer.id, layer.effectParams || {})
+        }
+    }
+
+    /**
+     * Render text to canvas and upload as texture
+     * @param {string} layerId - Layer ID
+     * @param {object} params - Text parameters
+     * @private
+     */
+    _renderTextCanvas(layerId, params) {
+        const state = this._textCanvases.get(layerId)
+        if (!state || !this._renderer.pipeline) return
+
+        const canvas = state.canvas
+        const resolution = this.width
+
+        canvas.width = resolution
+        canvas.height = resolution
+
+        const ctx = canvas.getContext('2d')
+
+        // Parse parameters with defaults
+        const text = String(params.text || 'Hello World')
+        const font = params.font || 'Nunito'
+        const size = params.size ?? 0.1
+        const posX = params.posX ?? 0.5
+        const posY = params.posY ?? 0.5
+        const rotation = params.rotation ?? 0
+        const color = params.color || '#ffffff'
+        const bgColor = params.bgColor || '#000000'
+        const bgOpacity = params.bgOpacity ?? 0
+        const justify = params.justify || 'center'
+
+        // Clear and draw background
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        if (bgOpacity > 0) {
+            const bgRgb = this._hexToRgb(bgColor)
+            ctx.fillStyle = `rgba(${Math.round(bgRgb[0] * 255)}, ${Math.round(bgRgb[1] * 255)}, ${Math.round(bgRgb[2] * 255)}, ${bgOpacity})`
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
+        }
+
+        // Draw text
+        const lines = text.split('\n')
+        const fontSize = Math.round(size * canvas.height)
+        const lineHeight = fontSize * 1.2
+        const textRgb = this._hexToRgb(color)
+        const rotationRad = rotation * Math.PI / 180
+
+        ctx.font = `${fontSize}px ${font}`
+        ctx.textAlign = justify
+        ctx.textBaseline = 'middle'
+        ctx.fillStyle = `rgba(${Math.round(textRgb[0] * 255)}, ${Math.round(textRgb[1] * 255)}, ${Math.round(textRgb[2] * 255)}, 1)`
+
+        const x = posX * canvas.width
+        const y = posY * canvas.height
+
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.rotate(rotationRad)
+
+        const totalHeight = (lines.length - 1) * lineHeight
+        const startY = -totalHeight / 2
+
+        for (let i = 0; i < lines.length; i++) {
+            const lineY = startY + i * lineHeight
+            ctx.fillText(lines[i], 0, lineY)
+        }
+
+        ctx.restore()
+
+        // Upload texture
+        const textureId = `textTex_step_${state.stepIndex}`
+        try {
+            if (this._renderer.updateTextureFromSource) {
+                this._renderer.updateTextureFromSource(textureId, canvas, { flipY: true })
+            }
+        } catch (err) {
+            console.warn(`[LayersRenderer] Failed to upload text texture ${textureId}:`, err)
+        }
+    }
+
+    /**
+     * Parse hex color to RGB array (0-1 range)
+     * @param {string|Array} hex - Hex color string or RGB array
+     * @returns {number[]} RGB values 0-1
+     * @private
+     */
+    _hexToRgb(hex) {
+        if (Array.isArray(hex)) {
+            return hex.slice(0, 3)
+        }
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+        return result ? [
+            parseInt(result[1], 16) / 255,
+            parseInt(result[2], 16) / 255,
+            parseInt(result[3], 16) / 255
+        ] : [1, 1, 1]
+    }
+
+    /**
+     * Update text texture for a layer when parameters change
+     * @param {string} layerId - Layer ID
+     * @param {object} params - Updated text parameters
+     */
+    updateTextParams(layerId, params) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer || !this._isTextEffect(layer.effectId)) return
+
+        if (this._textCanvases.has(layerId)) {
+            this._renderTextCanvas(layerId, params)
         }
     }
 
