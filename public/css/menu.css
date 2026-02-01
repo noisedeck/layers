@@ -361,3 +361,22 @@
         border-radius: 0;
     }
 }
+
+/* Selection tool menu */
+#selectionMenu .menu-title {
+    padding: 0 0.25em;
+}
+
+#selectionMenu .menu-items div {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+#selectionMenu .menu-items div .icon-material {
+    font-size: 1.25em;
+}
+
+#selectionMenu .menu-items div.checked .icon-material:first-child::before {
+    content: '';
+}

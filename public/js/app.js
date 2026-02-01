@@ -757,6 +757,15 @@ class LayersApp {
             this._showAddLayerDialog()
         })
 
+        // Selection tool menu
+        document.getElementById('selectRectMenuItem')?.addEventListener('click', () => {
+            this._setSelectionTool('rectangle')
+        })
+
+        document.getElementById('selectOvalMenuItem')?.addEventListener('click', () => {
+            this._setSelectionTool('oval')
+        })
+
         // Play/pause button
         document.getElementById('playPauseBtn')?.addEventListener('click', () => {
             this._togglePlayPause()
@@ -825,6 +834,12 @@ class LayersApp {
                     this._rebuild()
                 }
             }
+
+            // M - cycle selection tools
+            if (e.key === 'm' || e.key === 'M') {
+                const current = this._selectionManager?.currentTool
+                this._setSelectionTool(current === 'rectangle' ? 'oval' : 'rectangle')
+            }
         })
     }
 
@@ -857,6 +872,26 @@ class LayersApp {
             this._renderer.start()
             if (btn) btn.textContent = 'pause'
         }
+    }
+
+    /**
+     * Set the current selection tool
+     * @param {'rectangle' | 'oval'} tool
+     * @private
+     */
+    _setSelectionTool(tool) {
+        if (!this._selectionManager) return
+
+        this._selectionManager.currentTool = tool
+
+        // Update menu checkmarks
+        const rectItem = document.getElementById('selectRectMenuItem')
+        const ovalItem = document.getElementById('selectOvalMenuItem')
+        const icon = document.getElementById('selectionToolIcon')
+
+        if (rectItem) rectItem.classList.toggle('checked', tool === 'rectangle')
+        if (ovalItem) ovalItem.classList.toggle('checked', tool === 'oval')
+        if (icon) icon.textContent = tool === 'rectangle' ? 'crop_square' : 'circle'
     }
 
     /**
