@@ -16,6 +16,8 @@ class ProjectManagerDialog {
         this._projects = []
         this._selectedProjectId = null
         this._onLoad = null
+        this._onCancel = null
+        this._isRequired = false
         this._mode = 'list' // 'list' | 'confirm-delete' | 'loading'
     }
 
@@ -23,14 +25,21 @@ class ProjectManagerDialog {
      * Show the dialog
      * @param {object} options - Options
      * @param {function} options.onLoad - Callback: (projectId) => Promise<void>
+     * @param {function} options.onCancel - Callback when cancelled (for required mode): () => void
+     * @param {boolean} options.isRequired - If true, dialog cannot be closed without selection
      */
     async show(options = {}) {
         this._onLoad = options.onLoad
+        this._onCancel = options.onCancel
+        this._isRequired = options.isRequired || false
         this._selectedProjectId = null
 
         if (!this._dialog) {
             this._createDialog()
         }
+
+        // Update UI for required mode
+        this._updateRequiredMode()
 
         this._setMode('list')
         await this._refreshProjectList()
@@ -39,9 +48,37 @@ class ProjectManagerDialog {
     }
 
     /**
+     * Update UI elements for required mode
+     * @private
+     */
+    _updateRequiredMode() {
+        const closeBtn = this._dialog.querySelector('.dialog-close')
+        const cancelBtn = this._dialog.querySelector('.pm-cancel-btn')
+
+        if (closeBtn) {
+            closeBtn.style.display = this._isRequired ? 'none' : ''
+        }
+
+        // Update cancel button text for required mode
+        if (cancelBtn) {
+            cancelBtn.textContent = this._isRequired ? 'Back' : 'Cancel'
+        }
+    }
+
+    /**
      * Hide the dialog
      */
     hide() {
+        if (this._dialog && !this._isRequired) {
+            this._dialog.close()
+        }
+    }
+
+    /**
+     * Force hide (used after successful load)
+     * @private
+     */
+    _forceHide() {
         if (this._dialog) {
             this._dialog.close()
         }
@@ -225,7 +262,7 @@ class ProjectManagerDialog {
         const confirmDeleteBtn = this._dialog.querySelector('.confirm-delete-btn')
 
         closeBtn.addEventListener('click', () => this.hide())
-        cancelBtn.addEventListener('click', () => this.hide())
+        cancelBtn.addEventListener('click', () => this._handleCancel())
 
         openBtn.addEventListener('click', () => this._handleOpen())
 
@@ -236,12 +273,19 @@ class ProjectManagerDialog {
 
         confirmDeleteBtn.addEventListener('click', () => this._handleDelete())
 
-        // Close on backdrop click
-        this._dialog.addEventListener('click', (e) => {
-            if (e.target === this._dialog) {
-                this.hide()
-            }
-        })
+    }
+
+    /**
+     * Handle cancel/back action
+     * @private
+     */
+    _handleCancel() {
+        if (this._isRequired && this._onCancel) {
+            this._forceHide()
+            this._onCancel()
+        } else {
+            this.hide()
+        }
     }
 
     /**
@@ -272,7 +316,7 @@ class ProjectManagerDialog {
             if (this._onLoad) {
                 await this._onLoad(this._selectedProjectId)
             }
-            this.hide()
+            this._forceHide()
         } catch (err) {
             console.error('[ProjectManagerDialog] Load failed:', err)
             this._setMode('list')

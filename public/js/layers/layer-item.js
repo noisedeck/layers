@@ -113,7 +113,7 @@ class LayerItem extends HTMLElement {
                 </div>
                 <div class="layer-info">
                     <div class="layer-name" contenteditable="false" spellcheck="false">${this._escapeHtml(layer.name)}</div>
-                    <div class="layer-type ${layer.sourceType}">${isEffect ? 'Effect' : layer.mediaType || 'Media'}</div>
+                    <div class="layer-type ${layer.sourceType}">${isEffect ? 'Effect' : (layer.mediaType ? layer.mediaType.charAt(0).toUpperCase() + layer.mediaType.slice(1) : 'Media')}</div>
                 </div>
                 <button class="layer-delete" title="Delete layer">
                     <span class="icon-material">close</span>
@@ -324,9 +324,6 @@ class LayerItem extends HTMLElement {
         nameEl.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault()
-                nameEl.blur()
-            } else if (e.key === 'Escape') {
-                nameEl.textContent = this._layer.name
                 nameEl.blur()
             }
         })

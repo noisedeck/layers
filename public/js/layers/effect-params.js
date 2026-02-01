@@ -218,10 +218,17 @@ class EffectParams extends HTMLElement {
                 return this._createColorPicker(paramName, spec, currentValue)
             case 'button':
                 return this._createButton(paramName, spec)
+            case 'text':
+            case 'textarea':
+                return this._createTextInput(paramName, spec, currentValue)
             default:
                 // Default to slider for numeric types
                 if (spec.type === 'float' || spec.type === 'int') {
                     return this._createSlider(paramName, spec, currentValue)
+                }
+                // Default to text input for string types
+                if (spec.type === 'string' && !spec.choices) {
+                    return this._createTextInput(paramName, spec, currentValue)
                 }
                 return null
         }
@@ -399,6 +406,40 @@ class EffectParams extends HTMLElement {
             element: button,
             getValue: () => false,
             setValue: () => {}
+        }
+    }
+
+    /**
+     * Create a text input control
+     * @private
+     */
+    _createTextInput(paramName, spec, currentValue) {
+        const isMultiline = spec.ui?.multiline
+
+        let input
+        if (isMultiline) {
+            input = document.createElement('textarea')
+            input.className = 'control-textarea'
+            input.rows = 3
+        } else {
+            input = document.createElement('input')
+            input.type = 'text'
+            input.className = 'control-text'
+        }
+
+        input.value = currentValue || ''
+        if (spec.ui?.placeholder) {
+            input.placeholder = spec.ui.placeholder
+        }
+
+        input.addEventListener('input', () => {
+            this._handleValueChange(paramName, input.value, spec)
+        })
+
+        return {
+            element: input,
+            getValue: () => input.value,
+            setValue: (v) => { input.value = v || '' }
         }
     }
 

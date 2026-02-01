@@ -14,6 +14,7 @@ import { addLayerDialog } from './ui/add-layer-dialog.js'
 import { aboutDialog } from './ui/about-dialog.js'
 import { saveProjectDialog } from './ui/save-project-dialog.js'
 import { projectManagerDialog } from './ui/project-manager-dialog.js'
+import { confirmDialog } from './ui/confirm-dialog.js'
 import { toast } from './ui/toast.js'
 import { exportPng, exportJpg, getTimestampedFilename } from './utils/export.js'
 import { saveProject, loadProject } from './utils/project-storage.js'
@@ -29,6 +30,41 @@ class LayersApp {
         this._initialized = false
         this._currentProjectId = null
         this._currentProjectName = null
+        this._isDirty = false
+    }
+
+    /**
+     * Mark the project as having unsaved changes
+     * @private
+     */
+    _markDirty() {
+        this._isDirty = true
+    }
+
+    /**
+     * Mark the project as saved (no unsaved changes)
+     * @private
+     */
+    _markClean() {
+        this._isDirty = false
+    }
+
+    /**
+     * Check for unsaved changes and prompt user
+     * @returns {Promise<boolean>} true if ok to proceed, false to cancel
+     * @private
+     */
+    async _confirmUnsavedChanges() {
+        if (!this._isDirty) {
+            return true
+        }
+
+        return confirmDialog.show({
+            message: 'You have unsaved changes. Discard them?',
+            confirmText: 'Discard',
+            cancelText: 'Cancel',
+            danger: true
+        })
     }
 
     /**
@@ -106,36 +142,40 @@ class LayersApp {
      */
     _showOpenDialog() {
         openDialog.show({
-            isBaseLayer: true,
             onOpen: async (file, mediaType) => {
                 await this._handleOpenMedia(file, mediaType)
             },
-            onSolid: async () => {
-                await this._handleCreateSolidBase()
+            onSolid: async (width, height) => {
+                await this._handleCreateSolidBase(width, height)
             },
-            onGradient: async () => {
-                await this._handleCreateGradientBase()
+            onGradient: async (width, height) => {
+                await this._handleCreateGradientBase(width, height)
             },
-            onTransparent: async () => {
-                await this._handleCreateTransparentBase()
+            onTransparent: async (width, height) => {
+                await this._handleCreateTransparentBase(width, height)
+            },
+            onLoadProject: () => {
+                this._showLoadProjectDialog(true)
             }
         })
     }
 
     /**
      * Create a solid color base layer
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
      * @private
      */
-    async _handleCreateSolidBase() {
-        console.log('[Layers] Creating solid base layer')
+    async _handleCreateSolidBase(width = 1024, height = 1024) {
+        console.log('[Layers] Creating solid base layer', width, 'x', height)
 
         const layer = createEffectLayer('synth/solid')
         layer.name = 'Solid'
         layer.effectParams = { color: [0.2, 0.2, 0.2], alpha: 1 }
         this._layers = [layer]
 
-        // Set default canvas size
-        this._resizeCanvas(1024, 1024)
+        // Set canvas size
+        this._resizeCanvas(width, height)
 
         this._updateLayerStack()
         await this._rebuild()
@@ -145,22 +185,28 @@ class LayersApp {
         this._currentProjectId = null
         this._currentProjectName = null
         this._updateFilename('untitled')
+        this._markDirty()
+
+        // Close the open dialog
+        openDialog.element.close()
         toast.success('Created solid base layer')
     }
 
     /**
      * Create a gradient base layer
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
      * @private
      */
-    async _handleCreateGradientBase() {
-        console.log('[Layers] Creating gradient base layer')
+    async _handleCreateGradientBase(width = 1024, height = 1024) {
+        console.log('[Layers] Creating gradient base layer', width, 'x', height)
 
         const layer = createEffectLayer('synth/gradient')
         layer.name = 'Gradient'
         this._layers = [layer]
 
-        // Set default canvas size
-        this._resizeCanvas(1024, 1024)
+        // Set canvas size
+        this._resizeCanvas(width, height)
 
         this._updateLayerStack()
         await this._rebuild()
@@ -170,23 +216,29 @@ class LayersApp {
         this._currentProjectId = null
         this._currentProjectName = null
         this._updateFilename('untitled')
+        this._markDirty()
+
+        // Close the open dialog
+        openDialog.element.close()
         toast.success('Created gradient base layer')
     }
 
     /**
      * Create a transparent base layer
+     * @param {number} width - Canvas width
+     * @param {number} height - Canvas height
      * @private
      */
-    async _handleCreateTransparentBase() {
-        console.log('[Layers] Creating transparent base layer')
+    async _handleCreateTransparentBase(width = 1024, height = 1024) {
+        console.log('[Layers] Creating transparent base layer', width, 'x', height)
 
         const layer = createEffectLayer('synth/solid')
         layer.name = 'Transparent'
         layer.effectParams = { color: [0, 0, 0], alpha: 0 }
         this._layers = [layer]
 
-        // Set default canvas size
-        this._resizeCanvas(1024, 1024)
+        // Set canvas size
+        this._resizeCanvas(width, height)
 
         this._updateLayerStack()
         await this._rebuild()
@@ -196,6 +248,10 @@ class LayersApp {
         this._currentProjectId = null
         this._currentProjectName = null
         this._updateFilename('untitled')
+        this._markDirty()
+
+        // Close the open dialog
+        openDialog.element.close()
         toast.success('Created transparent base layer')
     }
 
@@ -240,7 +296,10 @@ class LayersApp {
         this._currentProjectId = null
         this._currentProjectName = null
         this._updateFilename(file.name)
+        this._markDirty()
 
+        // Close the open dialog
+        openDialog.element.close()
         toast.success(`Opened ${file.name}`)
     }
 
@@ -262,6 +321,7 @@ class LayersApp {
         // Update and rebuild
         this._updateLayerStack()
         await this._rebuild()
+        this._markDirty()
 
         toast.success(`Added layer: ${layer.name}`)
     }
@@ -280,6 +340,7 @@ class LayersApp {
         // Update and rebuild
         this._updateLayerStack()
         await this._rebuild()
+        this._markDirty()
 
         toast.success(`Added layer: ${layer.name}`)
     }
@@ -319,6 +380,7 @@ class LayersApp {
         // Update and rebuild
         this._updateLayerStack()
         await this._rebuild()
+        this._markDirty()
 
         toast.info(`Deleted layer: ${layer.name}`)
     }
@@ -336,6 +398,8 @@ class LayersApp {
         if (layer) {
             layer[detail.property] = detail.value
         }
+
+        this._markDirty()
 
         // Determine if this requires a full rebuild or just a parameter update
         switch (detail.property) {
@@ -374,6 +438,7 @@ class LayersApp {
         console.log('[Layers] Reordering layers')
         this._layers = newLayers
         await this._rebuild()
+        this._markDirty()
     }
 
     /**
@@ -470,35 +535,56 @@ class LayersApp {
             aboutDialog.show()
         })
 
-        // File menu
-        document.getElementById('openMenuItem')?.addEventListener('click', () => {
+        // File menu - New
+        document.getElementById('newMenuItem')?.addEventListener('click', async () => {
+            if (!await this._confirmUnsavedChanges()) return
+            this._resetLayers()
+            this._showOpenDialog()
+        })
+
+        // File menu - Open
+        document.getElementById('openMenuItem')?.addEventListener('click', async () => {
+            if (!await this._confirmUnsavedChanges()) return
             openDialog.show({
-                isBaseLayer: true,
                 onOpen: async (file, mediaType) => {
-                    // Reset layers and load new base
                     this._resetLayers()
                     await this._handleOpenMedia(file, mediaType)
                 },
-                onSolid: async () => {
+                onSolid: async (width, height) => {
                     this._resetLayers()
-                    await this._handleCreateSolidBase()
+                    await this._handleCreateSolidBase(width, height)
                 },
-                onGradient: async () => {
+                onGradient: async (width, height) => {
                     this._resetLayers()
-                    await this._handleCreateGradientBase()
+                    await this._handleCreateGradientBase(width, height)
                 },
-                onTransparent: async () => {
+                onTransparent: async (width, height) => {
                     this._resetLayers()
-                    await this._handleCreateTransparentBase()
+                    await this._handleCreateTransparentBase(width, height)
+                },
+                onLoadProject: () => {
+                    this._showLoadProjectDialog(true)
                 }
             })
         })
 
+        // File menu - Save Project (uses Save As if no project ID)
         document.getElementById('saveProjectMenuItem')?.addEventListener('click', () => {
-            this._showSaveProjectDialog()
+            if (this._currentProjectId) {
+                this._quickSaveProject()
+            } else {
+                this._showSaveProjectDialog()
+            }
         })
 
-        document.getElementById('loadProjectMenuItem')?.addEventListener('click', () => {
+        // File menu - Save Project As
+        document.getElementById('saveProjectAsMenuItem')?.addEventListener('click', () => {
+            this._showSaveProjectAsDialog()
+        })
+
+        // File menu - Load Project
+        document.getElementById('loadProjectMenuItem')?.addEventListener('click', async () => {
+            if (!await this._confirmUnsavedChanges()) return
             this._showLoadProjectDialog()
         })
 
@@ -632,14 +718,45 @@ class LayersApp {
     }
 
     /**
-     * Show the load project dialog
+     * Show save project as dialog (always prompts for name)
      * @private
      */
-    _showLoadProjectDialog() {
+    _showSaveProjectAsDialog() {
+        saveProjectDialog.show({
+            projectId: null,
+            projectName: this._currentProjectName || 'untitled',
+            onSave: async (projectId, projectName) => {
+                await this._saveProject(projectId, projectName)
+            }
+        })
+    }
+
+    /**
+     * Quick save project without dialog (for existing projects)
+     * @private
+     */
+    async _quickSaveProject() {
+        try {
+            await this._saveProject(this._currentProjectId, this._currentProjectName)
+        } catch (err) {
+            // Error already shown in _saveProject
+        }
+    }
+
+    /**
+     * Show the load project dialog
+     * @param {boolean} isRequired - If true, dialog cannot be closed without selection
+     * @private
+     */
+    _showLoadProjectDialog(isRequired = false) {
         projectManagerDialog.show({
+            isRequired,
             onLoad: async (projectId) => {
                 await this._loadProject(projectId)
-            }
+            },
+            onCancel: isRequired ? () => {
+                // Open dialog is still visible behind, nothing to do
+            } : undefined
         })
     }
 
@@ -661,6 +778,7 @@ class LayersApp {
             this._currentProjectId = savedId
             this._currentProjectName = projectName
             this._updateFilename(projectName)
+            this._markClean()
 
             toast.success('Project saved')
         } catch (err) {
@@ -716,7 +834,10 @@ class LayersApp {
             this._updateLayerStack()
             await this._rebuild()
             this._renderer.start()
+            this._markClean()
 
+            // Close the open dialog (in case we came from there)
+            openDialog.element.close()
             toast.success(`Loaded "${project.name}"`)
         } catch (err) {
             console.error('[Layers] Failed to load project:', err)

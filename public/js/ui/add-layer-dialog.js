@@ -137,17 +137,6 @@ class AddLayerDialog {
         })
 
         // Close on backdrop click
-        this._dialog.addEventListener('click', (e) => {
-            if (e.target === this._dialog) {
-                this.hide()
-            }
-        })
-
-        // Close on Escape
-        this._dialog.addEventListener('cancel', (e) => {
-            e.preventDefault()
-            this.hide()
-        })
     }
 
     /**

@@ -303,6 +303,7 @@ dialog[open] {
 
 .form-field input[type="text"],
 .form-field input[type="url"],
+.form-field input[type="number"],
 .form-field select,
 .form-field textarea {
     width: 100%;
@@ -567,8 +568,87 @@ dialog[open] {
    Open Dialog
    ========================================================================= */
 
+.open-dialog-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.8);
+    backdrop-filter: blur(4px);
+    z-index: 10000;
+    justify-content: center;
+    align-items: center;
+}
+
+.open-dialog-backdrop.visible {
+    display: flex;
+}
+
+/* =========================================================================
+   Confirm Dialog
+   ========================================================================= */
+
+.confirm-dialog-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 10, 0.8);
+    backdrop-filter: blur(4px);
+    z-index: 10001;
+    justify-content: center;
+    align-items: center;
+}
+
+.confirm-dialog-backdrop.visible {
+    display: flex;
+}
+
+.confirm-dialog {
+    width: 360px;
+    background: rgba(18, 18, 18, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    color: var(--color-text-primary);
+    padding: 0;
+    max-width: 90vw;
+    animation: dialog-open 0.2s ease-out;
+}
+
+.confirm-dialog .dialog-body {
+    padding: 24px;
+}
+
+.confirm-dialog .confirm-message {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+}
+
+.confirm-dialog .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--color-border-muted);
+}
+
 .open-dialog {
     width: 560px;
+    background: rgba(18, 18, 18, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: none;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-xl);
+    color: var(--color-text-primary);
+    padding: 0;
+    max-width: 90vw;
+    max-height: 85vh;
+    overflow: hidden;
+    animation: dialog-open 0.2s ease-out;
 }
 
 .add-layer-dialog {
@@ -641,6 +721,32 @@ dialog[open] {
 .privacy-notice .icon-material {
     font-size: 18px;
     color: var(--color-success);
+}
+
+.load-project-section {
+    margin-top: 20px;
+}
+
+.section-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    color: var(--color-text-muted);
+    font-size: 12px;
+}
+
+.section-divider::before,
+.section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--color-border-muted);
+}
+
+.load-project-btn {
+    width: 100%;
+    justify-content: center;
 }
 
 /* =========================================================================
@@ -784,4 +890,119 @@ dialog[open] {
 
 .project-item-delete .icon-material {
     font-size: 18px;
+}
+
+/* =========================================================================
+   Canvas Size Dialog
+   ========================================================================= */
+
+.canvas-size-dialog {
+    width: 560px;
+}
+
+.size-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.size-preset {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    min-width: 90px;
+    flex: 1;
+    font-family: var(--font-body);
+    background: rgba(0, 0, 0, 0.3);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.size-preset:hover {
+    border-color: var(--color-accent);
+    background: rgba(210, 98, 0, 0.05);
+}
+
+.size-preset:hover .preset-preview {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 8px rgba(210, 98, 0, 0.3);
+}
+
+.size-preset:hover .preset-label {
+    color: var(--color-accent);
+}
+
+.preset-preview-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+}
+
+.preset-preview {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--color-text-muted);
+    border-radius: 2px;
+    transition: all var(--transition-fast);
+}
+
+.preset-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    transition: color var(--transition-fast);
+}
+
+.size-inputs {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.size-inputs .form-field {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.size-separator {
+    margin-top: 28px;
+    font-size: 16px;
+    color: var(--color-text-muted);
+}
+
+.input-with-unit {
+    display: flex;
+    align-items: center;
+}
+
+.input-with-unit input {
+    flex: 1;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-unit {
+    padding: 10px 12px;
+    font-size: 13px;
+    color: var(--color-text-muted);
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--color-border);
+    border-left: none;
+    border-top-right-radius: var(--radius-sm);
+    border-bottom-right-radius: var(--radius-sm);
+}
+
+.size-limits {
+    font-size: 11px;
+    color: var(--color-text-muted);
+    text-align: center;
 }

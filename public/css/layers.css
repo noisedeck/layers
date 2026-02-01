@@ -10,7 +10,7 @@
 .layer-item {
     display: flex;
     flex-direction: column;
-    background: var(--color-bg);
+    background: #1a1a1a;
     border: 1px solid var(--color-border-muted);
     border-radius: var(--radius-md);
     margin-bottom: 6px;
@@ -609,4 +609,35 @@ effect-params {
     border-color: var(--color-accent);
     color: var(--color-accent);
     background: var(--color-accent-muted);
+}
+
+/* Text input control */
+.control-text,
+.control-textarea {
+    width: 100%;
+    padding: 6px 8px;
+    font-family: var(--font-body);
+    font-size: 11px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--color-border-muted);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-primary);
+    grid-column: 2 / 4;
+    transition: border-color var(--transition-fast);
+}
+
+.control-text:hover,
+.control-textarea:hover {
+    border-color: var(--color-border);
+}
+
+.control-text:focus,
+.control-textarea:focus {
+    outline: none;
+    border-color: var(--color-accent);
+}
+
+.control-textarea {
+    resize: vertical;
+    min-height: 60px;
 }

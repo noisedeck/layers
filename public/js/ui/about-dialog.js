@@ -160,17 +160,6 @@ class AboutDialog {
                 this.hide()
             }
         })
-
-        // Close on Escape
-        this._dialog.addEventListener('cancel', (e) => {
-            e.preventDefault()
-            this.hide()
-        })
-
-        // Close on any key press
-        this._dialog.addEventListener('keydown', () => {
-            this.hide()
-        })
     }
 }
 
