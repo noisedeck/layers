@@ -646,14 +646,35 @@ class LayersApp {
         // File menu - New
         document.getElementById('newMenuItem')?.addEventListener('click', async () => {
             if (!await this._confirmUnsavedChanges()) return
-            this._resetLayers()
-            this._showOpenDialog()
+            openDialog.show({
+                canClose: true,
+                onOpen: async (file, mediaType) => {
+                    this._resetLayers()
+                    await this._handleOpenMedia(file, mediaType)
+                },
+                onSolid: async (width, height) => {
+                    this._resetLayers()
+                    await this._handleCreateSolidBase(width, height)
+                },
+                onGradient: async (width, height) => {
+                    this._resetLayers()
+                    await this._handleCreateGradientBase(width, height)
+                },
+                onTransparent: async (width, height) => {
+                    this._resetLayers()
+                    await this._handleCreateTransparentBase(width, height)
+                },
+                onLoadProject: () => {
+                    this._showLoadProjectDialog(true)
+                }
+            })
         })
 
         // File menu - Open
         document.getElementById('openMenuItem')?.addEventListener('click', async () => {
             if (!await this._confirmUnsavedChanges()) return
             openDialog.show({
+                canClose: true,
                 onOpen: async (file, mediaType) => {
                     this._resetLayers()
                     await this._handleOpenMedia(file, mediaType)

@@ -189,15 +189,10 @@ class EffectPicker {
      * @private
      */
     _renderFilterView(listEl) {
-        // Collect namespaces (excluding hidden ones)
-        const namespaces = new Set()
+        // Collect tags (excluding hidden ones)
         const tagCounts = {}
 
         this._effects.forEach(effect => {
-            const ns = effect.namespace || 'other'
-            if (!isHiddenNamespace(ns)) {
-                namespaces.add(ns)
-            }
             if (effect.tags) {
                 effect.tags.forEach(tag => {
                     if (!isHiddenTag(tag)) {
@@ -206,23 +201,6 @@ class EffectPicker {
                 })
             }
         })
-
-        // Render namespaces
-        const nsHeader = document.createElement('div')
-        nsHeader.className = 'effect-group-header'
-        nsHeader.textContent = 'namespaces'
-        listEl.appendChild(nsHeader)
-
-        const nsContainer = document.createElement('div')
-        nsContainer.className = 'effect-filter-chips'
-        Array.from(namespaces).sort().forEach(ns => {
-            const chip = document.createElement('span')
-            chip.className = 'effect-filter-chip effect-filter-namespace'
-            chip.textContent = camelToSpaceCase(ns)
-            chip.dataset.filter = ns
-            nsContainer.appendChild(chip)
-        })
-        listEl.appendChild(nsContainer)
 
         // Render tags sorted by frequency (excluding hidden ones)
         const sortedTags = Object.entries(tagCounts)
@@ -509,9 +487,6 @@ const EFFECT_PICKER_STYLES = `
     color: var(--color-accent);
 }
 
-.effect-filter-namespace {
-    font-weight: 500;
-}
 `
 
 // Inject styles

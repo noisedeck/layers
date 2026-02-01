@@ -23,6 +23,7 @@ class OpenDialog {
         this._onLoadProject = null
         this._mode = 'choose'
         this._hasProjects = false
+        this._canClose = false
     }
 
     async show(options = {}) {
@@ -31,6 +32,7 @@ class OpenDialog {
         this._onGradient = options.onGradient
         this._onTransparent = options.onTransparent
         this._onLoadProject = options.onLoadProject
+        this._canClose = options.canClose || false
 
         try {
             const projects = await listProjects()
@@ -44,6 +46,7 @@ class OpenDialog {
         }
 
         this._updateLoadProjectVisibility()
+        this._updateCloseButtonVisibility()
         this._setMode('choose')
 
         const fileInput = this._modal.querySelector('#open-file-input')
@@ -56,6 +59,19 @@ class OpenDialog {
         const loadProjectOption = this._modal.querySelector('.load-project-section')
         if (loadProjectOption) {
             loadProjectOption.classList.toggle('hidden', !this._hasProjects)
+        }
+    }
+
+    _updateCloseButtonVisibility() {
+        const closeBtn = this._modal.querySelector('.dialog-close')
+        if (closeBtn) {
+            closeBtn.classList.toggle('hidden', !this._canClose)
+        }
+    }
+
+    _close() {
+        if (this._canClose) {
+            this._backdrop.classList.remove('visible')
         }
     }
 
@@ -76,6 +92,9 @@ class OpenDialog {
         this._modal.innerHTML = `
             <div class="dialog-header">
                 <h2>New Project</h2>
+                <button class="dialog-close hidden" title="Cancel">
+                    <span class="icon-material">close</span>
+                </button>
             </div>
             <div class="dialog-body">
                 <div class="open-mode-choose">
@@ -170,6 +189,24 @@ class OpenDialog {
         loadProjectBtn.addEventListener('click', () => {
             if (this._onLoadProject) {
                 this._onLoadProject()
+            }
+        })
+
+        // Close button
+        const closeBtn = this._modal.querySelector('.dialog-close')
+        closeBtn.addEventListener('click', () => this._close())
+
+        // Backdrop click to close
+        this._backdrop.addEventListener('click', (e) => {
+            if (e.target === this._backdrop) {
+                this._close()
+            }
+        })
+
+        // ESC key to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this._backdrop.classList.contains('visible')) {
+                this._close()
             }
         })
     }
