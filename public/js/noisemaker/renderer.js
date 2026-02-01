@@ -388,24 +388,38 @@ export class LayersRenderer {
      */
     updateLayerOpacity(layerId, opacity) {
         // Opacity is applied via blendMode's mixAmt parameter
-        // All layers (including base) blend with previous via blendMode
         const pipeline = this._renderer.pipeline
         if (!pipeline?.graph?.passes) return
 
         const layer = this._layers.find(l => l.id === layerId)
         if (!layer) return
 
-        const layerIndex = this._layers.filter(l => l.visible).indexOf(layer)
+        const visibleLayers = this._layers.filter(l => l.visible)
+        const layerIndex = visibleLayers.indexOf(layer)
         if (layerIndex < 0) return
+
+        // Check if base layer is a solid (which doesn't use blendMode for opacity)
+        const baseLayer = visibleLayers[0]
+        const baseSolid = baseLayer?.effectId === 'synth/solid'
 
         // Find the blendMode pass for this layer
         const blendPasses = pipeline.graph.passes.filter(p =>
             p.effectFunc === 'blendMode' || p.effectKey === 'blendMode'
         )
 
-        // The Nth layer uses the Nth blendMode pass (all layers blend)
-        const blendPassIndex = layerIndex
-        if (blendPassIndex < blendPasses.length) {
+        // Calculate blend pass index:
+        // - If base is solid: it has no blend pass, so non-base layers use index-1
+        // - If base is not solid: all layers have blend passes, use index directly
+        let blendPassIndex
+        if (baseSolid) {
+            // Solid base has no blend pass, skip it
+            blendPassIndex = layerIndex - 1
+        } else {
+            // All layers including base have blend passes
+            blendPassIndex = layerIndex
+        }
+
+        if (blendPassIndex >= 0 && blendPassIndex < blendPasses.length) {
             const blendPass = blendPasses[blendPassIndex]
             const mixAmt = this._opacityToMixAmt(opacity)
             const stepKey = `step_${blendPass.stepIndex}`
@@ -425,11 +439,12 @@ export class LayersRenderer {
     _applyAllLayerParams() {
         for (const layer of this._layers) {
             const isBase = this._layers.indexOf(layer) === 0
+            const isBaseSolid = isBase && layer.effectId === 'synth/solid'
 
             // Apply effect params for both effect and media layers
             if (layer.effectParams && Object.keys(layer.effectParams).length > 0) {
                 // For base layer solid, skip alpha param (already baked into DSL with opacity)
-                if (isBase && layer.effectId === 'synth/solid') {
+                if (isBaseSolid) {
                     const paramsWithoutAlpha = { ...layer.effectParams }
                     delete paramsWithoutAlpha.alpha
                     if (Object.keys(paramsWithoutAlpha).length > 0) {
@@ -439,7 +454,9 @@ export class LayersRenderer {
                     this.updateLayerParams(layer.id, layer.effectParams)
                 }
             }
-            if (layer.visible && !isBase) {
+            // Apply opacity via blendMode for all layers except base solid
+            // (base solid uses alpha parameter, all others use blendMode)
+            if (layer.visible && !isBaseSolid) {
                 this.updateLayerOpacity(layer.id, layer.opacity)
             }
         }
@@ -801,13 +818,10 @@ export class LayersRenderer {
             lines.push('')
 
             if (isBase) {
-                // Base layer - render directly with opacity baked into alpha
+                // Base layer - handle opacity via alpha or blending
                 const baseAlpha = layer.opacity / 100
 
-                if (layer.sourceType === 'media') {
-                    // Media base - for now just render directly (TODO: apply alpha)
-                    lines.push(`media().write(o${currentOutput})`)
-                } else if (layer.sourceType === 'effect' && layer.effectId === 'synth/solid') {
+                if (layer.sourceType === 'effect' && layer.effectId === 'synth/solid') {
                     // Solid base - use alpha parameter for opacity
                     const params = layer.effectParams || {}
                     const color = params.color || [0.5, 0.5, 0.5]
@@ -815,10 +829,21 @@ export class LayersRenderer {
                     const toHex = (v) => Math.round(v * 255).toString(16).padStart(2, '0')
                     const hex = `#${toHex(color[0])}${toHex(color[1])}${toHex(color[2])}`
                     lines.push(`solid(color: ${hex}, alpha: ${effectAlpha.toFixed(4)}).write(o${currentOutput})`)
+                } else if (layer.sourceType === 'media') {
+                    // Media base - blend over transparent background for opacity support
+                    lines.push(`solid(color: #000000, alpha: 0).write(o${currentOutput})`)
+                    lines.push(`media().write(o${currentOutput + 1})`)
+                    const mixAmt = this._opacityToMixAmt(layer.opacity)
+                    lines.push(`read(o${currentOutput}).blendMode(tex: read(o${currentOutput + 1}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${currentOutput + 2})`)
+                    currentOutput += 2
                 } else if (layer.sourceType === 'effect') {
-                    // Other synth effect as base
+                    // Other synth effect as base - blend over transparent background for opacity
                     const effectCall = this._buildEffectCall(layer)
-                    lines.push(`${effectCall}.write(o${currentOutput})`)
+                    lines.push(`solid(color: #000000, alpha: 0).write(o${currentOutput})`)
+                    lines.push(`${effectCall}.write(o${currentOutput + 1})`)
+                    const mixAmt = this._opacityToMixAmt(layer.opacity)
+                    lines.push(`read(o${currentOutput}).blendMode(tex: read(o${currentOutput + 1}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${currentOutput + 2})`)
+                    currentOutput += 2
                 }
             } else {
                 // Non-base layers - blend with previous
