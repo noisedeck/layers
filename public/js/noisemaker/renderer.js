@@ -46,6 +46,7 @@ export class LayersRenderer {
             preferWebGPU: false,
             useBundles: true,
             bundlePath: '/js/noisemaker/vendor/effects',
+            alpha: true,
             onFPS: options.onFPS,
             onError: options.onError
         })
@@ -373,8 +374,7 @@ export class LayersRenderer {
      */
     updateLayerOpacity(layerId, opacity) {
         // Opacity is applied via blendMode's mixAmt parameter
-        // The blendMode step comes after the layer's effect step
-        // For now, we need to find the blendMode step that uses this layer
+        // All layers (including base) blend with previous via blendMode
         const pipeline = this._renderer.pipeline
         if (!pipeline?.graph?.passes) return
 
@@ -382,16 +382,15 @@ export class LayersRenderer {
         if (!layer) return
 
         const layerIndex = this._layers.filter(l => l.visible).indexOf(layer)
-        if (layerIndex <= 0) return // Base layer has no blendMode
+        if (layerIndex < 0) return
 
         // Find the blendMode pass for this layer
-        // blendMode passes follow each non-base layer
         const blendPasses = pipeline.graph.passes.filter(p =>
             p.effectFunc === 'blendMode' || p.effectKey === 'blendMode'
         )
 
-        // The Nth non-base layer uses the Nth blendMode pass
-        const blendPassIndex = layerIndex - 1
+        // The Nth layer uses the Nth blendMode pass (all layers blend)
+        const blendPassIndex = layerIndex
         if (blendPassIndex < blendPasses.length) {
             const blendPass = blendPasses[blendPassIndex]
             const mixAmt = this._opacityToMixAmt(opacity)
@@ -411,11 +410,22 @@ export class LayersRenderer {
      */
     _applyAllLayerParams() {
         for (const layer of this._layers) {
+            const isBase = this._layers.indexOf(layer) === 0
+
             // Apply effect params for both effect and media layers
             if (layer.effectParams && Object.keys(layer.effectParams).length > 0) {
-                this.updateLayerParams(layer.id, layer.effectParams)
+                // For base layer solid, skip alpha param (already baked into DSL with opacity)
+                if (isBase && layer.effectId === 'synth/solid') {
+                    const paramsWithoutAlpha = { ...layer.effectParams }
+                    delete paramsWithoutAlpha.alpha
+                    if (Object.keys(paramsWithoutAlpha).length > 0) {
+                        this.updateLayerParams(layer.id, paramsWithoutAlpha)
+                    }
+                } else {
+                    this.updateLayerParams(layer.id, layer.effectParams)
+                }
             }
-            if (layer.visible && this._layers.indexOf(layer) > 0) {
+            if (layer.visible && !isBase) {
                 this.updateLayerOpacity(layer.id, layer.opacity)
             }
         }
@@ -578,7 +588,7 @@ export class LayersRenderer {
         const visibleLayers = this._layers.filter(l => l.visible)
 
         if (visibleLayers.length === 0) {
-            return 'search synth\n\nsolid(r: 0, g: 0, b: 0).write(o0)\n\nrender(o0)'
+            return 'search synth\n\nsolid(color: #000000, alpha: 0).write(o0)\n\nrender(o0)'
         }
 
         // Collect namespaces used by effect layers
@@ -601,62 +611,51 @@ export class LayersRenderer {
             const layer = visibleLayers[i]
             const isBase = i === 0
 
-            if (layer.sourceType === 'media') {
-                // Media layer - use media() effect
-                // The external texture is bound via imageTex after compilation
+            lines.push('')
 
-                if (isBase) {
-                    // Base layer - just write to output
+            if (isBase) {
+                // Base layer - render directly with opacity baked into alpha
+                const baseAlpha = layer.opacity / 100
+
+                if (layer.sourceType === 'media') {
+                    // Media base - for now just render directly (TODO: apply alpha)
                     lines.push(`media().write(o${currentOutput})`)
-                } else {
-                    // Non-base media layer - blend with previous
-                    const prevOutput = currentOutput
-                    currentOutput++
-                    const mixAmt = this._opacityToMixAmt(layer.opacity)
-
-                    lines.push('')
-                    lines.push(`media().write(o${currentOutput})`)
-
-                    const nextOutput = currentOutput + 1
-                    lines.push(`read(o${prevOutput}).blendMode(tex: read(o${currentOutput}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${nextOutput})`)
-                    currentOutput = nextOutput
+                } else if (layer.sourceType === 'effect' && layer.effectId === 'synth/solid') {
+                    // Solid base - use alpha parameter for opacity
+                    const params = layer.effectParams || {}
+                    const color = params.color || [0.5, 0.5, 0.5]
+                    const effectAlpha = (params.alpha !== undefined ? params.alpha : 1) * baseAlpha
+                    const toHex = (v) => Math.round(v * 255).toString(16).padStart(2, '0')
+                    const hex = `#${toHex(color[0])}${toHex(color[1])}${toHex(color[2])}`
+                    lines.push(`solid(color: ${hex}, alpha: ${effectAlpha.toFixed(4)}).write(o${currentOutput})`)
+                } else if (layer.sourceType === 'effect') {
+                    // Other synth effect as base
+                    const effectCall = this._buildEffectCall(layer)
+                    lines.push(`${effectCall}.write(o${currentOutput})`)
                 }
-            } else if (layer.sourceType === 'effect') {
-                // Effect layer
-                const effectCall = this._buildEffectCall(layer)
-                const isSynth = this._isEffectSynth(layer.effectId)
+            } else {
+                // Non-base layers - blend with previous
+                const prevOutput = currentOutput
+                currentOutput++
+                const mixAmt = this._opacityToMixAmt(layer.opacity)
 
-                if (isBase) {
-                    // Base layer - effect must be a synth to work as base
+                if (layer.sourceType === 'media') {
+                    lines.push(`media().write(o${currentOutput})`)
+                } else if (layer.sourceType === 'effect') {
+                    const effectCall = this._buildEffectCall(layer)
+                    const isSynth = this._isEffectSynth(layer.effectId)
+
                     if (isSynth) {
                         lines.push(`${effectCall}.write(o${currentOutput})`)
                     } else {
-                        // Filter as base - generate solid color first, then apply filter
-                        lines.push(`solid(color: [0, 0, 0]).${effectCall}.write(o${currentOutput})`)
-                    }
-                } else {
-                    // Non-base layer
-                    const prevOutput = currentOutput
-                    currentOutput++
-                    const mixAmt = this._opacityToMixAmt(layer.opacity)
-
-                    lines.push('')
-
-                    if (isSynth) {
-                        // Synth effect - generate independently then blend
-                        lines.push(`${effectCall}.write(o${currentOutput})`)
-                    } else {
-                        // Filter effect - apply to previous output then blend
                         lines.push(`read(o${prevOutput}).${effectCall}.write(o${currentOutput})`)
                     }
-
-                    const nextOutput = currentOutput + 1
-                    lines.push(`read(o${prevOutput}).blendMode(tex: read(o${currentOutput}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${nextOutput})`)
-                    currentOutput = nextOutput
                 }
+
+                const nextOutput = currentOutput + 1
+                lines.push(`read(o${prevOutput}).blendMode(tex: read(o${currentOutput}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${nextOutput})`)
+                currentOutput = nextOutput
             }
-
-
         }
 
         lines.push('')

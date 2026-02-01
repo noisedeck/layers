@@ -82,6 +82,15 @@ class LayersApp {
             return
         }
 
+        // Pre-create WebGL context with alpha enabled for transparency
+        // Use premultipliedAlpha: false so alpha blends correctly with CSS background
+        // preserveDrawingBuffer allows reading pixels after render
+        this._canvas.getContext('webgl2', {
+            alpha: true,
+            premultipliedAlpha: false,
+            preserveDrawingBuffer: true
+        })
+
         // Create renderer
         this._renderer = new LayersRenderer(this._canvas, {
             // Initial size - will be updated when media is loaded
@@ -411,10 +420,18 @@ class LayersApp {
                 break
 
             case 'opacity':
-                // Update opacity via blendMode uniform
-                this._renderer.updateLayerOpacity(detail.layerId, detail.value)
-                // Keep DSL in sync to prevent spurious rebuild on next structural change
-                this._renderer.syncDsl()
+                // Base layer opacity requires rebuild (alpha baked into DSL)
+                // Non-base layers can update via blendMode uniform
+                const layerIdx = this._layers.findIndex(l => l.id === detail.layerId)
+                if (layerIdx === 0) {
+                    // Base layer - rebuild with new alpha value
+                    await this._rebuild()
+                } else {
+                    // Non-base layer - update opacity via blendMode uniform
+                    this._renderer.updateLayerOpacity(detail.layerId, detail.value)
+                    // Keep DSL in sync to prevent spurious rebuild on next structural change
+                    this._renderer.syncDsl()
+                }
                 break
 
             case 'visibility':
