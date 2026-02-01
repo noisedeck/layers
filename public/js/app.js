@@ -19,6 +19,7 @@ import { toast } from './ui/toast.js'
 import { exportPng, exportJpg, getTimestampedFilename } from './utils/export.js'
 import { saveProject, loadProject } from './utils/project-storage.js'
 import { registerServiceWorker } from './sw-register.js'
+import { SelectionManager } from './selection/selection-manager.js'
 
 /**
  * Main application class
@@ -33,6 +34,7 @@ class LayersApp {
         this._currentProjectName = null
         this._isDirty = false
         this._zoomMode = 'fit' // 'fit', '50', '100', '200'
+        this._selectionManager = null
     }
 
     /**
@@ -81,6 +83,15 @@ class LayersApp {
         // Get DOM elements
         this._canvas = document.getElementById('canvas')
         this._layerStack = document.querySelector('layer-stack')
+
+        // Get selection overlay
+        this._selectionOverlay = document.getElementById('selectionOverlay')
+
+        // Initialize selection manager
+        this._selectionManager = new SelectionManager()
+        if (this._selectionOverlay) {
+            this._selectionManager.init(this._selectionOverlay)
+        }
 
         if (!this._canvas) {
             console.error('[Layers] Canvas not found')
@@ -487,6 +498,15 @@ class LayersApp {
         
         // Update renderer
         this._renderer.resize(width, height)
+
+        // Update selection overlay size
+        if (this._selectionOverlay) {
+            this._selectionOverlay.width = width
+            this._selectionOverlay.height = height
+        }
+        if (this._selectionManager) {
+            this._selectionManager.resize(width, height)
+        }
 
         // Re-apply current zoom mode
         this._applyZoom()
