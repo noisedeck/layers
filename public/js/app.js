@@ -20,6 +20,7 @@ import { exportPng, exportJpg, getTimestampedFilename } from './utils/export.js'
 import { saveProject, loadProject } from './utils/project-storage.js'
 import { registerServiceWorker } from './sw-register.js'
 import { SelectionManager } from './selection/selection-manager.js'
+import { copySelection, pasteFromClipboard } from './selection/clipboard-ops.js'
 
 /**
  * Main application class
@@ -35,6 +36,7 @@ class LayersApp {
         this._isDirty = false
         this._zoomMode = 'fit' // 'fit', '50', '100', '200'
         this._selectionManager = null
+        this._copyOrigin = null
     }
 
     /**
@@ -805,6 +807,22 @@ class LayersApp {
                 return
             }
 
+            // Ctrl/Cmd+C - copy selection
+            if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+                if (this._selectionManager?.hasSelection()) {
+                    e.preventDefault()
+                    this._handleCopy()
+                    return
+                }
+            }
+
+            // Ctrl/Cmd+V - paste
+            if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+                e.preventDefault()
+                this._handlePaste()
+                return
+            }
+
             // Don't handle other shortcuts if in input
             if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.contentEditable === 'true') {
                 return
@@ -908,6 +926,93 @@ class LayersApp {
         if (rectItem) rectItem.classList.toggle('checked', tool === 'rectangle')
         if (ovalItem) ovalItem.classList.toggle('checked', tool === 'oval')
         if (icon) icon.textContent = tool === 'rectangle' ? 'crop_square' : 'circle'
+    }
+
+    /**
+     * Handle copy command
+     * @private
+     */
+    async _handleCopy() {
+        if (!this._selectionManager?.hasSelection()) return
+
+        const selectionPath = this._selectionManager.selectionPath
+        const selectedLayers = this._layerStack?.selectedLayers || []
+
+        // Filter to visible layers only
+        const visibleLayers = selectedLayers.filter(l => l.visible)
+
+        // If no layers selected in panel, use all visible layers
+        const layersToCopy = visibleLayers.length > 0
+            ? visibleLayers
+            : this._layers.filter(l => l.visible)
+
+        const origin = await copySelection({
+            selectionPath,
+            layers: layersToCopy,
+            sourceCanvas: this._canvas
+        })
+
+        if (origin) {
+            this._copyOrigin = origin
+            toast.success('Copied to clipboard')
+        } else {
+            toast.error('Failed to copy')
+        }
+    }
+
+    /**
+     * Handle paste command
+     * @private
+     */
+    async _handlePaste() {
+        const result = await pasteFromClipboard()
+        if (!result) {
+            return // No image in clipboard, silent fail
+        }
+
+        const { blob } = result
+
+        // Determine position
+        let x, y
+        if (this._copyOrigin) {
+            x = this._copyOrigin.x
+            y = this._copyOrigin.y
+        } else {
+            // Center of canvas
+            const img = await createImageBitmap(blob)
+            x = Math.round((this._canvas.width - img.width) / 2)
+            y = Math.round((this._canvas.height - img.height) / 2)
+        }
+
+        // Create file from blob for the layer system
+        const file = new File([blob], 'pasted-image.png', { type: 'image/png' })
+
+        // Create media layer
+        const { createMediaLayer } = await import('./layers/layer-model.js')
+        const layer = createMediaLayer(file, 'image')
+        layer.name = 'Pasted'
+
+        // Store position in effectParams for the renderer
+        layer.effectParams = {
+            ...layer.effectParams,
+            position: [x, y]
+        }
+
+        // Add layer
+        this._layers.push(layer)
+
+        // Load media
+        await this._renderer.loadMedia(layer.id, file, 'image')
+
+        // Update and rebuild
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+
+        // Clear copy origin for next paste
+        this._copyOrigin = null
+
+        toast.success('Pasted as new layer')
     }
 
     /**
