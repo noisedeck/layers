@@ -34,5 +34,8 @@ playwright-report/
 *.temp
 .cache/
 
+# Git worktrees
+.worktrees/
+
 # Vendor
 public/js/noisemaker/vendor/
