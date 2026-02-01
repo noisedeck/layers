@@ -797,6 +797,26 @@ dialog[open] {
     justify-content: center;
 }
 
+/* Mobile responsive for open dialog */
+@media (max-width: 500px) {
+    .open-dialog-backdrop {
+        overflow-x: hidden;
+    }
+
+    .media-options-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .media-option {
+        padding: 16px;
+        gap: 8px;
+    }
+
+    .media-option .icon-material {
+        font-size: 36px;
+    }
+}
+
 /* =========================================================================
    Save Project Dialog
    ========================================================================= */
