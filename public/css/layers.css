@@ -388,7 +388,7 @@ layer-stack {
    ========================================================================= */
 
 .layer-item.effect-layer .layer-thumbnail {
-    background: linear-gradient(135deg, var(--color-accent-muted) 0%, var(--color-bg-elevated) 100%);
+    background: linear-gradient(180deg, var(--color-accent-muted) 0%, var(--color-bg-elevated) 100%);
 }
 
 /* =========================================================================

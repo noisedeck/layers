@@ -300,7 +300,7 @@ dialog[open] {
     justify-content: flex-end;
     gap: 12px;
     padding: 16px 24px;
-    background: linear-gradient(0deg, rgba(255,255,255,0.02) 0%, transparent 100%);
+    background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.02) 100%);
     border-top: 1px solid var(--color-border-muted);
 }
 
@@ -433,7 +433,7 @@ dialog[open] {
     align-items: center;
     justify-content: center;
     padding: 2.75rem 2.5rem;
-    background: linear-gradient(135deg, var(--color-accent-muted) 0%, transparent 100%);
+    background: linear-gradient(180deg, var(--color-accent-muted) 0%, transparent 100%);
 }
 
 .about-modal-logo {
