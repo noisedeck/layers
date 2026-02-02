@@ -482,6 +482,11 @@ export class LayersRenderer {
             if (layer.visible && !isBaseSolid) {
                 this.updateLayerOpacity(layer.id, layer.opacity)
             }
+
+            // Apply offset for media layers
+            if (layer.sourceType === 'media') {
+                this.updateLayerOffset(layer.id, layer.offsetX || 0, layer.offsetY || 0)
+            }
         }
     }
 
