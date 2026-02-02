@@ -3,7 +3,7 @@
  * Network-first strategy - always serves fresh code
  */
 
-const CACHE_NAME = 'layers-v3';
+const CACHE_NAME = 'layers-v7';
 
 // Only cache static assets that rarely change
 const CACHE_ASSETS = [
@@ -58,4 +58,11 @@ self.addEventListener('fetch', (event) => {
             })
             .catch(() => caches.match(request)) // Offline fallback
     );
+});
+
+// Handle skipWaiting message from app
+self.addEventListener('message', (event) => {
+    if (event.data === 'skipWaiting') {
+        self.skipWaiting();
+    }
 });

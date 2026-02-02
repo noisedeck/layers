@@ -2,18 +2,16 @@ import { test, expect } from 'playwright/test'
 
 test.describe('Layer drag reorder', () => {
     test('dragging layer by handle reorders layers', async ({ page }) => {
-        // Navigate to the app
-        await page.goto('/')
-
-        // Wait for loading screen to disappear
+        await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
 
-        // The open dialog should be visible - click Solid to create base layer
-        await page.waitForSelector('dialog[open]')
-        await page.click('.media-option[data-type="solid"]')
-
-        // Wait for dialog to close
-        await page.waitForSelector('dialog[open]', { state: 'hidden' })
+        // Create transparent project (requires size dialog confirmation)
+        await page.waitForSelector('.open-dialog-backdrop.visible')
+        await page.click('.media-option[data-type="transparent"]')
+        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
+        await page.click('.canvas-size-dialog .action-btn.primary')
+        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
+        await page.waitForTimeout(500)
 
         // Now we have a base layer - add two effect layers
         // Add first effect
@@ -44,8 +42,8 @@ test.describe('Layer drag reorder', () => {
         await page.click('.effect-item')
         await page.waitForSelector('dialog[open]', { state: 'hidden' })
 
-        // Now we should have 3 layers: base (Solid), blur, warp
-        // In the UI (reversed): warp is at top, blur in middle, Solid at bottom
+        // Now we should have 3 layers: base (transparent), blur, warp
+        // In the UI (reversed): warp is at top, blur in middle, base at bottom
         const layers = page.locator('layer-item')
         await expect(layers).toHaveCount(3)
 
@@ -56,7 +54,7 @@ test.describe('Layer drag reorder', () => {
 
         // The first layer in UI should be warp (most recently added)
         // The second should be blur
-        // The third should be Solid (base)
+        // The third should be base
 
         // Get the top layer (warp) and middle layer (blur)
         const topLayer = layers.first()
@@ -105,13 +103,16 @@ test.describe('Layer drag reorder', () => {
     })
 
     test('drag handle shows grab cursor', async ({ page }) => {
-        await page.goto('/')
+        await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
 
-        // Create base layer
-        await page.waitForSelector('dialog[open]')
-        await page.click('.media-option[data-type="solid"]')
-        await page.waitForSelector('dialog[open]', { state: 'hidden' })
+        // Create transparent project
+        await page.waitForSelector('.open-dialog-backdrop.visible')
+        await page.click('.media-option[data-type="transparent"]')
+        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
+        await page.click('.canvas-size-dialog .action-btn.primary')
+        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
+        await page.waitForTimeout(500)
 
         // Add an effect layer
         await page.click('#addLayerBtn')
@@ -136,13 +137,16 @@ test.describe('Layer drag reorder', () => {
     })
 
     test('base layer drag handle is hidden', async ({ page }) => {
-        await page.goto('/')
+        await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
 
-        // Create base layer
-        await page.waitForSelector('dialog[open]')
-        await page.click('.media-option[data-type="solid"]')
-        await page.waitForSelector('dialog[open]', { state: 'hidden' })
+        // Create transparent project
+        await page.waitForSelector('.open-dialog-backdrop.visible')
+        await page.click('.media-option[data-type="transparent"]')
+        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
+        await page.click('.canvas-size-dialog .action-btn.primary')
+        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
+        await page.waitForTimeout(500)
 
         // Find the base layer
         const baseLayer = page.locator('layer-item.base-layer')

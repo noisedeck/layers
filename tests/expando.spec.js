@@ -2,31 +2,31 @@ import { test, expect } from 'playwright/test'
 
 test.describe('Layer params expando', () => {
     test('expando toggle toggles expanded state on layer item', async ({ page }) => {
-        // Navigate to the app
-        await page.goto('/')
-
-        // Wait for loading screen to disappear
+        await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
 
-        // Close any open dialogs first (e.g., the open file dialog)
-        const openDialog = page.locator('dialog[open]')
-        if (await openDialog.isVisible()) {
-            // Press Escape to close it or click close button
-            await page.keyboard.press('Escape')
-            await page.waitForSelector('dialog[open]', { state: 'hidden', timeout: 5000 }).catch(() => {})
-        }
+        // Create a transparent project (transparent/solid require size dialog confirmation)
+        await page.waitForSelector('.open-dialog-backdrop.visible')
+        await page.click('.media-option[data-type="transparent"]')
+        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
+        await page.click('.canvas-size-dialog .action-btn.primary')
+        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
+        await page.waitForTimeout(500)
 
         // Click the add layer button
         await page.click('#addLayerBtn')
 
-        // Wait for dialog to appear
+        // Wait for add layer dialog to appear
         await page.waitForSelector('dialog[open]')
 
         // Click "Add Effect" option
         await page.click('.media-option[data-mode="effect"]')
 
-        // Wait for effect picker to load
-        await page.waitForSelector('.effect-list .effect-item')
+        // Wait for effect picker search input and search for an effect
+        await page.waitForSelector('.effect-search-input')
+        await page.fill('.effect-search-input', 'blur')
+        await page.waitForTimeout(500)
+        await page.waitForSelector('.effect-item')
 
         // Click the first available effect
         await page.click('.effect-item')
@@ -35,7 +35,7 @@ test.describe('Layer params expando', () => {
         await page.waitForSelector('dialog[open]', { state: 'hidden' })
 
         // Find the effect layer (should have the params toggle)
-        const layerItem = page.locator('layer-item.effect-layer')
+        const layerItem = page.locator('layer-item.effect-layer:not(.base-layer)')
         await expect(layerItem).toBeVisible()
 
         // Find the params toggle button
@@ -74,18 +74,16 @@ test.describe('Layer params expando', () => {
     })
 
     test('effect-params shows actual parameters when expanded', async ({ page }) => {
-        // Navigate to the app
-        await page.goto('/')
-
-        // Wait for loading screen to disappear
+        await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
 
-        // Close any open dialogs first
-        const openDialog = page.locator('dialog[open]')
-        if (await openDialog.isVisible()) {
-            await page.keyboard.press('Escape')
-            await page.waitForSelector('dialog[open]', { state: 'hidden', timeout: 5000 }).catch(() => {})
-        }
+        // Create a transparent project
+        await page.waitForSelector('.open-dialog-backdrop.visible')
+        await page.click('.media-option[data-type="transparent"]')
+        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
+        await page.click('.canvas-size-dialog .action-btn.primary')
+        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
+        await page.waitForTimeout(500)
 
         // Click the add layer button
         await page.click('#addLayerBtn')
@@ -96,8 +94,8 @@ test.describe('Layer params expando', () => {
         // Click "Add Effect" option
         await page.click('.media-option[data-mode="effect"]')
 
-        // Wait for effect picker to load
-        await page.waitForSelector('.effect-list .effect-item')
+        // Wait for effect picker search input
+        await page.waitForSelector('.effect-search-input')
 
         // Search for "warp" which has parameters (frequency, octaves, etc.)
         await page.fill('.effect-search-input', 'warp')
@@ -111,7 +109,7 @@ test.describe('Layer params expando', () => {
         await page.waitForSelector('dialog[open]', { state: 'hidden' })
 
         // Find the effect layer
-        const layerItem = page.locator('layer-item.effect-layer')
+        const layerItem = page.locator('layer-item.effect-layer:not(.base-layer)')
         await expect(layerItem).toBeVisible()
 
         // Find the params toggle button
