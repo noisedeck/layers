@@ -21,6 +21,7 @@ import { saveProject, loadProject } from './utils/project-storage.js'
 import { registerServiceWorker } from './sw-register.js'
 import { SelectionManager } from './selection/selection-manager.js'
 import { copySelection, pasteFromClipboard, getSelectionBounds } from './selection/clipboard-ops.js'
+import { MoveTool } from './tools/move-tool.js'
 
 /**
  * Main application class
@@ -37,6 +38,8 @@ class LayersApp {
         this._zoomMode = 'fit' // 'fit', '50', '100', '200'
         this._selectionManager = null
         this._copyOrigin = null
+        this._moveTool = null
+        this._currentTool = 'selection' // 'selection' | 'move'
     }
 
     /**
@@ -99,6 +102,17 @@ class LayersApp {
         if (this._selectionManager) {
             this._selectionManager.setSourceCanvas(this._canvas)
         }
+
+        // Initialize move tool
+        this._moveTool = new MoveTool({
+            overlay: this._selectionOverlay,
+            selectionManager: this._selectionManager,
+            getActiveLayer: () => this._getActiveLayer(),
+            getSelectedLayers: () => this._layerStack?.selectedLayerIds || [],
+            updateLayerPosition: (x, y) => this._updateActiveLayerPosition(x, y),
+            extractSelection: () => this._extractSelectionToLayer(),
+            showMultiLayerDialog: () => this._showMultiLayerNotSupportedDialog()
+        })
 
         if (!this._canvas) {
             console.error('[Layers] Canvas not found')
@@ -795,6 +809,11 @@ class LayersApp {
             if (display) display.textContent = value
         })
 
+        // Move tool button
+        document.getElementById('moveToolBtn')?.addEventListener('click', () => {
+            this._setToolMode('move')
+        })
+
         // Play/pause button
         document.getElementById('playPauseBtn')?.addEventListener('click', () => {
             this._togglePlayPause()
@@ -962,6 +981,155 @@ class LayersApp {
         const toleranceRow = document.getElementById('wandToleranceRow')
         if (toleranceRow) {
             toleranceRow.classList.toggle('hide', tool !== 'wand')
+        }
+    }
+
+    /**
+     * Get the currently active (selected) layer
+     * @returns {object|null}
+     * @private
+     */
+    _getActiveLayer() {
+        const selectedIds = this._layerStack?.selectedLayerIds || []
+        if (selectedIds.length !== 1) return null
+        return this._layers.find(l => l.id === selectedIds[0]) || null
+    }
+
+    /**
+     * Update active layer's position offset
+     * @param {number} x
+     * @param {number} y
+     * @private
+     */
+    async _updateActiveLayerPosition(x, y) {
+        const layer = this._getActiveLayer()
+        if (!layer) return
+
+        layer.offsetX = x
+        layer.offsetY = y
+
+        // Trigger re-render
+        await this._rebuild()
+    }
+
+    /**
+     * Extract current selection to a new layer
+     * @private
+     */
+    async _extractSelectionToLayer() {
+        if (!this._selectionManager?.hasSelection()) return
+
+        const selectionPath = this._selectionManager.selectionPath
+        const activeLayer = this._getActiveLayer()
+        if (!activeLayer) return
+
+        const bounds = getSelectionBounds(selectionPath)
+        if (bounds.width <= 0 || bounds.height <= 0) return
+
+        // Get pixels from current layer within selection
+        // Create offscreen canvas at full canvas size
+        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
+        const ctx = offscreen.getContext('2d')
+
+        // Draw the current layer's content
+        // For now, use the main canvas as source (composited view)
+        ctx.drawImage(this._canvas, 0, 0)
+
+        // Create mask canvas
+        const maskCanvas = new OffscreenCanvas(this._canvas.width, this._canvas.height)
+        const maskCtx = maskCanvas.getContext('2d')
+        maskCtx.fillStyle = 'white'
+
+        if (selectionPath.type === 'rect') {
+            maskCtx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height)
+        } else if (selectionPath.type === 'oval') {
+            maskCtx.beginPath()
+            maskCtx.ellipse(selectionPath.cx, selectionPath.cy, selectionPath.rx, selectionPath.ry, 0, 0, Math.PI * 2)
+            maskCtx.fill()
+        } else if (selectionPath.type === 'lasso' || selectionPath.type === 'polygon') {
+            if (selectionPath.points.length >= 3) {
+                maskCtx.beginPath()
+                maskCtx.moveTo(selectionPath.points[0].x, selectionPath.points[0].y)
+                for (let i = 1; i < selectionPath.points.length; i++) {
+                    maskCtx.lineTo(selectionPath.points[i].x, selectionPath.points[i].y)
+                }
+                maskCtx.closePath()
+                maskCtx.fill()
+            }
+        } else if (selectionPath.type === 'wand' || selectionPath.type === 'mask') {
+            const mask = selectionPath.type === 'wand' ? selectionPath.mask : selectionPath.data
+            maskCtx.putImageData(mask, 0, 0)
+        }
+
+        // Apply mask to extracted content
+        ctx.globalCompositeOperation = 'destination-in'
+        ctx.drawImage(maskCanvas, 0, 0)
+        ctx.globalCompositeOperation = 'source-over'
+
+        // Convert to blob and create new layer
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        const file = new File([blob], 'extracted-selection.png', { type: 'image/png' })
+
+        // Find insertion index (immediately above active layer)
+        const activeIndex = this._layers.findIndex(l => l.id === activeLayer.id)
+
+        // Create and insert the new layer
+        const { createMediaLayer } = await import('./layers/layer-model.js')
+        const newLayer = createMediaLayer(file, 'image', 'Moved Selection')
+
+        // Insert after active layer
+        this._layers.splice(activeIndex + 1, 0, newLayer)
+
+        // Load media
+        await this._renderer.loadMedia(newLayer.id, file, 'image')
+
+        // Select the new layer
+        this._layerStack.selectLayer(newLayer.id)
+
+        // Update and rebuild
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+    }
+
+    /**
+     * Show dialog for multi-layer move not supported
+     * @private
+     */
+    _showMultiLayerNotSupportedDialog() {
+        confirmDialog.show({
+            message: 'Moving multiple layers is not yet supported. Please select a single layer.',
+            confirmText: 'OK',
+            cancelText: null,
+            danger: false
+        })
+    }
+
+    /**
+     * Set current tool mode
+     * @param {'selection' | 'move'} tool
+     * @private
+     */
+    _setToolMode(tool) {
+        this._currentTool = tool
+
+        // Deactivate all tools
+        this._moveTool?.deactivate()
+
+        // Update button states
+        const moveBtn = document.getElementById('moveToolBtn')
+        if (moveBtn) {
+            moveBtn.classList.toggle('active', tool === 'move')
+        }
+
+        // Activate selected tool
+        if (tool === 'move') {
+            this._moveTool?.activate()
+            // Disable selection drawing
+            this._selectionOverlay?.classList.add('inactive')
+        } else {
+            // Re-enable selection
+            this._selectionOverlay?.classList.remove('inactive')
         }
     }
 
