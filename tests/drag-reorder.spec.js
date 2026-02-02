@@ -73,21 +73,18 @@ test.describe('Layer drag reorder', () => {
             throw new Error('Could not get bounding boxes')
         }
 
-        // Directly trigger the reorder via custom event (bypassing drag-drop)
-        // This tests that the reorder logic works
-        const reordered = await page.evaluate(() => {
-            const layerStack = document.querySelector('layer-stack')
+        // Trigger reorder via FSM methods
+        const reordered = await page.evaluate(async () => {
+            const app = window.layersApp
             const layers = document.querySelectorAll('layer-item')
             const sourceId = layers[0].dataset.layerId  // Top layer (warp)
             const targetId = layers[1].dataset.layerId  // Middle layer (blur)
 
-            // Dispatch the layer-reorder event that the drop handler would normally emit
-            layers[1].dispatchEvent(new CustomEvent('layer-reorder', {
-                bubbles: true,
-                detail: { sourceId, targetId }
-            }))
+            // Use FSM methods to reorder
+            app._startDrag(sourceId)
+            await app._processDrop(targetId, 'below')
 
-            return { sourceId, targetId }
+            return { sourceId, targetId, state: app._reorderState }
         })
         console.log('Triggered reorder:', reordered)
 
