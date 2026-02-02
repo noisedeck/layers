@@ -34,6 +34,11 @@ async function copySelection({ selectionPath, layers, sourceCanvas }) {
     // Apply selection mask for non-rectangular selections
     if (selectionPath.type === 'oval') {
         applyOvalMask(ctx, selectionPath, bounds)
+    } else if (selectionPath.type === 'lasso' || selectionPath.type === 'polygon') {
+        applyPolygonMask(ctx, selectionPath.points, bounds)
+    } else if (selectionPath.type === 'wand' || selectionPath.type === 'mask') {
+        const mask = selectionPath.type === 'wand' ? selectionPath.mask : selectionPath.data
+        applyImageMask(ctx, mask, bounds)
     }
 
     // Convert to blob and write to clipboard
@@ -89,15 +94,61 @@ function getSelectionBounds(selectionPath) {
             width: Math.round(selectionPath.width),
             height: Math.round(selectionPath.height)
         }
-    } else {
-        // Oval bounding box
+    } else if (selectionPath.type === 'oval') {
         return {
             x: Math.round(selectionPath.cx - selectionPath.rx),
             y: Math.round(selectionPath.cy - selectionPath.ry),
             width: Math.round(selectionPath.rx * 2),
             height: Math.round(selectionPath.ry * 2)
         }
+    } else if (selectionPath.type === 'lasso' || selectionPath.type === 'polygon') {
+        const points = selectionPath.points
+        if (points.length === 0) return { x: 0, y: 0, width: 0, height: 0 }
+
+        let minX = points[0].x, maxX = points[0].x
+        let minY = points[0].y, maxY = points[0].y
+
+        for (const pt of points) {
+            minX = Math.min(minX, pt.x)
+            maxX = Math.max(maxX, pt.x)
+            minY = Math.min(minY, pt.y)
+            maxY = Math.max(maxY, pt.y)
+        }
+
+        return {
+            x: Math.round(minX),
+            y: Math.round(minY),
+            width: Math.round(maxX - minX),
+            height: Math.round(maxY - minY)
+        }
+    } else if (selectionPath.type === 'wand' || selectionPath.type === 'mask') {
+        const mask = selectionPath.type === 'wand' ? selectionPath.mask : selectionPath.data
+        let minX = mask.width, maxX = 0
+        let minY = mask.height, maxY = 0
+
+        for (let y = 0; y < mask.height; y++) {
+            for (let x = 0; x < mask.width; x++) {
+                const idx = (y * mask.width + x) * 4 + 3
+                if (mask.data[idx] > 127) {
+                    minX = Math.min(minX, x)
+                    maxX = Math.max(maxX, x)
+                    minY = Math.min(minY, y)
+                    maxY = Math.max(maxY, y)
+                }
+            }
+        }
+
+        if (minX > maxX) return { x: 0, y: 0, width: 0, height: 0 }
+
+        return {
+            x: minX,
+            y: minY,
+            width: maxX - minX + 1,
+            height: maxY - minY + 1
+        }
     }
+
+    return { x: 0, y: 0, width: 0, height: 0 }
 }
 
 /**
@@ -121,4 +172,60 @@ function applyOvalMask(ctx, selectionPath, bounds) {
     ctx.globalCompositeOperation = 'source-over'
 }
 
-export { copySelection, pasteFromClipboard, getSelectionBounds }
+/**
+ * Apply polygon mask to canvas context
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Array<{x: number, y: number}>} points
+ * @param {{x: number, y: number, width: number, height: number}} bounds
+ */
+function applyPolygonMask(ctx, points, bounds) {
+    if (points.length < 3) return
+
+    ctx.globalCompositeOperation = 'destination-in'
+    ctx.beginPath()
+    ctx.moveTo(points[0].x - bounds.x, points[0].y - bounds.y)
+    for (let i = 1; i < points.length; i++) {
+        ctx.lineTo(points[i].x - bounds.x, points[i].y - bounds.y)
+    }
+    ctx.closePath()
+    ctx.fill()
+    ctx.globalCompositeOperation = 'source-over'
+}
+
+/**
+ * Apply image mask to canvas context
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {ImageData} mask
+ * @param {{x: number, y: number, width: number, height: number}} bounds
+ */
+function applyImageMask(ctx, mask, bounds) {
+    // Get current image data
+    const imageData = ctx.getImageData(0, 0, bounds.width, bounds.height)
+
+    // Apply mask alpha
+    for (let y = 0; y < bounds.height; y++) {
+        for (let x = 0; x < bounds.width; x++) {
+            const srcX = bounds.x + x
+            const srcY = bounds.y + y
+
+            if (srcX < 0 || srcX >= mask.width || srcY < 0 || srcY >= mask.height) {
+                // Outside mask bounds - clear pixel
+                const idx = (y * bounds.width + x) * 4
+                imageData.data[idx + 3] = 0
+            } else {
+                const maskIdx = (srcY * mask.width + srcX) * 4 + 3
+                const maskAlpha = mask.data[maskIdx]
+
+                if (maskAlpha <= 127) {
+                    // Not selected - clear pixel
+                    const idx = (y * bounds.width + x) * 4
+                    imageData.data[idx + 3] = 0
+                }
+            }
+        }
+    }
+
+    ctx.putImageData(imageData, 0, 0)
+}
+
+export { copySelection, pasteFromClipboard, getSelectionBounds, applyPolygonMask, applyImageMask }
