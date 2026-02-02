@@ -95,6 +95,11 @@ class LayersApp {
             this._selectionManager.init(this._selectionOverlay)
         }
 
+        // Set source canvas for magic wand
+        if (this._selectionManager) {
+            this._selectionManager.setSourceCanvas(this._canvas)
+        }
+
         if (!this._canvas) {
             console.error('[Layers] Canvas not found')
             return
@@ -768,6 +773,28 @@ class LayersApp {
             this._setSelectionTool('oval')
         })
 
+        document.getElementById('selectLassoMenuItem')?.addEventListener('click', () => {
+            this._setSelectionTool('lasso')
+        })
+
+        document.getElementById('selectPolygonMenuItem')?.addEventListener('click', () => {
+            this._setSelectionTool('polygon')
+        })
+
+        document.getElementById('selectWandMenuItem')?.addEventListener('click', () => {
+            this._setSelectionTool('wand')
+        })
+
+        // Tolerance slider
+        document.getElementById('wandTolerance')?.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value, 10)
+            if (this._selectionManager) {
+                this._selectionManager.wandTolerance = value
+            }
+            const display = document.getElementById('wandToleranceValue')
+            if (display) display.textContent = value
+        })
+
         // Play/pause button
         document.getElementById('playPauseBtn')?.addEventListener('click', () => {
             this._togglePlayPause()
@@ -853,12 +880,6 @@ class LayersApp {
                 }
             }
 
-            // M - cycle selection tools
-            if (e.key === 'm' || e.key === 'M') {
-                const current = this._selectionManager?.currentTool
-                this._setSelectionTool(current === 'rectangle' ? 'oval' : 'rectangle')
-            }
-
             // Escape - clear selection
             if (e.key === 'Escape') {
                 if (this._selectionManager?.hasSelection()) {
@@ -910,7 +931,7 @@ class LayersApp {
 
     /**
      * Set the current selection tool
-     * @param {'rectangle' | 'oval'} tool
+     * @param {'rectangle' | 'oval' | 'lasso' | 'polygon' | 'wand'} tool
      * @private
      */
     _setSelectionTool(tool) {
@@ -919,13 +940,29 @@ class LayersApp {
         this._selectionManager.currentTool = tool
 
         // Update menu checkmarks
-        const rectItem = document.getElementById('selectRectMenuItem')
-        const ovalItem = document.getElementById('selectOvalMenuItem')
-        const icon = document.getElementById('selectionToolIcon')
+        const items = ['Rect', 'Oval', 'Lasso', 'Polygon', 'Wand']
+        const tools = ['rectangle', 'oval', 'lasso', 'polygon', 'wand']
+        items.forEach((item, i) => {
+            const el = document.getElementById(`select${item}MenuItem`)
+            if (el) el.classList.toggle('checked', tools[i] === tool)
+        })
 
-        if (rectItem) rectItem.classList.toggle('checked', tool === 'rectangle')
-        if (ovalItem) ovalItem.classList.toggle('checked', tool === 'oval')
-        if (icon) icon.textContent = tool === 'rectangle' ? 'square' : 'lens'
+        // Update icon
+        const icon = document.getElementById('selectionToolIcon')
+        const icons = {
+            rectangle: 'square',
+            oval: 'lens',
+            lasso: 'gesture',
+            polygon: 'pentagon',
+            wand: 'auto_fix_high'
+        }
+        if (icon) icon.textContent = icons[tool] || 'square'
+
+        // Show/hide tolerance slider
+        const toleranceRow = document.getElementById('wandToleranceRow')
+        if (toleranceRow) {
+            toleranceRow.classList.toggle('hide', tool !== 'wand')
+        }
     }
 
     /**
