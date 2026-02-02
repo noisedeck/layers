@@ -297,6 +297,59 @@ export class LayersRenderer {
     }
 
     /**
+     * Try to compile DSL without side effects
+     * @param {string} dsl - DSL to compile
+     * @returns {Promise<{success: boolean, error?: string}>}
+     */
+    async tryCompile(dsl) {
+        if (!dsl || dsl.trim() === '') {
+            return { success: true }
+        }
+
+        try {
+            // Extract and load required effects (this is idempotent)
+            const effectData = extractEffectNamesFromDsl(dsl, this._renderer.manifest || {})
+            const effectIds = effectData.map(e => e.effectId)
+
+            const registeredEffects = getAllEffects()
+            const effectIdsToLoad = effectIds.filter(id => {
+                const dotKey = id.replace('/', '.')
+                return !registeredEffects.has(id) && !registeredEffects.has(dotKey)
+            })
+
+            if (effectIdsToLoad.length > 0) {
+                await this._renderer.loadEffects(effectIdsToLoad)
+            }
+
+            // Try to compile - this validates the DSL
+            // Note: This DOES have side effects on the renderer, but we'll
+            // recompile the old DSL on rollback if needed
+            await this._renderer.compile(dsl)
+
+            return { success: true }
+        } catch (err) {
+            console.error('[LayersRenderer] tryCompile failed:', err)
+            return {
+                success: false,
+                error: err.message || String(err)
+            }
+        }
+    }
+
+    /**
+     * Build DSL from a given layers array (for validation)
+     * @param {Array} layers - Layer array to build DSL from
+     * @returns {string} DSL program
+     */
+    buildDslFromLayers(layers) {
+        const originalLayers = this._layers
+        this._layers = layers
+        const dsl = this._buildDsl()
+        this._layers = originalLayers
+        return dsl
+    }
+
+    /**
      * Build mapping from layer IDs to pipeline step indices
      * @private
      */
