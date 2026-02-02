@@ -933,34 +933,12 @@ export class LayersRenderer {
     }
 
     /**
-     * Build a media call string with offset parameters
+     * Build a media call string
      * @param {object} layer - Layer object
      * @returns {string} Media call DSL
      * @private
      */
     _buildMediaCall(layer) {
-        const offsetX = layer.offsetX || 0
-        const offsetY = layer.offsetY || 0
-
-        // Convert pixel offsets to media effect's -100 to 100 range
-        // The shader maps offsetX -100 to 100 => roughly -1.5 to 1.5 * resolution
-        // So: pixel offset = shaderOffset / 100 * resolution * 1.5
-        // Therefore: shaderOffset = pixelOffset / resolution / 1.5 * 100
-        const normalizedX = (offsetX / this.width) / 1.5 * 100
-        const normalizedY = (offsetY / this.height) / 1.5 * 100
-
-        // Clamp to valid range and only include if non-zero
-        const params = []
-        if (Math.abs(normalizedX) > 0.01) {
-            params.push(`offsetX: ${Math.max(-100, Math.min(100, normalizedX)).toFixed(2)}`)
-        }
-        if (Math.abs(normalizedY) > 0.01) {
-            params.push(`offsetY: ${Math.max(-100, Math.min(100, normalizedY)).toFixed(2)}`)
-        }
-
-        if (params.length > 0) {
-            return `media(${params.join(', ')})`
-        }
         return 'media()'
     }
 
