@@ -567,6 +567,136 @@ class LayersApp {
     }
 
     /**
+     * Calculate new layer order based on drop position
+     * @param {string} sourceId - ID of layer being moved
+     * @param {string} targetId - ID of drop target layer
+     * @param {string} dropPosition - 'above' or 'below'
+     * @returns {Array|null} New layer order, or null if invalid
+     * @private
+     */
+    _calculateNewOrder(sourceId, targetId, dropPosition) {
+        const layers = [...this._layers]
+
+        const sourceIdx = layers.findIndex(l => l.id === sourceId)
+        const targetIdx = layers.findIndex(l => l.id === targetId)
+
+        // Validate
+        if (sourceIdx === -1 || targetIdx === -1) return null
+        if (sourceIdx === 0) return null  // can't move base layer
+        if (sourceIdx === targetIdx) return null  // dropping on self
+
+        // Remove source
+        const [sourceLayer] = layers.splice(sourceIdx, 1)
+
+        // Calculate insert position on the MODIFIED array
+        let insertIdx = targetIdx
+        if (sourceIdx < targetIdx) {
+            // Source was above target, target shifted up by 1
+            insertIdx = targetIdx - 1
+        }
+
+        // Adjust for drop position
+        // In our UI: higher index = visually higher (top of stack)
+        // dropPosition 'above' means visually above = higher index
+        // dropPosition 'below' means visually below = same or lower index
+        if (dropPosition === 'above') {
+            insertIdx = insertIdx + 1
+        }
+        // Ensure we never place at or below base layer (index 0)
+        insertIdx = Math.max(1, insertIdx)
+
+        layers.splice(insertIdx, 0, sourceLayer)
+        return layers
+    }
+
+    /**
+     * FSM: Process drop operation (DRAGGING → PROCESSING → IDLE or ROLLING_BACK)
+     * @param {string} targetId - ID of drop target layer
+     * @param {string} dropPosition - 'above' or 'below'
+     * @private
+     */
+    async _processDrop(targetId, dropPosition) {
+        if (this._reorderState !== 'DRAGGING') {
+            console.warn('[Layers] Cannot process drop - not in DRAGGING state')
+            return
+        }
+
+        const sourceId = this._reorderSource?.layerId
+        if (!sourceId) {
+            this._cancelDrag()
+            return
+        }
+
+        this._reorderState = 'PROCESSING'
+        console.debug('[Layers] FSM: DRAGGING → PROCESSING', { sourceId, targetId, dropPosition })
+
+        // Clear visual indicators
+        this._clearDragIndicators()
+
+        // Calculate new order
+        const newLayers = this._calculateNewOrder(sourceId, targetId, dropPosition)
+        if (!newLayers) {
+            console.debug('[Layers] Invalid reorder - returning to IDLE')
+            this._reorderState = 'IDLE'
+            this._reorderSnapshot = null
+            this._reorderSource = null
+            return
+        }
+
+        // Generate and validate new DSL
+        try {
+            const newDsl = this._renderer.buildDslFromLayers(newLayers)
+            const result = await this._renderer.tryCompile(newDsl)
+
+            if (result.success) {
+                // Commit the change
+                this._layers = newLayers
+                await this._rebuild()
+                this._updateLayerStack()
+                this._updateLayerZIndex()
+                this._markDirty()
+
+                this._reorderState = 'IDLE'
+                this._reorderSnapshot = null
+                this._reorderSource = null
+
+                console.debug('[Layers] FSM: PROCESSING → IDLE (success)')
+            } else {
+                // Validation failed - rollback
+                await this._rollback(result.error || 'DSL validation failed')
+            }
+        } catch (err) {
+            await this._rollback(err.message || String(err))
+        }
+    }
+
+    /**
+     * FSM: Rollback failed reorder (PROCESSING → ROLLING_BACK → IDLE)
+     * @param {string} error - Error message
+     * @private
+     */
+    async _rollback(error) {
+        this._reorderState = 'ROLLING_BACK'
+        console.debug('[Layers] FSM: PROCESSING → ROLLING_BACK', { error })
+
+        // Restore snapshot
+        if (this._reorderSnapshot) {
+            this._layers = this._reorderSnapshot.layers
+            await this._rebuild()
+            this._updateLayerStack()
+        }
+
+        // Show error to user
+        toast.error(`Layer reorder failed: ${error}. Changes reverted.`)
+
+        this._reorderState = 'IDLE'
+        this._reorderSnapshot = null
+        this._reorderSource = null
+
+        console.debug('[Layers] FSM: ROLLING_BACK → IDLE')
+    }
+
+    /**
      * Update the layer stack component
      * @private
      */
