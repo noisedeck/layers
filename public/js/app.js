@@ -1024,75 +1024,122 @@ class LayersApp {
 
         const selectionPath = this._selectionManager.selectionPath
         const activeLayer = this._getActiveLayer()
-        if (!activeLayer) return
+        if (!activeLayer || activeLayer.sourceType !== 'media') return
 
         const bounds = getSelectionBounds(selectionPath)
         if (bounds.width <= 0 || bounds.height <= 0) return
 
-        // Get pixels from current layer within selection
-        // Create offscreen canvas at full canvas size
-        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
-        const ctx = offscreen.getContext('2d')
+        // Get the source layer's current image
+        const sourceImg = await this._getLayerImage(activeLayer)
+        if (!sourceImg) return
 
-        // Draw the current layer's content
-        // For now, use the main canvas as source (composited view)
-        ctx.drawImage(this._canvas, 0, 0)
+        // Create canvas for the extracted selection
+        const extractedCanvas = new OffscreenCanvas(this._canvas.width, this._canvas.height)
+        const extractedCtx = extractedCanvas.getContext('2d')
 
-        // Create mask canvas
+        // Create canvas for the source with hole
+        const sourceCanvas = new OffscreenCanvas(sourceImg.width, sourceImg.height)
+        const sourceCtx = sourceCanvas.getContext('2d')
+        sourceCtx.drawImage(sourceImg, 0, 0)
+
+        // Draw source to extracted canvas
+        extractedCtx.drawImage(sourceImg, 0, 0)
+
+        // Create selection mask
         const maskCanvas = new OffscreenCanvas(this._canvas.width, this._canvas.height)
         const maskCtx = maskCanvas.getContext('2d')
-        maskCtx.fillStyle = 'white'
+        this._drawSelectionMask(maskCtx, selectionPath)
 
-        if (selectionPath.type === 'rect') {
-            maskCtx.fillRect(bounds.x, bounds.y, bounds.width, bounds.height)
-        } else if (selectionPath.type === 'oval') {
-            maskCtx.beginPath()
-            maskCtx.ellipse(selectionPath.cx, selectionPath.cy, selectionPath.rx, selectionPath.ry, 0, 0, Math.PI * 2)
-            maskCtx.fill()
-        } else if (selectionPath.type === 'lasso' || selectionPath.type === 'polygon') {
-            if (selectionPath.points.length >= 3) {
-                maskCtx.beginPath()
-                maskCtx.moveTo(selectionPath.points[0].x, selectionPath.points[0].y)
-                for (let i = 1; i < selectionPath.points.length; i++) {
-                    maskCtx.lineTo(selectionPath.points[i].x, selectionPath.points[i].y)
-                }
-                maskCtx.closePath()
-                maskCtx.fill()
-            }
-        } else if (selectionPath.type === 'wand' || selectionPath.type === 'mask') {
-            const mask = selectionPath.type === 'wand' ? selectionPath.mask : selectionPath.data
-            maskCtx.putImageData(mask, 0, 0)
-        }
+        // Apply mask to extracted (keep only selected pixels)
+        extractedCtx.globalCompositeOperation = 'destination-in'
+        extractedCtx.drawImage(maskCanvas, 0, 0)
+        extractedCtx.globalCompositeOperation = 'source-over'
 
-        // Apply mask to extracted content
-        ctx.globalCompositeOperation = 'destination-in'
-        ctx.drawImage(maskCanvas, 0, 0)
-        ctx.globalCompositeOperation = 'source-over'
+        // Clear selected pixels from source (punch hole)
+        sourceCtx.globalCompositeOperation = 'destination-out'
+        sourceCtx.drawImage(maskCanvas, 0, 0)
+        sourceCtx.globalCompositeOperation = 'source-over'
 
-        // Convert to blob and create new layer
-        const blob = await offscreen.convertToBlob({ type: 'image/png' })
-        const file = new File([blob], 'extracted-selection.png', { type: 'image/png' })
+        // Update source layer with hole
+        const sourceBlob = await sourceCanvas.convertToBlob({ type: 'image/png' })
+        const sourceFile = new File([sourceBlob], activeLayer.mediaFile?.name || 'layer.png', { type: 'image/png' })
+        activeLayer.mediaFile = sourceFile
+        await this._renderer.loadMedia(activeLayer.id, sourceFile, 'image')
 
-        // Find insertion index (immediately above active layer)
-        const activeIndex = this._layers.findIndex(l => l.id === activeLayer.id)
+        // Create extracted layer
+        const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
+        const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
 
-        // Create and insert the new layer
         const { createMediaLayer } = await import('./layers/layer-model.js')
-        const newLayer = createMediaLayer(file, 'image', 'Moved Selection')
+        const newLayer = createMediaLayer(extractedFile, 'image', 'Moved Selection')
 
         // Insert after active layer
+        const activeIndex = this._layers.findIndex(l => l.id === activeLayer.id)
         this._layers.splice(activeIndex + 1, 0, newLayer)
 
-        // Load media
-        await this._renderer.loadMedia(newLayer.id, file, 'image')
+        await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
 
         // Select the new layer
         this._layerStack.selectLayer(newLayer.id)
 
-        // Update and rebuild
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
+    }
+
+    /**
+     * Get image element for a layer
+     * @param {object} layer
+     * @returns {Promise<HTMLImageElement|null>}
+     * @private
+     */
+    async _getLayerImage(layer) {
+        if (!layer.mediaFile) return null
+
+        return new Promise((resolve) => {
+            const img = new Image()
+            const url = URL.createObjectURL(layer.mediaFile)
+            img.onload = () => {
+                URL.revokeObjectURL(url)
+                resolve(img)
+            }
+            img.onerror = () => {
+                URL.revokeObjectURL(url)
+                resolve(null)
+            }
+            img.src = url
+        })
+    }
+
+    /**
+     * Draw selection mask to canvas context
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {object} selectionPath
+     * @private
+     */
+    _drawSelectionMask(ctx, selectionPath) {
+        ctx.fillStyle = 'white'
+
+        if (selectionPath.type === 'rect') {
+            ctx.fillRect(selectionPath.x, selectionPath.y, selectionPath.width, selectionPath.height)
+        } else if (selectionPath.type === 'oval') {
+            ctx.beginPath()
+            ctx.ellipse(selectionPath.cx, selectionPath.cy, selectionPath.rx, selectionPath.ry, 0, 0, Math.PI * 2)
+            ctx.fill()
+        } else if (selectionPath.type === 'lasso' || selectionPath.type === 'polygon') {
+            if (selectionPath.points.length >= 3) {
+                ctx.beginPath()
+                ctx.moveTo(selectionPath.points[0].x, selectionPath.points[0].y)
+                for (let i = 1; i < selectionPath.points.length; i++) {
+                    ctx.lineTo(selectionPath.points[i].x, selectionPath.points[i].y)
+                }
+                ctx.closePath()
+                ctx.fill()
+            }
+        } else if (selectionPath.type === 'wand' || selectionPath.type === 'mask') {
+            const mask = selectionPath.type === 'wand' ? selectionPath.mask : selectionPath.data
+            ctx.putImageData(mask, 0, 0)
+        }
     }
 
     /**
