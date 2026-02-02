@@ -34,11 +34,17 @@
  */
 
 /**
+ * @typedef {Object} PolygonSelection
+ * @property {'polygon'} type
+ * @property {Array<{x: number, y: number}>} points
+ */
+
+/**
  * @typedef {'replace' | 'add' | 'subtract'} SelectionMode
  */
 
 /**
- * @typedef {RectSelection | OvalSelection | LassoSelection | null} SelectionPath
+ * @typedef {RectSelection | OvalSelection | LassoSelection | PolygonSelection | null} SelectionPath
  */
 
 class SelectionManager {
@@ -75,6 +81,12 @@ class SelectionManager {
 
         /** @type {Array<{x: number, y: number}>} */
         this._lassoPoints = []
+
+        /** @type {Array<{x: number, y: number}>} */
+        this._polygonPoints = []
+
+        /** @type {boolean} */
+        this._isPolygonDrawing = false
     }
 
     /**
@@ -140,6 +152,8 @@ class SelectionManager {
         this._overlay.addEventListener('mousemove', (e) => this._handleMouseMove(e))
         this._overlay.addEventListener('mouseup', (e) => this._handleMouseUp(e))
         this._overlay.addEventListener('mouseleave', (e) => this._handleMouseUp(e))
+        this._overlay.addEventListener('dblclick', (e) => this._handleDoubleClick(e))
+        document.addEventListener('keydown', (e) => this._handleKeyDown(e))
     }
 
     /**
@@ -160,6 +174,13 @@ class SelectionManager {
      * @private
      */
     _handleMouseDown(e) {
+        if (this._currentTool === 'polygon') {
+            const coords = this._getCanvasCoords(e)
+            this._selectionMode = this._getModeFromEvent(e)
+            this._handlePolygonClick(coords, e)
+            return
+        }
+
         const coords = this._getCanvasCoords(e)
         this._selectionMode = this._getModeFromEvent(e)
 
@@ -187,6 +208,12 @@ class SelectionManager {
      * @private
      */
     _handleMouseMove(e) {
+        if (this._currentTool === 'polygon' && this._isPolygonDrawing) {
+            const coords = this._getCanvasCoords(e)
+            this._updatePolygonPreview(coords)
+            return
+        }
+
         if (!this._isDrawing || !this._drawStart) return
 
         const coords = this._getCanvasCoords(e)
@@ -316,6 +343,118 @@ class SelectionManager {
             return this._ctx.isPointInPath(x, y)
         }
         return false
+    }
+
+    /**
+     * Handle polygon tool click
+     * @param {{x: number, y: number}} coords
+     * @param {MouseEvent} e
+     * @private
+     */
+    _handlePolygonClick(coords, e) {
+        const CLOSE_THRESHOLD = 10
+
+        // Check if clicking near start point to close
+        if (this._polygonPoints.length >= 3) {
+            const start = this._polygonPoints[0]
+            const dist = Math.hypot(coords.x - start.x, coords.y - start.y)
+            if (dist < CLOSE_THRESHOLD) {
+                this._finishPolygon()
+                return
+            }
+        }
+
+        // Add point
+        this._polygonPoints.push(coords)
+        this._isPolygonDrawing = true
+        this._updatePolygonPreview(coords)
+    }
+
+    /**
+     * Finish polygon selection
+     * @private
+     */
+    _finishPolygon() {
+        if (this._polygonPoints.length >= 3) {
+            this._selectionPath = {
+                type: 'polygon',
+                points: [...this._polygonPoints]
+            }
+            this._startAnimation()
+        }
+        this._polygonPoints = []
+        this._isPolygonDrawing = false
+    }
+
+    /**
+     * Update polygon preview with cursor position
+     * @param {{x: number, y: number}} cursor
+     * @private
+     */
+    _updatePolygonPreview(cursor) {
+        this._clearOverlay()
+        if (!this._ctx || this._polygonPoints.length === 0) return
+
+        this._ctx.setLineDash([5, 5])
+        this._ctx.strokeStyle = '#000'
+        this._ctx.lineWidth = 1
+
+        // Draw placed points
+        this._ctx.beginPath()
+        this._ctx.moveTo(this._polygonPoints[0].x, this._polygonPoints[0].y)
+        for (let i = 1; i < this._polygonPoints.length; i++) {
+            this._ctx.lineTo(this._polygonPoints[i].x, this._polygonPoints[i].y)
+        }
+        // Line to cursor
+        this._ctx.lineTo(cursor.x, cursor.y)
+        this._ctx.stroke()
+
+        // White offset stroke
+        this._ctx.strokeStyle = '#fff'
+        this._ctx.lineDashOffset = 5
+        this._ctx.beginPath()
+        this._ctx.moveTo(this._polygonPoints[0].x, this._polygonPoints[0].y)
+        for (let i = 1; i < this._polygonPoints.length; i++) {
+            this._ctx.lineTo(this._polygonPoints[i].x, this._polygonPoints[i].y)
+        }
+        this._ctx.lineTo(cursor.x, cursor.y)
+        this._ctx.stroke()
+        this._ctx.lineDashOffset = 0
+
+        // Draw vertex dots
+        this._ctx.fillStyle = '#fff'
+        this._ctx.strokeStyle = '#000'
+        this._ctx.setLineDash([])
+        for (const pt of this._polygonPoints) {
+            this._ctx.beginPath()
+            this._ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2)
+            this._ctx.fill()
+            this._ctx.stroke()
+        }
+    }
+
+    /**
+     * Handle double click (finish polygon)
+     * @param {MouseEvent} e
+     * @private
+     */
+    _handleDoubleClick(e) {
+        if (this._currentTool === 'polygon' && this._isPolygonDrawing) {
+            this._finishPolygon()
+        }
+    }
+
+    /**
+     * Handle keydown (escape cancels polygon)
+     * @param {KeyboardEvent} e
+     * @private
+     */
+    _handleKeyDown(e) {
+        if (e.key === 'Escape' && this._isPolygonDrawing) {
+            this._polygonPoints = []
+            this._isPolygonDrawing = false
+            this._clearOverlay()
+        }
     }
 
     /**
