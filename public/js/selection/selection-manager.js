@@ -398,6 +398,13 @@ class SelectionManager {
             }
             this._ctx.closePath()
             return this._ctx.isPointInPath(x, y)
+        } else if (path.type === 'wand' || path.type === 'mask') {
+            const mask = path.type === 'wand' ? path.mask : path.data
+            const px = Math.round(x)
+            const py = Math.round(y)
+            if (px < 0 || px >= mask.width || py < 0 || py >= mask.height) return false
+            const idx = (py * mask.width + px) * 4 + 3
+            return mask.data[idx] > 127
         }
         return false
     }
@@ -628,25 +635,84 @@ class SelectionManager {
     }
 
     /**
-     * Draw marching ants (animated selection border)
+     * Draw marching ants for mask selection (edge detection)
      * @private
      */
-    _drawMarchingAnts() {
+    _drawMaskAnts() {
         this._clearOverlay()
-        if (!this._selectionPath || !this._ctx) return
+        const path = this._selectionPath
+        if (!path || (path.type !== 'wand' && path.type !== 'mask')) return
+        if (!this._ctx) return
+
+        const mask = path.type === 'wand' ? path.mask : path.data
+        const { width, height, data } = mask
 
         this._ctx.setLineDash([5, 5])
         this._ctx.lineWidth = 1
 
-        // Black stroke
+        // Find edges and draw
+        const edges = []
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const idx = (y * width + x) * 4
+                const selected = data[idx + 3] > 127
+
+                if (!selected) continue
+
+                // Check if this is an edge pixel
+                const isEdge =
+                    x === 0 || x === width - 1 || y === 0 || y === height - 1 ||
+                    data[((y - 1) * width + x) * 4 + 3] <= 127 ||
+                    data[((y + 1) * width + x) * 4 + 3] <= 127 ||
+                    data[(y * width + x - 1) * 4 + 3] <= 127 ||
+                    data[(y * width + x + 1) * 4 + 3] <= 127
+
+                if (isEdge) {
+                    edges.push({ x, y })
+                }
+            }
+        }
+
+        // Draw edge pixels as small rectangles
         this._ctx.strokeStyle = '#000'
         this._ctx.lineDashOffset = this._dashOffset
-        this._strokePath()
+        for (const { x, y } of edges) {
+            this._ctx.strokeRect(x, y, 1, 1)
+        }
 
-        // White stroke offset
         this._ctx.strokeStyle = '#fff'
         this._ctx.lineDashOffset = this._dashOffset + 5
-        this._strokePath()
+        for (const { x, y } of edges) {
+            this._ctx.strokeRect(x, y, 1, 1)
+        }
+    }
+
+    /**
+     * Draw marching ants (animated selection border)
+     * @private
+     */
+    _drawMarchingAnts() {
+        if (!this._selectionPath) return
+
+        if (this._selectionPath.type === 'wand' || this._selectionPath.type === 'mask') {
+            this._drawMaskAnts()
+        } else {
+            this._clearOverlay()
+            if (!this._ctx) return
+
+            this._ctx.setLineDash([5, 5])
+            this._ctx.lineWidth = 1
+
+            // Black stroke
+            this._ctx.strokeStyle = '#000'
+            this._ctx.lineDashOffset = this._dashOffset
+            this._strokePath()
+
+            // White stroke offset
+            this._ctx.strokeStyle = '#fff'
+            this._ctx.lineDashOffset = this._dashOffset + 5
+            this._strokePath()
+        }
     }
 
     /**
