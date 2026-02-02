@@ -107,6 +107,9 @@ class SelectionManager {
 
         /** @type {HTMLCanvasElement | null} */
         this._sourceCanvas = null
+
+        /** @type {SelectionPath} */
+        this._previousSelection = null
     }
 
     /**
@@ -201,6 +204,125 @@ class SelectionManager {
     }
 
     /**
+     * Rasterize current selection to mask
+     * @returns {ImageData | null}
+     * @private
+     */
+    _rasterizeSelection() {
+        if (!this._selectionPath || !this._overlay) return null
+
+        const { width, height } = this._overlay
+        const path = this._selectionPath
+
+        // Already a mask
+        if (path.type === 'wand') return path.mask
+        if (path.type === 'mask') return path.data
+
+        // Rasterize vector path
+        const offscreen = new OffscreenCanvas(width, height)
+        const ctx = offscreen.getContext('2d')
+
+        ctx.fillStyle = 'white'
+
+        if (path.type === 'rect') {
+            ctx.fillRect(path.x, path.y, path.width, path.height)
+        } else if (path.type === 'oval') {
+            ctx.beginPath()
+            ctx.ellipse(path.cx, path.cy, path.rx, path.ry, 0, 0, Math.PI * 2)
+            ctx.fill()
+        } else if (path.type === 'lasso' || path.type === 'polygon') {
+            if (path.points.length >= 3) {
+                ctx.beginPath()
+                ctx.moveTo(path.points[0].x, path.points[0].y)
+                for (let i = 1; i < path.points.length; i++) {
+                    ctx.lineTo(path.points[i].x, path.points[i].y)
+                }
+                ctx.closePath()
+                ctx.fill()
+            }
+        }
+
+        return ctx.getImageData(0, 0, width, height)
+    }
+
+    /**
+     * Combine two masks with given operation
+     * @param {ImageData} maskA
+     * @param {ImageData} maskB
+     * @param {'add' | 'subtract'} operation
+     * @returns {ImageData}
+     * @private
+     */
+    _combineMasks(maskA, maskB, operation) {
+        const width = maskA.width
+        const height = maskA.height
+        const result = new Uint8ClampedArray(maskA.data.length)
+
+        for (let i = 0; i < maskA.data.length; i += 4) {
+            const a = maskA.data[i + 3] > 127
+            const b = maskB.data[i + 3] > 127
+
+            let selected
+            if (operation === 'add') {
+                selected = a || b
+            } else {
+                selected = a && !b
+            }
+
+            const val = selected ? 255 : 0
+            result[i] = val
+            result[i + 1] = val
+            result[i + 2] = val
+            result[i + 3] = val
+        }
+
+        return new ImageData(result, width, height)
+    }
+
+    /**
+     * Apply new selection with current mode
+     * @param {SelectionPath} newSelection
+     * @private
+     */
+    _applySelectionWithMode(newSelection) {
+        if (this._selectionMode === 'replace' || !this._previousSelection) {
+            this._selectionPath = newSelection
+            return
+        }
+
+        // Need to combine - rasterize both
+        this._selectionPath = this._previousSelection
+        const oldMask = this._rasterizeSelection()
+        this._selectionPath = newSelection
+        const newMask = this._rasterizeSelection()
+
+        if (!oldMask || !newMask) {
+            this._selectionPath = newSelection
+            return
+        }
+
+        const combined = this._combineMasks(oldMask, newMask, this._selectionMode)
+
+        // Check if anything is selected
+        let hasSelection = false
+        for (let i = 3; i < combined.data.length; i += 4) {
+            if (combined.data[i] > 127) {
+                hasSelection = true
+                break
+            }
+        }
+
+        if (hasSelection) {
+            this._selectionPath = {
+                type: 'mask',
+                data: combined
+            }
+        } else {
+            this._selectionPath = null
+        }
+    }
+
+    /**
      * Get selection mode from modifier keys
      * @param {MouseEvent|KeyboardEvent} e
      * @returns {SelectionMode}
@@ -221,6 +343,7 @@ class SelectionManager {
         if (this._currentTool === 'polygon') {
             const coords = this._getCanvasCoords(e)
             this._selectionMode = this._getModeFromEvent(e)
+            this._previousSelection = this._selectionPath
             this._handlePolygonClick(coords, e)
             return
         }
@@ -228,6 +351,7 @@ class SelectionManager {
         if (this._currentTool === 'wand') {
             const coords = this._getCanvasCoords(e)
             this._selectionMode = this._getModeFromEvent(e)
+            this._previousSelection = this._selectionPath
 
             // Clear existing if replace mode
             if (this._selectionMode === 'replace' && this._selectionPath) {
@@ -245,6 +369,9 @@ class SelectionManager {
         if (this._selectionPath && !this._isPointInSelection(coords.x, coords.y)) {
             this.clearSelection()
         }
+
+        // Store previous selection for combining
+        this._previousSelection = this._selectionPath
 
         // Start drawing new selection
         this._isDrawing = true
@@ -305,9 +432,16 @@ class SelectionManager {
             const path = this._selectionPath
             const hasSize = path.type === 'rect'
                 ? (path.width > 2 && path.height > 2)
-                : (path.rx > 1 && path.ry > 1)
+                : path.type === 'oval'
+                    ? (path.rx > 1 && path.ry > 1)
+                    : path.type === 'lasso' || path.type === 'polygon'
+                        ? path.points.length >= 3
+                        : true
 
             if (hasSize) {
+                if (this._selectionMode !== 'replace' && this._previousSelection) {
+                    this._applySelectionWithMode(this._selectionPath)
+                }
                 this._startAnimation()
             } else {
                 this.clearSelection()
@@ -440,10 +574,11 @@ class SelectionManager {
      */
     _finishPolygon() {
         if (this._polygonPoints.length >= 3) {
-            this._selectionPath = {
+            const newSelection = {
                 type: 'polygon',
                 points: [...this._polygonPoints]
             }
+            this._applySelectionWithMode(newSelection)
             this._startAnimation()
         }
         this._polygonPoints = []
@@ -542,11 +677,11 @@ class SelectionManager {
         // Perform flood fill
         const mask = floodFill(imageData, x, y, this._wandTolerance)
 
-        this._selectionPath = {
+        const newSelection = {
             type: 'wand',
             mask
         }
-
+        this._applySelectionWithMode(newSelection)
         this._startAnimation()
     }
 
