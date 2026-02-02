@@ -171,46 +171,6 @@ class LayerStack extends HTMLElement {
 
             this._updateSelection()
         })
-
-        // Listen for reorder events
-        this.addEventListener('layer-reorder', (e) => {
-            this._handleReorder(e.detail.sourceId, e.detail.targetId)
-        })
-    }
-
-    /**
-     * Handle layer reorder
-     * @param {string} sourceId - ID of layer being moved
-     * @param {string} targetId - ID of layer to move above (in visual terms)
-     * @private
-     */
-    _handleReorder(sourceId, targetId) {
-        const sourceIndex = this._layers.findIndex(l => l.id === sourceId)
-        const targetIndex = this._layers.findIndex(l => l.id === targetId)
-
-        const isInvalidMove = sourceIndex === -1 ||
-            targetIndex === -1 ||
-            sourceIndex === 0 ||
-            sourceIndex === targetIndex
-
-        if (isInvalidMove) return
-
-        const [sourceLayer] = this._layers.splice(sourceIndex, 1)
-
-        // After removal, indices shift: adjust target if source was before it
-        const adjustedTarget = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex
-
-        // Ensure we never place a layer at or before the base layer (index 0)
-        const newIndex = Math.max(1, adjustedTarget)
-
-        this._layers.splice(newIndex, 0, sourceLayer)
-        this._render()
-        this._updateSelection()
-
-        this.dispatchEvent(new CustomEvent('layers-reorder', {
-            bubbles: true,
-            detail: { layers: this._layers }
-        }))
     }
 
     /**
