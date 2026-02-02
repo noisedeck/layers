@@ -5,6 +5,8 @@
  * @module selection/selection-manager
  */
 
+import { floodFill } from './flood-fill.js'
+
 /**
  * @typedef {'rectangle' | 'oval' | 'lasso' | 'polygon' | 'wand'} SelectionTool
  */
@@ -40,11 +42,23 @@
  */
 
 /**
+ * @typedef {Object} WandSelection
+ * @property {'wand'} type
+ * @property {ImageData} mask
+ */
+
+/**
+ * @typedef {Object} MaskSelection
+ * @property {'mask'} type
+ * @property {ImageData} data
+ */
+
+/**
  * @typedef {'replace' | 'add' | 'subtract'} SelectionMode
  */
 
 /**
- * @typedef {RectSelection | OvalSelection | LassoSelection | PolygonSelection | null} SelectionPath
+ * @typedef {RectSelection | OvalSelection | LassoSelection | PolygonSelection | WandSelection | MaskSelection | null} SelectionPath
  */
 
 class SelectionManager {
@@ -87,6 +101,12 @@ class SelectionManager {
 
         /** @type {boolean} */
         this._isPolygonDrawing = false
+
+        /** @type {number} */
+        this._wandTolerance = 32
+
+        /** @type {HTMLCanvasElement | null} */
+        this._sourceCanvas = null
     }
 
     /**
@@ -113,6 +133,30 @@ class SelectionManager {
      */
     set currentTool(tool) {
         this._currentTool = tool
+    }
+
+    /**
+     * Get magic wand tolerance
+     * @returns {number}
+     */
+    get wandTolerance() {
+        return this._wandTolerance
+    }
+
+    /**
+     * Set magic wand tolerance
+     * @param {number} value
+     */
+    set wandTolerance(value) {
+        this._wandTolerance = Math.max(0, Math.min(255, value))
+    }
+
+    /**
+     * Set source canvas for magic wand sampling
+     * @param {HTMLCanvasElement} canvas
+     */
+    setSourceCanvas(canvas) {
+        this._sourceCanvas = canvas
     }
 
     /**
@@ -178,6 +222,19 @@ class SelectionManager {
             const coords = this._getCanvasCoords(e)
             this._selectionMode = this._getModeFromEvent(e)
             this._handlePolygonClick(coords, e)
+            return
+        }
+
+        if (this._currentTool === 'wand') {
+            const coords = this._getCanvasCoords(e)
+            this._selectionMode = this._getModeFromEvent(e)
+
+            // Clear existing if replace mode
+            if (this._selectionMode === 'replace' && this._selectionPath) {
+                this.clearSelection()
+            }
+
+            this._handleWandClick(coords)
             return
         }
 
@@ -455,6 +512,35 @@ class SelectionManager {
             this._isPolygonDrawing = false
             this._clearOverlay()
         }
+    }
+
+    /**
+     * Handle magic wand click
+     * @param {{x: number, y: number}} coords
+     * @private
+     */
+    _handleWandClick(coords) {
+        if (!this._sourceCanvas) {
+            console.warn('[SelectionManager] No source canvas for magic wand')
+            return
+        }
+
+        const x = Math.round(coords.x)
+        const y = Math.round(coords.y)
+
+        // Get image data from source canvas
+        const ctx = this._sourceCanvas.getContext('2d')
+        const imageData = ctx.getImageData(0, 0, this._sourceCanvas.width, this._sourceCanvas.height)
+
+        // Perform flood fill
+        const mask = floodFill(imageData, x, y, this._wandTolerance)
+
+        this._selectionPath = {
+            type: 'wand',
+            mask
+        }
+
+        this._startAnimation()
     }
 
     /**
