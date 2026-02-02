@@ -6,7 +6,7 @@
  */
 
 /**
- * @typedef {'rectangle' | 'oval'} SelectionTool
+ * @typedef {'rectangle' | 'oval' | 'lasso' | 'polygon' | 'wand'} SelectionTool
  */
 
 /**
@@ -28,11 +28,17 @@
  */
 
 /**
+ * @typedef {Object} LassoSelection
+ * @property {'lasso'} type
+ * @property {Array<{x: number, y: number}>} points
+ */
+
+/**
  * @typedef {'replace' | 'add' | 'subtract'} SelectionMode
  */
 
 /**
- * @typedef {RectSelection | OvalSelection | null} SelectionPath
+ * @typedef {RectSelection | OvalSelection | LassoSelection | null} SelectionPath
  */
 
 class SelectionManager {
@@ -66,6 +72,9 @@ class SelectionManager {
 
         /** @type {SelectionMode} */
         this._selectionMode = 'replace'
+
+        /** @type {Array<{x: number, y: number}>} */
+        this._lassoPoints = []
     }
 
     /**
@@ -164,6 +173,12 @@ class SelectionManager {
         this._drawStart = coords
         this._selectionPath = null
         this._stopAnimation()
+
+        // Reset lasso points
+        this._lassoPoints = []
+        if (this._currentTool === 'lasso') {
+            this._lassoPoints.push(coords)
+        }
     }
 
     /**
@@ -176,6 +191,16 @@ class SelectionManager {
 
         const coords = this._getCanvasCoords(e)
         const constrain = e.shiftKey
+
+        if (this._currentTool === 'lasso' && this._isDrawing) {
+            this._lassoPoints.push(coords)
+            this._selectionPath = {
+                type: 'lasso',
+                points: [...this._lassoPoints]
+            }
+            this._drawPreview()
+            return
+        }
 
         this._updateSelectionPath(this._drawStart, coords, constrain)
         this._drawPreview()
