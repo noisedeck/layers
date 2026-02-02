@@ -28,6 +28,10 @@
  */
 
 /**
+ * @typedef {'replace' | 'add' | 'subtract'} SelectionMode
+ */
+
+/**
  * @typedef {RectSelection | OvalSelection | null} SelectionPath
  */
 
@@ -59,6 +63,9 @@ class SelectionManager {
 
         /** @type {{x: number, y: number} | null} */
         this._copyOrigin = null
+
+        /** @type {SelectionMode} */
+        this._selectionMode = 'replace'
     }
 
     /**
@@ -127,12 +134,25 @@ class SelectionManager {
     }
 
     /**
+     * Get selection mode from modifier keys
+     * @param {MouseEvent|KeyboardEvent} e
+     * @returns {SelectionMode}
+     * @private
+     */
+    _getModeFromEvent(e) {
+        if (e.shiftKey) return 'add'
+        if (e.altKey) return 'subtract'
+        return 'replace'
+    }
+
+    /**
      * Handle mouse down
      * @param {MouseEvent} e
      * @private
      */
     _handleMouseDown(e) {
         const coords = this._getCanvasCoords(e)
+        this._selectionMode = this._getModeFromEvent(e)
 
         // If clicking outside existing selection, clear it
         if (this._selectionPath && !this._isPointInSelection(coords.x, coords.y)) {
