@@ -480,17 +480,6 @@ class LayersApp {
     }
 
     /**
-     * Handle layer reorder
-     * @param {Array} newLayers - Reordered layers array
-     * @private
-     */
-    async _handleLayerReorder(newLayers) {
-        this._layers = newLayers
-        await this._rebuild()
-        this._markDirty()
-    }
-
-    /**
      * FSM: Start drag operation (IDLE → DRAGGING)
      * @param {string} layerId - Layer being dragged
      * @private
