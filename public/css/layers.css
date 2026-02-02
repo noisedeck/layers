@@ -8,6 +8,7 @@
    ========================================================================= */
 
 .layer-item {
+    position: relative;
     display: flex;
     flex-direction: column;
     background: var(--color-bg-active);
@@ -31,11 +32,22 @@
 .layer-item.dragging {
     opacity: 0.5;
     border-style: dashed;
+    z-index: 9999 !important;
 }
 
 .layer-item.drag-over {
     border-color: var(--color-accent);
     background: var(--color-accent-muted);
+}
+
+.layer-item.drag-over-above {
+    border-top: 3px solid var(--color-accent);
+    margin-top: -2px;
+}
+
+.layer-item.drag-over-below {
+    border-bottom: 3px solid var(--color-accent);
+    margin-bottom: 4px;
 }
 
 /* Layer Row (main info) */
