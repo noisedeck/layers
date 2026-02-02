@@ -402,35 +402,74 @@ class LayerItem extends HTMLElement {
         this.classList.add('dragging')
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('text/plain', this._layer.id)
+
+        // Emit granular event for FSM
+        this.dispatchEvent(new CustomEvent('layer-drag-start', {
+            bubbles: true,
+            detail: { layerId: this._layer.id }
+        }))
     }
 
     _handleDragEnd(e) {
         this.classList.remove('dragging')
         this._dragFromHandle = false
+
+        // Emit granular event for FSM
+        this.dispatchEvent(new CustomEvent('layer-drag-end', {
+            bubbles: true,
+            detail: { layerId: this._layer.id }
+        }))
     }
 
     _handleDragOver(e) {
         if (this.hasAttribute('base')) return
         e.preventDefault()
         e.dataTransfer.dropEffect = 'move'
-        this.classList.add('drag-over')
+
+        // Calculate drop position based on mouse Y relative to element center
+        const rect = this.getBoundingClientRect()
+        const mouseY = e.clientY
+        const centerY = rect.top + rect.height / 2
+        const dropPosition = mouseY < centerY ? 'above' : 'below'
+
+        // Update visual indicators
+        this.classList.remove('drag-over', 'drag-over-above', 'drag-over-below')
+        this.classList.add('drag-over', `drag-over-${dropPosition}`)
+
+        // Emit granular event for FSM
+        this.dispatchEvent(new CustomEvent('layer-drag-over', {
+            bubbles: true,
+            detail: {
+                targetId: this._layer.id,
+                dropPosition
+            }
+        }))
     }
 
     _handleDragLeave(e) {
-        this.classList.remove('drag-over')
+        this.classList.remove('drag-over', 'drag-over-above', 'drag-over-below')
     }
 
     _handleDrop(e) {
         e.preventDefault()
-        this.classList.remove('drag-over')
+
+        // Calculate final drop position
+        const rect = this.getBoundingClientRect()
+        const mouseY = e.clientY
+        const centerY = rect.top + rect.height / 2
+        const dropPosition = mouseY < centerY ? 'above' : 'below'
+
+        this.classList.remove('drag-over', 'drag-over-above', 'drag-over-below')
 
         const sourceId = e.dataTransfer.getData('text/plain')
         if (sourceId && sourceId !== this._layer.id) {
-            this.dispatchEvent(new CustomEvent('layer-reorder', {
+            // Emit new granular drop event for FSM
+            this.dispatchEvent(new CustomEvent('layer-drop', {
                 bubbles: true,
                 detail: {
                     sourceId,
-                    targetId: this._layer.id
+                    targetId: this._layer.id,
+                    dropPosition
                 }
             }))
         }
