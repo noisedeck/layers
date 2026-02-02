@@ -370,6 +370,30 @@ export class LayersRenderer {
     }
 
     /**
+     * Update offset for a media layer without recompiling
+     * @param {string} layerId - Layer ID
+     * @param {number} x - X offset in pixels
+     * @param {number} y - Y offset in pixels
+     */
+    updateLayerOffset(layerId, x, y) {
+        const stepIndex = this._layerStepMap.get(layerId)
+        if (stepIndex === undefined) return
+
+        const normalizedX = (x / this.width) / 1.5 * 100
+        const normalizedY = (y / this.height) / 1.5 * 100
+
+        const stepKey = `step_${stepIndex}`
+        if (this._renderer.applyStepParameterValues) {
+            this._renderer.applyStepParameterValues({
+                [stepKey]: {
+                    offsetX: Math.max(-100, Math.min(100, normalizedX)),
+                    offsetY: Math.max(-100, Math.min(100, normalizedY))
+                }
+            })
+        }
+    }
+
+    /**
      * Update the DSL string from current layers without recompiling.
      * Call this after parameter-only changes to keep DSL in sync and
      * prevent spurious rebuilds on subsequent structural changes.
@@ -828,7 +852,7 @@ export class LayersRenderer {
                 } else if (layer.sourceType === 'media') {
                     // Media base - blend over transparent background for opacity support
                     lines.push(`solid(color: #000000, alpha: 0).write(o${currentOutput})`)
-                    lines.push(`media().write(o${currentOutput + 1})`)
+                    lines.push(`${this._buildMediaCall(layer)}.write(o${currentOutput + 1})`)
                     const mixAmt = this._opacityToMixAmt(layer.opacity)
                     lines.push(`read(o${currentOutput}).blendMode(tex: read(o${currentOutput + 1}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${currentOutput + 2})`)
                     currentOutput += 2
@@ -848,7 +872,7 @@ export class LayersRenderer {
                 const mixAmt = this._opacityToMixAmt(layer.opacity)
 
                 if (layer.sourceType === 'media') {
-                    lines.push(`media().write(o${currentOutput})`)
+                    lines.push(`${this._buildMediaCall(layer)}.write(o${currentOutput})`)
                 } else if (layer.sourceType === 'effect') {
                     const effectCall = this._buildEffectCall(layer)
                     const isSynth = this._isEffectSynth(layer.effectId)
@@ -906,6 +930,38 @@ export class LayersRenderer {
         }
 
         return `${effectName}()`
+    }
+
+    /**
+     * Build a media call string with offset parameters
+     * @param {object} layer - Layer object
+     * @returns {string} Media call DSL
+     * @private
+     */
+    _buildMediaCall(layer) {
+        const offsetX = layer.offsetX || 0
+        const offsetY = layer.offsetY || 0
+
+        // Convert pixel offsets to media effect's -100 to 100 range
+        // The shader maps offsetX -100 to 100 => roughly -1.5 to 1.5 * resolution
+        // So: pixel offset = shaderOffset / 100 * resolution * 1.5
+        // Therefore: shaderOffset = pixelOffset / resolution / 1.5 * 100
+        const normalizedX = (offsetX / this.width) / 1.5 * 100
+        const normalizedY = (offsetY / this.height) / 1.5 * 100
+
+        // Clamp to valid range and only include if non-zero
+        const params = []
+        if (Math.abs(normalizedX) > 0.01) {
+            params.push(`offsetX: ${Math.max(-100, Math.min(100, normalizedX)).toFixed(2)}`)
+        }
+        if (Math.abs(normalizedY) > 0.01) {
+            params.push(`offsetY: ${Math.max(-100, Math.min(100, normalizedY)).toFixed(2)}`)
+        }
+
+        if (params.length > 0) {
+            return `media(${params.join(', ')})`
+        }
+        return 'media()'
     }
 
     /**
