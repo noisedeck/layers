@@ -40,6 +40,11 @@ class LayersApp {
         this._copyOrigin = null
         this._moveTool = null
         this._currentTool = 'selection' // 'selection' | 'move'
+
+        // Layer reorder FSM state
+        this._reorderState = 'IDLE'  // IDLE | DRAGGING | PROCESSING | ROLLING_BACK
+        this._reorderSnapshot = null  // { layers, dsl }
+        this._reorderSource = null    // { layerId, index }
     }
 
     /**
