@@ -20,7 +20,7 @@ import { exportPng, exportJpg, getTimestampedFilename } from './utils/export.js'
 import { saveProject, loadProject } from './utils/project-storage.js'
 import { registerServiceWorker } from './sw-register.js'
 import { SelectionManager } from './selection/selection-manager.js'
-import { copySelection, pasteFromClipboard } from './selection/clipboard-ops.js'
+import { copySelection, pasteFromClipboard, getSelectionBounds } from './selection/clipboard-ops.js'
 
 /**
  * Main application class
@@ -1019,24 +1019,33 @@ class LayersApp {
         })
         URL.revokeObjectURL(url)
 
-        // Determine position: use copy origin, or center
-        let x, y
-        if (this._copyOrigin) {
-            x = this._copyOrigin.x
-            y = this._copyOrigin.y
-        } else {
-            x = Math.round((this._canvas.width - img.width) / 2)
-            y = Math.round((this._canvas.height - img.height) / 2)
-        }
-
-        // Place image on canvas-sized transparent background at correct position
-        // (image pixels unchanged, just positioned on larger canvas)
         const canvasWidth = this._canvas.width
         const canvasHeight = this._canvas.height
         const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
         const ctx = offscreen.getContext('2d')
         ctx.clearRect(0, 0, canvasWidth, canvasHeight)
-        ctx.drawImage(img, x, y)
+
+        // If there's an active selection, scale and position image to fit within it
+        if (this._selectionManager?.hasSelection()) {
+            const bounds = getSelectionBounds(this._selectionManager.selectionPath)
+            if (bounds.width > 0 && bounds.height > 0) {
+                // Draw scaled to fit selection bounds
+                ctx.drawImage(img, bounds.x, bounds.y, bounds.width, bounds.height)
+                // Clear selection after paste
+                this._selectionManager.clearSelection()
+            }
+        } else {
+            // No selection: use copy origin or center
+            let x, y
+            if (this._copyOrigin) {
+                x = this._copyOrigin.x
+                y = this._copyOrigin.y
+            } else {
+                x = Math.round((canvasWidth - img.width) / 2)
+                y = Math.round((canvasHeight - img.height) / 2)
+            }
+            ctx.drawImage(img, x, y)
+        }
 
         // Convert to file and add as layer
         const positionedBlob = await offscreen.convertToBlob({ type: 'image/png' })

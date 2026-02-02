@@ -3,7 +3,7 @@
  * Handles caching and graceful updates
  */
 
-const CACHE_NAME = 'layers-v1';
+const CACHE_NAME = 'layers-v2';
 
 // Assets to cache on install (core app shell)
 const PRECACHE_ASSETS = [
@@ -41,7 +41,10 @@ const PRECACHE_ASSETS = [
     '/js/utils/storage.js',
     '/js/utils/project-storage.js',
     '/js/noisemaker/renderer.js',
-    '/js/noisemaker/bundle.js'
+    '/js/noisemaker/bundle.js',
+    '/js/selection/selection-manager.js',
+    '/js/selection/clipboard-ops.js',
+    '/js/selection/flood-fill.js'
 ];
 
 // Install event - precache essential assets
