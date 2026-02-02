@@ -82,8 +82,8 @@ class LayersApp {
     async init() {
         console.debug('[Layers] Initializing...')
 
-        // Register service worker for PWA support
-        registerServiceWorker()
+        // Register service worker for PWA support (disabled)
+        // registerServiceWorker()
 
         // Get DOM elements
         this._canvas = document.getElementById('canvas')
@@ -111,7 +111,8 @@ class LayersApp {
             getSelectedLayers: () => this._layerStack?.selectedLayerIds || [],
             updateLayerPosition: (x, y) => this._updateActiveLayerPosition(x, y),
             extractSelection: () => this._extractSelectionToLayer(),
-            showMultiLayerDialog: () => this._showMultiLayerNotSupportedDialog()
+            showMultiLayerDialog: () => this._showMultiLayerNotSupportedDialog(),
+            autoSelectLayer: () => this._autoSelectTopmostLayer()
         })
 
         if (!this._canvas) {
@@ -217,6 +218,12 @@ class LayersApp {
     async _initializeBaseLayer(layer, width, height, successMessage) {
         this._layers = [layer]
         this._updateLayerStack()
+
+        // Select the layer
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = layer.id
+        }
+
         // Set canvas dimensions first
         this._resizeCanvas(width, height)
         // Wait for any pending microtasks (canvas observer uses queueMicrotask)
@@ -301,6 +308,11 @@ class LayersApp {
         // Update layer stack
         this._updateLayerStack()
 
+        // Select the layer
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = layer.id
+        }
+
         // Resize canvas to match base layer media dimensions
         if (dimensions.width > 0 && dimensions.height > 0) {
             this._resizeCanvas(dimensions.width, dimensions.height)
@@ -343,6 +355,11 @@ class LayersApp {
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
+
+        // Select the new layer
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = layer.id
+        }
 
         toast.success(`Added layer: ${layer.name}`)
     }
@@ -999,92 +1016,136 @@ class LayersApp {
     }
 
     /**
+     * Auto-select the topmost layer and return it
+     * @returns {object|null}
+     * @private
+     */
+    _autoSelectTopmostLayer() {
+        // Find topmost layer
+        if (this._layers.length > 0) {
+            const layer = this._layers[this._layers.length - 1]
+            if (this._layerStack) {
+                this._layerStack.selectedLayerId = layer.id
+            }
+            return layer
+        }
+        return null
+    }
+
+    /**
      * Update active layer's position offset
      * @param {number} x
      * @param {number} y
      * @private
      */
-    async _updateActiveLayerPosition(x, y) {
+    _updateActiveLayerPosition(x, y) {
         const layer = this._getActiveLayer()
         if (!layer) return
 
         layer.offsetX = x
         layer.offsetY = y
 
-        // Trigger re-render
-        await this._rebuild()
+        this._renderer.updateLayerOffset(layer.id, x, y)
+        this._markDirty()
     }
 
     /**
      * Extract current selection to a new layer
+     * Extracts visible pixels from the rendered canvas - works with any layer type
      * @private
      */
     async _extractSelectionToLayer() {
-        if (!this._selectionManager?.hasSelection()) return
+        try {
+            if (!this._selectionManager?.hasSelection()) {
+                console.warn('[Extract] No selection')
+                return false
+            }
 
-        const selectionPath = this._selectionManager.selectionPath
-        const activeLayer = this._getActiveLayer()
-        if (!activeLayer || activeLayer.sourceType !== 'media') return
+            const selectionPath = this._selectionManager.selectionPath
+            const bounds = getSelectionBounds(selectionPath)
+            if (bounds.width <= 0 || bounds.height <= 0) {
+                console.warn('[Extract] Invalid bounds')
+                return false
+            }
 
-        const bounds = getSelectionBounds(selectionPath)
-        if (bounds.width <= 0 || bounds.height <= 0) return
+            // Get the rendered canvas pixels
+            const canvasWidth = this._canvas.width
+            const canvasHeight = this._canvas.height
 
-        // Get the source layer's current image
-        const sourceImg = await this._getLayerImage(activeLayer)
-        if (!sourceImg) return
+            // Clamp bounds to canvas
+            const extractBounds = {
+                x: Math.max(0, Math.floor(bounds.x)),
+                y: Math.max(0, Math.floor(bounds.y)),
+                width: Math.ceil(bounds.width),
+                height: Math.ceil(bounds.height)
+            }
+            extractBounds.width = Math.min(extractBounds.width, canvasWidth - extractBounds.x)
+            extractBounds.height = Math.min(extractBounds.height, canvasHeight - extractBounds.y)
 
-        // Create canvas for the extracted selection
-        const extractedCanvas = new OffscreenCanvas(this._canvas.width, this._canvas.height)
-        const extractedCtx = extractedCanvas.getContext('2d')
+            if (extractBounds.width <= 0 || extractBounds.height <= 0) {
+                return false
+            }
 
-        // Create canvas for the source with hole
-        const sourceCanvas = new OffscreenCanvas(sourceImg.width, sourceImg.height)
-        const sourceCtx = sourceCanvas.getContext('2d')
-        sourceCtx.drawImage(sourceImg, 0, 0)
+            // Create full canvas-size image with extracted pixels at correct position
+            // (like paste does - media shader expects full-size images)
+            const extractedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+            const extractedCtx = extractedCanvas.getContext('2d')
+            extractedCtx.clearRect(0, 0, canvasWidth, canvasHeight)
 
-        // Draw source to extracted canvas
-        extractedCtx.drawImage(sourceImg, 0, 0)
+            // Draw the entire rendered canvas
+            extractedCtx.drawImage(this._canvas, 0, 0)
 
-        // Create selection mask
-        const maskCanvas = new OffscreenCanvas(this._canvas.width, this._canvas.height)
-        const maskCtx = maskCanvas.getContext('2d')
-        this._drawSelectionMask(maskCtx, selectionPath)
+            // Check if selection region has any visible pixels
+            const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
+            let hasAnyPixels = false
+            for (let i = 0; i < checkData.data.length; i += 4) {
+                if (checkData.data[i + 3] > 0) {
+                    hasAnyPixels = true
+                    break
+                }
+            }
+            if (!hasAnyPixels) {
+                toast.warning('No pixels selected')
+                return false
+            }
 
-        // Apply mask to extracted (keep only selected pixels)
-        extractedCtx.globalCompositeOperation = 'destination-in'
-        extractedCtx.drawImage(maskCanvas, 0, 0)
-        extractedCtx.globalCompositeOperation = 'source-over'
+            // Create selection mask at canvas size
+            const maskCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+            const maskCtx = maskCanvas.getContext('2d')
+            this._drawSelectionMask(maskCtx, selectionPath)
 
-        // Clear selected pixels from source (punch hole)
-        sourceCtx.globalCompositeOperation = 'destination-out'
-        sourceCtx.drawImage(maskCanvas, 0, 0)
-        sourceCtx.globalCompositeOperation = 'source-over'
+            // Apply mask to keep only selected pixels
+            extractedCtx.globalCompositeOperation = 'destination-in'
+            extractedCtx.drawImage(maskCanvas, 0, 0)
+            extractedCtx.globalCompositeOperation = 'source-over'
 
-        // Update source layer with hole
-        const sourceBlob = await sourceCanvas.convertToBlob({ type: 'image/png' })
-        const sourceFile = new File([sourceBlob], activeLayer.mediaFile?.name || 'layer.png', { type: 'image/png' })
-        activeLayer.mediaFile = sourceFile
-        await this._renderer.loadMedia(activeLayer.id, sourceFile, 'image')
+            // Create extracted layer (full canvas size, no offset needed)
+            const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
+            const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
 
-        // Create extracted layer
-        const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
-        const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
+            const { createMediaLayer } = await import('./layers/layer-model.js')
+            const newLayer = createMediaLayer(extractedFile, 'image', 'Moved Selection')
+            // No offset - pixels are already at correct position in full-size image
 
-        const { createMediaLayer } = await import('./layers/layer-model.js')
-        const newLayer = createMediaLayer(extractedFile, 'image', 'Moved Selection')
+            // Add at top of layer stack
+            this._layers.push(newLayer)
 
-        // Insert after active layer
-        const activeIndex = this._layers.findIndex(l => l.id === activeLayer.id)
-        this._layers.splice(activeIndex + 1, 0, newLayer)
+            await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
 
-        await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
+            // Select the new layer
+            this._layerStack.selectedLayerId = newLayer.id
 
-        // Select the new layer
-        this._layerStack.selectedLayerId = newLayer.id
+            // Clear the selection since we've extracted it
+            this._selectionManager.clearSelection()
 
-        this._updateLayerStack()
-        await this._rebuild()
-        this._markDirty()
+            this._updateLayerStack()
+            await this._rebuild()
+            this._markDirty()
+            return true
+        } catch (err) {
+            console.error('[Extract] ERROR:', err)
+            throw err
+        }
     }
 
     /**
@@ -1118,27 +1179,40 @@ class LayersApp {
      * @private
      */
     _drawSelectionMask(ctx, selectionPath) {
+        this._drawSelectionMaskOffset(ctx, selectionPath, 0, 0)
+    }
+
+    /**
+     * Draw selection mask to canvas context with offset
+     * @param {CanvasRenderingContext2D} ctx
+     * @param {object} selectionPath
+     * @param {number} offsetX
+     * @param {number} offsetY
+     * @private
+     */
+    _drawSelectionMaskOffset(ctx, selectionPath, offsetX, offsetY) {
         ctx.fillStyle = 'white'
 
         if (selectionPath.type === 'rect') {
-            ctx.fillRect(selectionPath.x, selectionPath.y, selectionPath.width, selectionPath.height)
+            ctx.fillRect(selectionPath.x + offsetX, selectionPath.y + offsetY, selectionPath.width, selectionPath.height)
         } else if (selectionPath.type === 'oval') {
             ctx.beginPath()
-            ctx.ellipse(selectionPath.cx, selectionPath.cy, selectionPath.rx, selectionPath.ry, 0, 0, Math.PI * 2)
+            ctx.ellipse(selectionPath.cx + offsetX, selectionPath.cy + offsetY, selectionPath.rx, selectionPath.ry, 0, 0, Math.PI * 2)
             ctx.fill()
         } else if (selectionPath.type === 'lasso' || selectionPath.type === 'polygon') {
             if (selectionPath.points.length >= 3) {
                 ctx.beginPath()
-                ctx.moveTo(selectionPath.points[0].x, selectionPath.points[0].y)
+                ctx.moveTo(selectionPath.points[0].x + offsetX, selectionPath.points[0].y + offsetY)
                 for (let i = 1; i < selectionPath.points.length; i++) {
-                    ctx.lineTo(selectionPath.points[i].x, selectionPath.points[i].y)
+                    ctx.lineTo(selectionPath.points[i].x + offsetX, selectionPath.points[i].y + offsetY)
                 }
                 ctx.closePath()
                 ctx.fill()
             }
         } else if (selectionPath.type === 'wand' || selectionPath.type === 'mask') {
             const mask = selectionPath.type === 'wand' ? selectionPath.mask : selectionPath.data
-            ctx.putImageData(mask, 0, 0)
+            // For mask-based selections, we need to translate the putImageData
+            ctx.putImageData(mask, offsetX, offsetY)
         }
     }
 
