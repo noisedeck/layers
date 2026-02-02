@@ -34,6 +34,8 @@ export function createLayer(options = {}) {
         opacity: options.opacity ?? 100,
         blendMode: options.blendMode || 'mix',
         locked: options.locked || false,
+        offsetX: options.offsetX || 0,
+        offsetY: options.offsetY || 0,
         sourceType: options.sourceType || 'media', // 'media' | 'effect'
 
         // Media-specific
