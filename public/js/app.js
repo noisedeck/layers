@@ -491,6 +491,82 @@ class LayersApp {
     }
 
     /**
+     * FSM: Start drag operation (IDLE → DRAGGING)
+     * @param {string} layerId - Layer being dragged
+     * @private
+     */
+    _startDrag(layerId) {
+        if (this._reorderState !== 'IDLE') {
+            console.warn('[Layers] Cannot start drag - not in IDLE state')
+            return
+        }
+
+        const sourceIndex = this._layers.findIndex(l => l.id === layerId)
+        if (sourceIndex === -1 || sourceIndex === 0) {
+            console.warn('[Layers] Cannot drag base layer or unknown layer')
+            return
+        }
+
+        // Capture snapshot
+        this._reorderSnapshot = {
+            layers: JSON.parse(JSON.stringify(this._layers)),
+            dsl: this._renderer._currentDsl
+        }
+        this._reorderSource = { layerId, index: sourceIndex }
+        this._reorderState = 'DRAGGING'
+
+        // Update z-index on all layer items
+        this._updateLayerZIndex()
+
+        console.debug('[Layers] FSM: IDLE → DRAGGING', { layerId, sourceIndex })
+    }
+
+    /**
+     * FSM: Cancel drag operation (DRAGGING → IDLE)
+     * @private
+     */
+    _cancelDrag() {
+        if (this._reorderState !== 'DRAGGING') return
+
+        this._reorderSnapshot = null
+        this._reorderSource = null
+        this._reorderState = 'IDLE'
+
+        // Clear any drag-over indicators
+        this._clearDragIndicators()
+
+        console.debug('[Layers] FSM: DRAGGING → IDLE (cancelled)')
+    }
+
+    /**
+     * Update z-index on layer items based on stack position
+     * @private
+     */
+    _updateLayerZIndex() {
+        const items = this._layerStack?.querySelectorAll('layer-item')
+        if (!items) return
+
+        const count = items.length
+        items.forEach((item, domIndex) => {
+            // DOM order is top-to-bottom, so first item = highest z-index
+            item.style.zIndex = count - domIndex
+        })
+    }
+
+    /**
+     * Clear all drag indicator classes from layer items
+     * @private
+     */
+    _clearDragIndicators() {
+        const items = this._layerStack?.querySelectorAll('layer-item')
+        if (!items) return
+
+        items.forEach(item => {
+            item.classList.remove('drag-over', 'drag-over-above', 'drag-over-below', 'dragging')
+        })
+    }
+
+    /**
      * Update the layer stack component
      * @private
      */
