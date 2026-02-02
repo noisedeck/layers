@@ -1086,8 +1086,20 @@ class LayersApp {
             this._handleDeleteLayer(e.detail.layerId)
         })
 
-        this._layerStack.addEventListener('layers-reorder', (e) => {
-            this._handleLayerReorder(e.detail.layers)
+        // Layer reorder FSM events
+        this._layerStack.addEventListener('layer-drag-start', (e) => {
+            this._startDrag(e.detail.layerId)
+        })
+
+        this._layerStack.addEventListener('layer-drag-end', (e) => {
+            // If we're still in DRAGGING state, this means drop didn't happen
+            if (this._reorderState === 'DRAGGING') {
+                this._cancelDrag()
+            }
+        })
+
+        this._layerStack.addEventListener('layer-drop', (e) => {
+            this._processDrop(e.detail.targetId, e.detail.dropPosition)
         })
     }
 
@@ -1097,6 +1109,13 @@ class LayersApp {
      */
     _setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
+            // ESC - cancel drag operation
+            if (e.key === 'Escape' && this._reorderState === 'DRAGGING') {
+                e.preventDefault()
+                this._cancelDrag()
+                return
+            }
+
             // Ctrl/Cmd+S - save project (allow in inputs)
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault()
