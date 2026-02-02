@@ -2,25 +2,24 @@
  * Move Tool
  * Handles moving layers and extracting selections
  *
+ * FSM States:
+ * - IDLE: Ready for interaction
+ * - EXTRACTING: Async extraction in progress (no other actions allowed)
+ * - DRAGGING: Actively dragging layer
+ *
  * @module tools/move-tool
  */
 
-import { getSelectionBounds } from '../selection/clipboard-ops.js'
+const State = {
+    IDLE: 'idle',
+    EXTRACTING: 'extracting',
+    DRAGGING: 'dragging'
+}
 
 /**
  * Move tool for repositioning layers
  */
 class MoveTool {
-    /**
-     * @param {object} options
-     * @param {HTMLCanvasElement} options.overlay - Selection overlay canvas
-     * @param {SelectionManager} options.selectionManager
-     * @param {function} options.getActiveLayer - Returns current active layer
-     * @param {function} options.getSelectedLayers - Returns selected layer IDs
-     * @param {function} options.updateLayerPosition - Callback to update layer position
-     * @param {function} options.extractSelection - Callback to extract selection to new layer
-     * @param {function} options.showMultiLayerDialog - Show "not supported" dialog
-     */
     constructor(options) {
         this._overlay = options.overlay
         this._selectionManager = options.selectionManager
@@ -29,24 +28,22 @@ class MoveTool {
         this._updateLayerPosition = options.updateLayerPosition
         this._extractSelection = options.extractSelection
         this._showMultiLayerDialog = options.showMultiLayerDialog
+        this._autoSelectLayer = options.autoSelectLayer
 
         this._active = false
-        this._isDragging = false
+        this._state = State.IDLE
         this._dragStart = null
         this._layerStartPos = null
-        this._hasExtracted = false
 
         this._onMouseDown = this._onMouseDown.bind(this)
         this._onMouseMove = this._onMouseMove.bind(this)
         this._onMouseUp = this._onMouseUp.bind(this)
     }
 
-    /**
-     * Activate the move tool
-     */
     activate() {
         if (this._active) return
         this._active = true
+        this._state = State.IDLE
 
         this._overlay.addEventListener('mousedown', this._onMouseDown)
         this._overlay.addEventListener('mousemove', this._onMouseMove)
@@ -56,9 +53,6 @@ class MoveTool {
         this._overlay.classList.add('move-tool')
     }
 
-    /**
-     * Deactivate the move tool
-     */
     deactivate() {
         if (!this._active) return
         this._active = false
@@ -69,24 +63,19 @@ class MoveTool {
         this._overlay.removeEventListener('mouseleave', this._onMouseUp)
 
         this._overlay.classList.remove('move-tool')
-        this._isDragging = false
-        this._hasExtracted = false
+        this._reset()
     }
 
-    /**
-     * Check if tool is active
-     * @returns {boolean}
-     */
     get isActive() {
         return this._active
     }
 
-    /**
-     * Get canvas coordinates from mouse event
-     * @param {MouseEvent} e
-     * @returns {{x: number, y: number}}
-     * @private
-     */
+    _reset() {
+        this._state = State.IDLE
+        this._dragStart = null
+        this._layerStartPos = null
+    }
+
     _getCanvasCoords(e) {
         const rect = this._overlay.getBoundingClientRect()
         const scaleX = this._overlay.width / rect.width
@@ -97,12 +86,10 @@ class MoveTool {
         }
     }
 
-    /**
-     * Handle mouse down
-     * @param {MouseEvent} e
-     * @private
-     */
     _onMouseDown(e) {
+        // Only start from IDLE state
+        if (this._state !== State.IDLE) return
+
         // Check for multiple layers selected
         const selectedLayers = this._getSelectedLayers()
         if (selectedLayers.length > 1) {
@@ -110,63 +97,69 @@ class MoveTool {
             return
         }
 
-        const layer = this._getActiveLayer()
+        let layer = this._getActiveLayer()
+        if (!layer && this._autoSelectLayer) {
+            layer = this._autoSelectLayer()
+        }
         if (!layer) return
 
-        this._isDragging = true
-        this._dragStart = this._getCanvasCoords(e)
-        this._layerStartPos = {
-            x: layer.offsetX || 0,
-            y: layer.offsetY || 0
+        const coords = this._getCanvasCoords(e)
+
+        // If there's a selection, extract it first
+        if (this._selectionManager.hasSelection()) {
+            this._state = State.EXTRACTING
+            this._doExtraction(coords)
+        } else {
+            // No selection - just start dragging the layer
+            this._state = State.DRAGGING
+            this._dragStart = coords
+            this._layerStartPos = {
+                x: layer.offsetX || 0,
+                y: layer.offsetY || 0
+            }
         }
     }
 
-    /**
-     * Handle mouse move
-     * @param {MouseEvent} e
-     * @private
-     */
-    async _onMouseMove(e) {
-        if (!this._isDragging) return
+    async _doExtraction(startCoords) {
+        try {
+            const success = await this._extractSelection()
+            if (success) {
+                // Now start dragging the newly created layer
+                const layer = this._getActiveLayer()
+                this._state = State.DRAGGING
+                this._dragStart = startCoords
+                this._layerStartPos = {
+                    x: layer?.offsetX || 0,
+                    y: layer?.offsetY || 0
+                }
+            } else {
+                // Extraction failed, go back to idle
+                this._reset()
+            }
+        } catch (err) {
+            console.error('[MoveTool] Extraction error:', err)
+            this._reset()
+        }
+    }
+
+    _onMouseMove(e) {
+        // Only move in DRAGGING state
+        if (this._state !== State.DRAGGING) return
+        if (!this._dragStart || !this._layerStartPos) return
 
         const coords = this._getCanvasCoords(e)
         const dx = coords.x - this._dragStart.x
         const dy = coords.y - this._dragStart.y
 
-        // If there's a selection and we haven't extracted yet, extract on first move
-        if (this._selectionManager.hasSelection() && !this._hasExtracted) {
-            try {
-                await this._extractSelection()
-                this._hasExtracted = true
-                // Update layer start position for the new layer
-                const layer = this._getActiveLayer()
-                if (layer) {
-                    this._layerStartPos = {
-                        x: layer.offsetX || 0,
-                        y: layer.offsetY || 0
-                    }
-                }
-            } catch (err) {
-                console.error('[MoveTool] Extraction error:', err)
-            }
-        }
-
-        // Update layer position
         const newX = this._layerStartPos.x + dx
         const newY = this._layerStartPos.y + dy
         this._updateLayerPosition(newX, newY)
     }
 
-    /**
-     * Handle mouse up
-     * @param {MouseEvent} e
-     * @private
-     */
-    _onMouseUp(e) {
-        this._isDragging = false
-        this._dragStart = null
-        this._layerStartPos = null
-        // Don't reset _hasExtracted here - it resets when tool is deactivated
+    _onMouseUp() {
+        // Always reset to IDLE on mouse up (unless extracting)
+        if (this._state === State.EXTRACTING) return
+        this._reset()
     }
 }
 

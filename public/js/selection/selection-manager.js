@@ -694,9 +694,13 @@ class SelectionManager {
         const x = Math.round(coords.x)
         const y = Math.round(coords.y)
 
-        // Get image data from source canvas
-        const ctx = this._sourceCanvas.getContext('2d')
-        const imageData = ctx.getImageData(0, 0, this._sourceCanvas.width, this._sourceCanvas.height)
+        // Get image data from source canvas (may be WebGL, so use temp 2D canvas)
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = this._sourceCanvas.width
+        tempCanvas.height = this._sourceCanvas.height
+        const tempCtx = tempCanvas.getContext('2d')
+        tempCtx.drawImage(this._sourceCanvas, 0, 0)
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
 
         // Perform flood fill
         const mask = floodFill(imageData, x, y, this._wandTolerance)
@@ -761,6 +765,64 @@ class SelectionManager {
                 }
                 this._ctx.closePath()
             }
+        } else if (path.type === 'wand' || path.type === 'mask') {
+            // Draw edge segments for mask-based selections
+            const mask = path.type === 'wand' ? path.mask : path.data
+            const { width, height, data } = mask
+
+            // Helper to check if pixel is selected
+            const isSelected = (x, y) => {
+                if (x < 0 || x >= width || y < 0 || y >= height) return false
+                return data[(y * width + x) * 4 + 3] > 127
+            }
+
+            // Draw horizontal edge segments (between rows)
+            for (let y = 0; y <= height; y++) {
+                let inEdge = false
+                let startX = 0
+                for (let x = 0; x < width; x++) {
+                    const above = isSelected(x, y - 1)
+                    const below = isSelected(x, y)
+                    const isEdgeHere = above !== below
+
+                    if (isEdgeHere && !inEdge) {
+                        startX = x
+                        inEdge = true
+                    } else if (!isEdgeHere && inEdge) {
+                        this._ctx.moveTo(startX, y)
+                        this._ctx.lineTo(x, y)
+                        inEdge = false
+                    }
+                }
+                if (inEdge) {
+                    this._ctx.moveTo(startX, y)
+                    this._ctx.lineTo(width, y)
+                }
+            }
+
+            // Draw vertical edge segments (between columns)
+            for (let x = 0; x <= width; x++) {
+                let inEdge = false
+                let startY = 0
+                for (let y = 0; y < height; y++) {
+                    const left = isSelected(x - 1, y)
+                    const right = isSelected(x, y)
+                    const isEdgeHere = left !== right
+
+                    if (isEdgeHere && !inEdge) {
+                        startY = y
+                        inEdge = true
+                    } else if (!isEdgeHere && inEdge) {
+                        this._ctx.moveTo(x, startY)
+                        this._ctx.lineTo(x, y)
+                        inEdge = false
+                    }
+                }
+                if (inEdge) {
+                    this._ctx.moveTo(x, startY)
+                    this._ctx.lineTo(x, height)
+                }
+            }
         }
 
         this._ctx.stroke()
@@ -798,52 +860,22 @@ class SelectionManager {
      * @private
      */
     _drawMaskAnts() {
+        // Use same drawing as other selection types
         this._clearOverlay()
-        const path = this._selectionPath
-        if (!path || (path.type !== 'wand' && path.type !== 'mask')) return
         if (!this._ctx) return
-
-        const mask = path.type === 'wand' ? path.mask : path.data
-        const { width, height, data } = mask
 
         this._ctx.setLineDash([5, 5])
         this._ctx.lineWidth = 1
 
-        // Find edges and draw
-        const edges = []
-        for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-                const idx = (y * width + x) * 4
-                const selected = data[idx + 3] > 127
-
-                if (!selected) continue
-
-                // Check if this is an edge pixel
-                const isEdge =
-                    x === 0 || x === width - 1 || y === 0 || y === height - 1 ||
-                    data[((y - 1) * width + x) * 4 + 3] <= 127 ||
-                    data[((y + 1) * width + x) * 4 + 3] <= 127 ||
-                    data[(y * width + x - 1) * 4 + 3] <= 127 ||
-                    data[(y * width + x + 1) * 4 + 3] <= 127
-
-                if (isEdge) {
-                    edges.push({ x, y })
-                }
-            }
-        }
-
-        // Draw edge pixels as small rectangles
+        // Black stroke
         this._ctx.strokeStyle = '#000'
         this._ctx.lineDashOffset = this._dashOffset
-        for (const { x, y } of edges) {
-            this._ctx.strokeRect(x, y, 1, 1)
-        }
+        this._strokePath()
 
+        // White stroke offset
         this._ctx.strokeStyle = '#fff'
         this._ctx.lineDashOffset = this._dashOffset + 5
-        for (const { x, y } of edges) {
-            this._ctx.strokeRect(x, y, 1, 1)
-        }
+        this._strokePath()
     }
 
     /**

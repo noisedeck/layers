@@ -17,9 +17,3 @@
 #selectionOverlay.move-tool {
     cursor: move;
 }
-
-/* Move tool button active state */
-#moveToolBtn.active {
-    background: var(--surface-2);
-    color: var(--text-primary);
-}

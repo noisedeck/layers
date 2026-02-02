@@ -153,7 +153,7 @@
     color: var(--accent4);
 }
 
-#menu button {
+#menu button:not(.menu-icon-btn) {
     margin: 0;
     padding: 0;
     height: 100%;
@@ -211,6 +211,17 @@
 
 .menu-title:hover {
     color: var(--accent4);
+}
+
+.selection-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+}
+
+#selectionToolIcon .icon-material {
+    font-size: 20px;
+    line-height: 1;
 }
 
 .menu-title:focus-visible {
@@ -314,15 +325,17 @@
 }
 /* Menu bar icon buttons (right side) */
 .menu-icon-btn {
-    background: none;
+    background: transparent;
     border: none;
     color: inherit;
     cursor: pointer;
-    padding: 0;
+    padding: 4px 6px;
+    margin: -4px -6px;
+    border-radius: 4px;
     line-height: 1;
     display: inline-flex;
     align-items: center;
-    transition: color 0.15s ease;
+    transition: color 0.15s ease, background 0.15s ease;
 }
 
 .menu-icon-btn:hover {
@@ -335,7 +348,8 @@
 }
 
 .menu-icon-btn.active {
-    color: var(--accent3);
+    color: var(--color-text-primary);
+    background: rgba(128, 128, 128, 0.3);
 }
 
 /* Responsive: full-width menu when layers panel moves below */
@@ -362,9 +376,18 @@
     }
 }
 
-/* Selection tool menu */
-#selectionMenu .menu-title {
-    padding: 0 0.25em;
+/* Selection tool button - reset menu-title overrides to match move button */
+#selectionToolBtn {
+    position: static;
+    top: auto;
+    height: auto;
+    box-sizing: border-box;
+    vertical-align: middle;
+}
+
+/* Ensure both tool buttons have identical icon alignment */
+.menu-icon-btn .icon-material {
+    display: block;
 }
 
 #selectionMenu .menu-items div {
@@ -375,10 +398,6 @@
 
 #selectionMenu .menu-items div .icon-material {
     font-size: 1.25em;
-}
-
-#selectionMenu .menu-items div.checked .icon-material:first-child::before {
-    content: '';
 }
 
 /* Tolerance slider in selection menu */

@@ -100,14 +100,14 @@ test.describe('Move tool', () => {
         await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
         await page.waitForTimeout(500)
 
-        // Add a colored layer
+        // Add a colored layer (full canvas size to ensure selection overlaps)
         await page.evaluate(async () => {
             const canvas = document.createElement('canvas')
-            canvas.width = 200
-            canvas.height = 200
+            canvas.width = 1024
+            canvas.height = 1024
             const ctx = canvas.getContext('2d')
             ctx.fillStyle = 'blue'
-            ctx.fillRect(0, 0, 200, 200)
+            ctx.fillRect(0, 0, 1024, 1024)
 
             const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
             const file = new File([blob], 'test.png', { type: 'image/png' })

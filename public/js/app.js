@@ -151,6 +151,9 @@ class LayersApp {
         this._setupLayerStackHandlers()
         this._setupKeyboardShortcuts()
 
+        // Set initial tool state
+        this._setToolMode('selection')
+
         // Recalculate fit on window resize
         window.addEventListener('resize', () => {
             if (this._zoomMode === 'fit') {
@@ -573,6 +576,8 @@ class LayersApp {
             }
         })
 
+        const overlay = this._selectionOverlay
+
         if (this._zoomMode === 'fit') {
             // Fit in window - calculate size to maintain aspect ratio
             const container = canvas.parentElement
@@ -596,6 +601,12 @@ class LayersApp {
             canvas.style.maxHeight = 'none'
             canvas.style.width = displayWidth + 'px'
             canvas.style.height = displayHeight + 'px'
+            if (overlay) {
+                overlay.style.maxWidth = 'none'
+                overlay.style.maxHeight = 'none'
+                overlay.style.width = displayWidth + 'px'
+                overlay.style.height = displayHeight + 'px'
+            }
         } else {
             // Specific percentage
             const percent = parseInt(this._zoomMode) / 100
@@ -603,6 +614,12 @@ class LayersApp {
             canvas.style.maxHeight = 'none'
             canvas.style.width = (canvas.width * percent) + 'px'
             canvas.style.height = (canvas.height * percent) + 'px'
+            if (overlay) {
+                overlay.style.maxWidth = 'none'
+                overlay.style.maxHeight = 'none'
+                overlay.style.width = (canvas.width * percent) + 'px'
+                overlay.style.height = (canvas.height * percent) + 'px'
+            }
         }
     }
 
@@ -784,8 +801,14 @@ class LayersApp {
             this._setZoom('200')
         })
 
-        // Add text layer button
+        // Add text layer button (layers panel)
         document.getElementById('addTextLayerBtn')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAddEffectLayer('filter/text')
+        })
+
+        // Text tool button (toolbar)
+        document.getElementById('textToolBtn')?.addEventListener('click', () => {
             if (this._layers.length === 0) return
             this._handleAddEffectLayer('filter/text')
         })
@@ -986,16 +1009,21 @@ class LayersApp {
             if (el) el.classList.toggle('checked', tools[i] === tool)
         })
 
-        // Update icon
-        const icon = document.getElementById('selectionToolIcon')
-        const icons = {
-            rectangle: 'square',
-            oval: 'lens',
-            lasso: 'gesture',
-            polygon: 'pentagon',
-            wand: 'auto_fix_high'
+        // Update icon - swap SVG content based on tool
+        const iconContainer = document.getElementById('selectionToolIcon')
+        if (iconContainer) {
+            const svgAttrs = 'class="selection-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1 2" stroke-linecap="round"'
+            const icons = {
+                rectangle: `<svg ${svgAttrs}><rect x="2" y="4" width="16" height="12"/></svg>`,
+                oval: `<svg ${svgAttrs}><ellipse cx="10" cy="10" rx="8" ry="6"/></svg>`,
+                lasso: `<svg class="selection-icon" width="20" height="20" viewBox="0 0 1280 1280" fill="none" stroke="currentColor" stroke-width="64" stroke-dasharray="64 128" stroke-linecap="round"><path transform="translate(0,1280) scale(1,-1)" d="M854 1221 c-21 -15 -48 -38 -58 -50 -24 -26 -51 -27 -107 -1 -62 28 -120 26 -148 -4 -21 -22 -22 -30 -16 -102 6 -73 5 -82 -17 -114 -30 -44 -68 -50 -134 -20 -72 33 -104 35 -137 10 -87 -69 -65 -144 60 -201 100 -45 115 -92 52 -163 -24 -27 -40 -36 -77 -41 -67 -9 -100 -24 -122 -55 -44 -62 -30 -134 37 -189 42 -35 75 -39 139 -17 47 17 201 31 237 22 13 -3 36 -23 51 -44 22 -32 26 -49 26 -104 0 -51 5 -71 21 -92 57 -73 267 13 330 135 30 59 26 140 -11 218 l-31 64 23 25 c20 21 29 23 71 18 42 -4 51 -2 79 23 26 23 32 36 35 82 5 63 -18 117 -57 136 -14 7 -48 13 -77 13 -43 0 -55 4 -71 25 -33 42 -10 90 61 126 55 29 63 53 48 151 -7 45 -19 94 -27 109 -37 73 -113 90 -180 40z"/></svg>`,
+                polygon: `<svg ${svgAttrs}><polygon points="10,2 18,8 15,18 5,18 2,8"/></svg>`,
+                wand: '<span class="icon-material">auto_fix_high</span>'
+            }
+            iconContainer.outerHTML = icons[tool] ?
+                `${icons[tool].replace("<svg ", "<svg id=\"selectionToolIcon\" ")}` :
+                `${icons.rectangle.replace("<svg ", "<svg id=\"selectionToolIcon\" ")}`
         }
-        if (icon) icon.textContent = icons[tool] || 'square'
 
         // Show/hide tolerance slider
         const toleranceRow = document.getElementById('wandToleranceRow')
@@ -1244,6 +1272,10 @@ class LayersApp {
         const moveBtn = document.getElementById('moveToolBtn')
         if (moveBtn) {
             moveBtn.classList.toggle('active', tool === 'move')
+        }
+        const selectionToolBtn = document.getElementById('selectionToolBtn')
+        if (selectionToolBtn) {
+            selectionToolBtn.classList.toggle('active', tool !== 'move')
         }
 
         // Clear selection tool checkmarks when move tool is active
