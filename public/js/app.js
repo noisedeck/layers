@@ -954,6 +954,9 @@ class LayersApp {
      * @private
      */
     _setSelectionTool(tool) {
+        // Deactivate move tool when selecting a selection tool
+        this._setToolMode('selection')
+
         if (!this._selectionManager) return
 
         this._selectionManager.currentTool = tool
@@ -1122,14 +1125,23 @@ class LayersApp {
             moveBtn.classList.toggle('active', tool === 'move')
         }
 
+        // Clear selection tool checkmarks when move tool is active
+        if (tool === 'move') {
+            const items = ['Rect', 'Oval', 'Lasso', 'Polygon', 'Wand']
+            items.forEach(item => {
+                const el = document.getElementById(`select${item}MenuItem`)
+                if (el) el.classList.remove('checked')
+            })
+        }
+
         // Activate selected tool
         if (tool === 'move') {
             this._moveTool?.activate()
-            // Disable selection drawing
             this._selectionOverlay?.classList.add('inactive')
+            this._selectionOverlay?.classList.add('move-tool')
         } else {
-            // Re-enable selection
             this._selectionOverlay?.classList.remove('inactive')
+            this._selectionOverlay?.classList.remove('move-tool')
         }
     }
 
