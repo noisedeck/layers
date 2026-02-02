@@ -1080,7 +1080,7 @@ class LayersApp {
         await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
 
         // Select the new layer
-        this._layerStack.selectLayer(newLayer.id)
+        this._layerStack.selectedLayerId = newLayer.id
 
         this._updateLayerStack()
         await this._rebuild()
@@ -1184,10 +1184,10 @@ class LayersApp {
         // Activate selected tool
         if (tool === 'move') {
             this._moveTool?.activate()
-            this._selectionOverlay?.classList.add('inactive')
+            this._selectionManager.enabled = false
             this._selectionOverlay?.classList.add('move-tool')
         } else {
-            this._selectionOverlay?.classList.remove('inactive')
+            this._selectionManager.enabled = true
             this._selectionOverlay?.classList.remove('move-tool')
         }
     }

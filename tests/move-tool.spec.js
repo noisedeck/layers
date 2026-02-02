@@ -57,7 +57,7 @@ test.describe('Move tool', () => {
         await page.evaluate(() => {
             const layers = window.layersApp._layers
             const topLayer = layers[layers.length - 1]
-            window.layersApp._layerStack.selectLayer(topLayer.id)
+            window.layersApp._layerStack.selectedLayerId = topLayer.id
         })
 
         // Activate move tool
@@ -121,7 +121,7 @@ test.describe('Move tool', () => {
         await page.evaluate(() => {
             const layers = window.layersApp._layers
             const topLayer = layers[layers.length - 1]
-            window.layersApp._layerStack.selectLayer(topLayer.id)
+            window.layersApp._layerStack.selectedLayerId = topLayer.id
         })
 
         // Create a selection
@@ -142,9 +142,16 @@ test.describe('Move tool', () => {
         await page.mouse.move(box.x + 100, box.y + 100)
         await page.mouse.down()
         await page.mouse.move(box.x + 150, box.y + 150)
-        await page.mouse.up()
 
-        await page.waitForTimeout(500)
+        // Wait for extraction to complete by polling for the new layer
+        await page.waitForFunction(
+            (expectedCount) => window.layersApp._layers.length === expectedCount,
+            initialLayerCount + 1,
+            { timeout: 5000 }
+        )
+
+        await page.mouse.up()
+        await page.waitForTimeout(200)
 
         // Verify new layer was created
         const finalLayerCount = await page.evaluate(() => window.layersApp._layers.length)

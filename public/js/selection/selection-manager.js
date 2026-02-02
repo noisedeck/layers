@@ -110,6 +110,9 @@ class SelectionManager {
 
         /** @type {SelectionPath} */
         this._previousSelection = null
+
+        /** @type {boolean} */
+        this._enabled = true
     }
 
     /**
@@ -160,6 +163,22 @@ class SelectionManager {
      */
     setSourceCanvas(canvas) {
         this._sourceCanvas = canvas
+    }
+
+    /**
+     * Enable or disable the selection manager
+     * @param {boolean} value
+     */
+    set enabled(value) {
+        this._enabled = value
+    }
+
+    /**
+     * Check if selection manager is enabled
+     * @returns {boolean}
+     */
+    get enabled() {
+        return this._enabled
     }
 
     /**
@@ -340,6 +359,8 @@ class SelectionManager {
      * @private
      */
     _handleMouseDown(e) {
+        if (!this._enabled) return
+
         if (this._currentTool === 'polygon') {
             const coords = this._getCanvasCoords(e)
             this._selectionMode = this._getModeFromEvent(e)
@@ -392,6 +413,8 @@ class SelectionManager {
      * @private
      */
     _handleMouseMove(e) {
+        if (!this._enabled) return
+
         if (this._currentTool === 'polygon' && this._isPolygonDrawing) {
             const coords = this._getCanvasCoords(e)
             this._updatePolygonPreview(coords)
@@ -423,6 +446,7 @@ class SelectionManager {
      * @private
      */
     _handleMouseUp(e) {
+        if (!this._enabled) return
         if (!this._isDrawing) return
 
         this._isDrawing = false

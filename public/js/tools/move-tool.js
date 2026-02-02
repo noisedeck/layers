@@ -135,15 +135,19 @@ class MoveTool {
 
         // If there's a selection and we haven't extracted yet, extract on first move
         if (this._selectionManager.hasSelection() && !this._hasExtracted) {
-            await this._extractSelection()
-            this._hasExtracted = true
-            // Update layer start position for the new layer
-            const layer = this._getActiveLayer()
-            if (layer) {
-                this._layerStartPos = {
-                    x: layer.offsetX || 0,
-                    y: layer.offsetY || 0
+            try {
+                await this._extractSelection()
+                this._hasExtracted = true
+                // Update layer start position for the new layer
+                const layer = this._getActiveLayer()
+                if (layer) {
+                    this._layerStartPos = {
+                        x: layer.offsetX || 0,
+                        y: layer.offsetY || 0
+                    }
                 }
+            } catch (err) {
+                console.error('[MoveTool] Extraction error:', err)
             }
         }
 
