@@ -299,12 +299,23 @@ class SelectionManager {
         if (path.type === 'rect') {
             return x >= path.x && x <= path.x + path.width &&
                    y >= path.y && y <= path.y + path.height
-        } else {
+        } else if (path.type === 'oval') {
             // Ellipse equation: ((x-cx)/rx)^2 + ((y-cy)/ry)^2 <= 1
             const dx = (x - path.cx) / path.rx
             const dy = (y - path.cy) / path.ry
             return dx * dx + dy * dy <= 1
+        } else if (path.type === 'lasso' || path.type === 'polygon') {
+            // Use canvas isPointInPath
+            if (!this._ctx || path.points.length < 3) return false
+            this._ctx.beginPath()
+            this._ctx.moveTo(path.points[0].x, path.points[0].y)
+            for (let i = 1; i < path.points.length; i++) {
+                this._ctx.lineTo(path.points[i].x, path.points[i].y)
+            }
+            this._ctx.closePath()
+            return this._ctx.isPointInPath(x, y)
         }
+        return false
     }
 
     /**
@@ -349,8 +360,16 @@ class SelectionManager {
 
         if (path.type === 'rect') {
             this._ctx.rect(path.x, path.y, path.width, path.height)
-        } else {
+        } else if (path.type === 'oval') {
             this._ctx.ellipse(path.cx, path.cy, path.rx, path.ry, 0, 0, Math.PI * 2)
+        } else if (path.type === 'lasso' || path.type === 'polygon') {
+            if (path.points.length > 0) {
+                this._ctx.moveTo(path.points[0].x, path.points[0].y)
+                for (let i = 1; i < path.points.length; i++) {
+                    this._ctx.lineTo(path.points[i].x, path.points[i].y)
+                }
+                this._ctx.closePath()
+            }
         }
 
         this._ctx.stroke()
