@@ -154,6 +154,7 @@ class LayersApp {
         // Set up event listeners
         this._setupMenuHandlers()
         this._setupLayerStackHandlers()
+        this._setupLayerMenuHandlers()
         this._setupKeyboardShortcuts()
 
         // Set initial tool state
@@ -1068,6 +1069,27 @@ class LayersApp {
     }
 
     /**
+     * Set up Layer menu handlers
+     * @private
+     */
+    _setupLayerMenuHandlers() {
+        document.getElementById('layerActionMenuItem')?.addEventListener('click', () => {
+            const selectedIds = this._layerStack?.selectedLayerIds || []
+
+            if (selectedIds.length === 0) {
+                this._flattenImage()
+            } else if (selectedIds.length === 1) {
+                const layer = this._layers.find(l => l.id === selectedIds[0])
+                if (layer && layer.sourceType !== 'media') {
+                    this._rasterizeLayer(selectedIds[0])
+                }
+            } else {
+                this._flattenLayers(selectedIds)
+            }
+        })
+    }
+
+    /**
      * Set up layer stack event handlers
      * @private
      */
@@ -1132,6 +1154,71 @@ class LayersApp {
             menuItem.textContent = 'Flatten Layers'
             menuItem.classList.remove('disabled')
         }
+    }
+
+    /**
+     * Flatten entire image to a single layer
+     * Renders all visible layers, discards hidden layers
+     * @private
+     */
+    async _flattenImage() {
+        if (this._layers.length === 0) return
+
+        // Capture current canvas (all visible layers composited)
+        const canvasWidth = this._canvas.width
+        const canvasHeight = this._canvas.height
+
+        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(this._canvas, 0, 0)
+
+        // Convert to blob and create media layer
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        const file = new File([blob], 'flattened-image.png', { type: 'image/png' })
+
+        const { createMediaLayer } = await import('./layers/layer-model.js')
+        const newLayer = createMediaLayer(file, 'image', this._currentProjectName || 'Flattened Image')
+
+        // Unload all existing media
+        for (const layer of this._layers) {
+            if (layer.sourceType === 'media') {
+                this._renderer.unloadMedia(layer.id)
+            }
+        }
+
+        // Replace entire layer stack
+        this._layers = [newLayer]
+        await this._renderer.loadMedia(newLayer.id, file, 'image')
+
+        // Update UI
+        this._updateLayerStack()
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = newLayer.id
+        }
+        await this._rebuild()
+        this._markDirty()
+
+        toast.success('Image flattened')
+    }
+
+    /**
+     * Rasterize a single effect layer to media
+     * @param {string} layerId
+     * @private
+     */
+    async _rasterizeLayer(layerId) {
+        // TODO: implement
+        console.log('_rasterizeLayer not yet implemented', layerId)
+    }
+
+    /**
+     * Flatten multiple selected layers into one
+     * @param {Array<string>} layerIds
+     * @private
+     */
+    async _flattenLayers(layerIds) {
+        // TODO: implement
+        console.log('_flattenLayers not yet implemented', layerIds)
     }
 
     /**
