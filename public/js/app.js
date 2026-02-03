@@ -640,7 +640,9 @@ class LayersApp {
             if (result.success) {
                 // Commit the change
                 this._layers = newLayers
-                await this._rebuild()
+                // Force rebuild to update layer-step mapping even if DSL is unchanged
+                // (DSL may be string-identical after reorder when layers have same effects)
+                await this._rebuild({ force: true })
                 this._updateLayerStack()
                 this._updateLayerZIndex()
                 this._markDirty()
@@ -704,10 +706,12 @@ class LayersApp {
 
     /**
      * Rebuild and render
+     * @param {object} [options={}] - Options passed to renderer
+     * @param {boolean} [options.force=false] - Force rebuild even if DSL unchanged
      * @private
      */
-    async _rebuild() {
-        const result = await this._renderer.setLayers(this._layers)
+    async _rebuild(options = {}) {
+        const result = await this._renderer.setLayers(this._layers, options)
         if (!result.success) {
             console.error('[Layers] Rebuild failed:', result.error)
             toast.error('Failed to render: ' + result.error)

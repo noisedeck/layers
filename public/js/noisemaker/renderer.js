@@ -222,18 +222,23 @@ export class LayersRenderer {
     /**
      * Set the layer stack and rebuild DSL
      * @param {Array} layers - Array of layer objects
+     * @param {object} [options={}] - Options passed to rebuild()
      * @returns {Promise<{success: boolean, error?: string}>}
      */
-    async setLayers(layers) {
+    async setLayers(layers, options = {}) {
         this._layers = layers
-        return this.rebuild()
+        return this.rebuild(options)
     }
 
     /**
      * Rebuild DSL from current layers and recompile
+     * @param {object} [options={}] - Options
+     * @param {boolean} [options.force=false] - Force rebuild even if DSL unchanged (needed after layer reorder)
      * @returns {Promise<{success: boolean, error?: string}>}
      */
-    async rebuild() {
+    async rebuild(options = {}) {
+        const { force = false } = options
+
         if (!this._initialized) {
             await this.init()
         }
@@ -247,8 +252,10 @@ export class LayersRenderer {
             // Build DSL from layers
             const dsl = this._buildDsl()
 
-            // Skip recompilation if DSL hasn't changed
-            if (dsl === this._currentDsl) {
+            // Skip recompilation if DSL hasn't changed (unless forced)
+            // Note: force=true is needed after layer reorder because the DSL may be
+            // string-identical but the layer-to-step mapping needs to be rebuilt
+            if (dsl === this._currentDsl && !force) {
                 return { success: true }
             }
 
