@@ -158,6 +158,7 @@ class LayersApp {
 
         // Set initial tool state
         this._setToolMode('selection')
+        this._updateLayerMenu()
 
         // Recalculate fit on window resize
         window.addEventListener('resize', () => {
@@ -702,6 +703,8 @@ class LayersApp {
         } else {
             console.error('[Layers] layer-stack element not found!')
         }
+
+        this._updateLayerMenu()
     }
 
     /**
@@ -1094,6 +1097,41 @@ class LayersApp {
         this._layerStack.addEventListener('layer-drop', (e) => {
             this._processDrop(e.detail.targetId, e.detail.dropPosition)
         })
+
+        this._layerStack.addEventListener('selection-change', () => {
+            this._updateLayerMenu()
+        })
+    }
+
+    /**
+     * Update the Layer menu item based on current selection
+     * @private
+     */
+    _updateLayerMenu() {
+        const menuItem = document.getElementById('layerActionMenuItem')
+        if (!menuItem) return
+
+        const selectedIds = this._layerStack?.selectedLayerIds || []
+        const selectedLayers = selectedIds.map(id => this._layers.find(l => l.id === id)).filter(Boolean)
+
+        if (selectedIds.length === 0) {
+            // No selection: Flatten Image
+            menuItem.textContent = 'Flatten Image'
+            menuItem.classList.remove('disabled')
+        } else if (selectedIds.length === 1) {
+            // Single layer selected
+            const layer = selectedLayers[0]
+            menuItem.textContent = 'Rasterize Layer'
+            if (layer?.sourceType === 'media') {
+                menuItem.classList.add('disabled')
+            } else {
+                menuItem.classList.remove('disabled')
+            }
+        } else {
+            // Multiple layers selected
+            menuItem.textContent = 'Flatten Layers'
+            menuItem.classList.remove('disabled')
+        }
     }
 
     /**
