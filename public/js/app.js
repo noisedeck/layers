@@ -1177,7 +1177,7 @@ class LayersApp {
         const file = new File([blob], 'flattened-image.png', { type: 'image/png' })
 
         const { createMediaLayer } = await import('./layers/layer-model.js')
-        const newLayer = createMediaLayer(file, 'image', this._currentProjectName || 'Flattened Image')
+        const newLayer = createMediaLayer(file, 'image', this._currentProjectName || 'flattened image')
 
         // Unload all existing media
         for (const layer of this._layers) {
@@ -1325,7 +1325,7 @@ class LayersApp {
         const file = new File([blob], 'flattened.png', { type: 'image/png' })
 
         const { createMediaLayer } = await import('./layers/layer-model.js')
-        const newLayer = createMediaLayer(file, 'image', 'Flattened')
+        const newLayer = createMediaLayer(file, 'image', 'flattened')
 
         // Load media
         await this._renderer.loadMedia(newLayer.id, file, 'image')
@@ -1565,7 +1565,8 @@ class LayersApp {
 
     /**
      * Extract current selection to a new layer
-     * Extracts visible pixels from the rendered canvas - works with any layer type
+     * For media layers: punches a hole in source, moves pixels to new layer
+     * For effect layers: copies pixels (can't modify procedural content)
      * @private
      */
     async _extractSelectionToLayer() {
@@ -1576,13 +1577,13 @@ class LayersApp {
             }
 
             const selectionPath = this._selectionManager.selectionPath
+            const activeLayer = this._getActiveLayer()
             const bounds = getSelectionBounds(selectionPath)
             if (bounds.width <= 0 || bounds.height <= 0) {
                 console.warn('[Extract] Invalid bounds')
                 return false
             }
 
-            // Get the rendered canvas pixels
             const canvasWidth = this._canvas.width
             const canvasHeight = this._canvas.height
 
@@ -1600,58 +1601,106 @@ class LayersApp {
                 return false
             }
 
-            // Create full canvas-size image with extracted pixels at correct position
-            // (like paste does - media shader expects full-size images)
-            const extractedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
-            const extractedCtx = extractedCanvas.getContext('2d')
-            extractedCtx.clearRect(0, 0, canvasWidth, canvasHeight)
-
-            // Draw the entire rendered canvas
-            extractedCtx.drawImage(this._canvas, 0, 0)
-
-            // Check if selection region has any visible pixels
-            const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
-            let hasAnyPixels = false
-            for (let i = 0; i < checkData.data.length; i += 4) {
-                if (checkData.data[i + 3] > 0) {
-                    hasAnyPixels = true
-                    break
-                }
-            }
-            if (!hasAnyPixels) {
-                toast.warning('No pixels selected')
-                return false
-            }
-
             // Create selection mask at canvas size
             const maskCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
             const maskCtx = maskCanvas.getContext('2d')
             this._drawSelectionMask(maskCtx, selectionPath)
 
-            // Apply mask to keep only selected pixels
-            extractedCtx.globalCompositeOperation = 'destination-in'
-            extractedCtx.drawImage(maskCanvas, 0, 0)
-            extractedCtx.globalCompositeOperation = 'source-over'
+            // For media layers, punch hole in source and extract from source
+            // For effect layers, extract from rendered canvas (copy, not move)
+            if (activeLayer?.sourceType === 'media' && activeLayer.mediaFile) {
+                // Get source image
+                const sourceImg = await this._getLayerImage(activeLayer)
+                if (!sourceImg) {
+                    return false
+                }
 
-            // Create extracted layer (full canvas size, no offset needed)
-            const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
-            const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
+                // Create extracted pixels canvas
+                const extractedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+                const extractedCtx = extractedCanvas.getContext('2d')
+                const layerOffsetX = activeLayer.offsetX || 0
+                const layerOffsetY = activeLayer.offsetY || 0
+                extractedCtx.drawImage(sourceImg, layerOffsetX, layerOffsetY)
+                extractedCtx.globalCompositeOperation = 'destination-in'
+                extractedCtx.drawImage(maskCanvas, 0, 0)
+                extractedCtx.globalCompositeOperation = 'source-over'
 
-            const { createMediaLayer } = await import('./layers/layer-model.js')
-            const newLayer = createMediaLayer(extractedFile, 'image', 'Moved Selection')
-            // No offset - pixels are already at correct position in full-size image
+                // Check if any pixels
+                const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
+                let hasAnyPixels = false
+                for (let i = 0; i < checkData.data.length; i += 4) {
+                    if (checkData.data[i + 3] > 0) {
+                        hasAnyPixels = true
+                        break
+                    }
+                }
+                if (!hasAnyPixels) {
+                    toast.warning('no pixels selected')
+                    return false
+                }
 
-            // Add at top of layer stack
-            this._layers.push(newLayer)
+                // Punch hole in source - translate mask from canvas coords to source coords
+                const sourceCanvas = new OffscreenCanvas(sourceImg.width, sourceImg.height)
+                const sourceCtx = sourceCanvas.getContext('2d')
+                sourceCtx.drawImage(sourceImg, 0, 0)
+                sourceCtx.globalCompositeOperation = 'destination-out'
+                sourceCtx.drawImage(maskCanvas, -layerOffsetX, -layerOffsetY)
+                sourceCtx.globalCompositeOperation = 'source-over'
 
-            await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
+                // Update source layer
+                const sourceBlob = await sourceCanvas.convertToBlob({ type: 'image/png' })
+                const sourceFile = new File([sourceBlob], activeLayer.mediaFile?.name || 'layer.png', { type: 'image/png' })
+                activeLayer.mediaFile = sourceFile
+                await this._renderer.loadMedia(activeLayer.id, sourceFile, 'image')
 
-            // Select the new layer
-            this._layerStack.selectedLayerId = newLayer.id
+                // Create new layer with extracted pixels
+                const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
+                const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
 
-            // Clear the selection since we've extracted it
+                const { createMediaLayer } = await import('./layers/layer-model.js')
+                const newLayer = createMediaLayer(extractedFile, 'image', 'moved selection')
+
+                // Insert after active layer
+                const activeIndex = this._layers.findIndex(l => l.id === activeLayer.id)
+                this._layers.splice(activeIndex + 1, 0, newLayer)
+
+                await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
+                this._layerStack.selectedLayerId = newLayer.id
+            } else {
+                // Effect layer or no active layer - extract from rendered canvas (copy)
+                const extractedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+                const extractedCtx = extractedCanvas.getContext('2d')
+                extractedCtx.drawImage(this._canvas, 0, 0)
+                extractedCtx.globalCompositeOperation = 'destination-in'
+                extractedCtx.drawImage(maskCanvas, 0, 0)
+                extractedCtx.globalCompositeOperation = 'source-over'
+
+                // Check if any pixels
+                const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
+                let hasAnyPixels = false
+                for (let i = 0; i < checkData.data.length; i += 4) {
+                    if (checkData.data[i + 3] > 0) {
+                        hasAnyPixels = true
+                        break
+                    }
+                }
+                if (!hasAnyPixels) {
+                    toast.warning('no pixels selected')
+                    return false
+                }
+
+                const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
+                const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
+
+                const { createMediaLayer } = await import('./layers/layer-model.js')
+                const newLayer = createMediaLayer(extractedFile, 'image', 'moved selection')
+
+                this._layers.push(newLayer)
+                await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
+                this._layerStack.selectedLayerId = newLayer.id
+            }
+
             this._selectionManager.clearSelection()
-
             this._updateLayerStack()
             await this._rebuild()
             this._markDirty()
