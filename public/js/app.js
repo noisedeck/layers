@@ -1784,10 +1784,16 @@ class LayersApp {
      * @private
      */
     _drawSelectionMaskOffset(ctx, selectionPath, offsetX, offsetY) {
+        ctx.imageSmoothingEnabled = false
         ctx.fillStyle = 'white'
 
         if (selectionPath.type === 'rect') {
-            ctx.fillRect(selectionPath.x + offsetX, selectionPath.y + offsetY, selectionPath.width, selectionPath.height)
+            // Use integer coords to avoid anti-aliasing artifacts
+            const x = Math.round(selectionPath.x + offsetX)
+            const y = Math.round(selectionPath.y + offsetY)
+            const w = Math.round(selectionPath.width)
+            const h = Math.round(selectionPath.height)
+            ctx.fillRect(x, y, w, h)
         } else if (selectionPath.type === 'oval') {
             ctx.beginPath()
             ctx.ellipse(selectionPath.cx + offsetX, selectionPath.cy + offsetY, selectionPath.rx, selectionPath.ry, 0, 0, Math.PI * 2)
