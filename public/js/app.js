@@ -133,6 +133,8 @@ class LayersApp {
             extractSelection: (destructive) => this._extractSelectionToLayer(destructive),
             showNoLayerDialog: () => this._showNoLayerSelectedDialog(),
             selectTopmostLayer: () => this._selectTopmostLayer(),
+            duplicateLayer: () => this._duplicateActiveLayer(),
+            onComplete: () => this._onCloneComplete(),
             destructive: false,
             toolClass: 'clone-tool'
         })
@@ -1581,6 +1583,81 @@ class LayersApp {
         if (this._layerStack) {
             this._layerStack.selectedLayerIds = []
         }
+    }
+
+    /**
+     * Duplicate the active layer
+     * @returns {Promise<boolean>} True if successful
+     * @private
+     */
+    async _duplicateActiveLayer() {
+        const layer = this._getActiveLayer()
+        if (!layer) return false
+
+        const canvasWidth = this._canvas.width
+        const canvasHeight = this._canvas.height
+
+        // Render the layer to get its pixels
+        const compositeImg = await this._renderLayerComposite([layer.id])
+        if (!compositeImg) return false
+
+        // Create new layer with the pixels
+        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(compositeImg, 0, 0)
+
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        const file = new File([blob], 'duplicated.png', { type: 'image/png' })
+
+        const { createMediaLayer } = await import('./layers/layer-model.js')
+        const newLayer = createMediaLayer(file, 'image', `${layer.name} copy`)
+
+        // Insert after source layer
+        const layerIndex = this._layers.findIndex(l => l.id === layer.id)
+        this._layers.splice(layerIndex + 1, 0, newLayer)
+
+        await this._renderer.loadMedia(newLayer.id, file, 'image')
+        this._layerStack.selectedLayerId = newLayer.id
+
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        return true
+    }
+
+    /**
+     * Called after clone tool completes - switch to selection and create marquee
+     * @private
+     */
+    _onCloneComplete() {
+        const layer = this._getActiveLayer()
+        if (!layer) return
+
+        // Get layer bounds (for media layers, use the image dimensions + offset)
+        let x = layer.offsetX || 0
+        let y = layer.offsetY || 0
+        let width = this._canvas.width
+        let height = this._canvas.height
+
+        // For media layers, try to get actual dimensions
+        if (layer.sourceType === 'media' && layer.mediaFile) {
+            // Use canvas size as fallback since we rendered to canvas size
+            width = this._canvas.width
+            height = this._canvas.height
+        }
+
+        // Create a rect selection around the layer
+        this._selectionManager._selectionPath = {
+            type: 'rect',
+            x: x,
+            y: y,
+            width: width,
+            height: height
+        }
+        this._selectionManager._startAnimation()
+
+        // Switch to selection tool
+        this._setToolMode('selection')
     }
 
     /**
