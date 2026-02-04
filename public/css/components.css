@@ -735,6 +735,58 @@ dialog[open] {
     border-top: 1px solid var(--color-border-muted);
 }
 
+/* =========================================================================
+   Choice Dialog
+   ========================================================================= */
+
+.choice-dialog-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--color-backdrop);
+    backdrop-filter: blur(4px);
+    z-index: 10001;
+    justify-content: center;
+    align-items: center;
+}
+
+.choice-dialog-backdrop.visible {
+    display: flex;
+}
+
+.choice-dialog {
+    width: 360px;
+    background: var(--color-bg-overlay);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xl);
+    color: var(--color-text-primary);
+    padding: 0;
+    max-width: 90vw;
+    animation: dialog-open 0.2s ease-out;
+}
+
+.choice-dialog .dialog-body {
+    padding: 24px;
+}
+
+.choice-dialog .choice-message {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+}
+
+.choice-dialog .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 24px;
+    border-top: 1px solid var(--color-border-muted);
+}
+
 .open-dialog {
     width: 560px;
     background: var(--color-bg-overlay);

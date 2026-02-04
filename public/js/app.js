@@ -109,17 +109,32 @@ class LayersApp {
             this._selectionManager.setSourceCanvas(this._canvas)
         }
 
-        // Initialize move tool
+        // Initialize move tool (destructive - punches holes)
         this._moveTool = new MoveTool({
             overlay: this._selectionOverlay,
             selectionManager: this._selectionManager,
             getActiveLayer: () => this._getActiveLayer(),
             getSelectedLayers: () => this._layerStack?.selectedLayerIds || [],
             updateLayerPosition: (x, y) => this._updateActiveLayerPosition(x, y),
-            extractSelection: () => this._extractSelectionToLayer(),
-            showMultiLayerDialog: () => this._showMultiLayerNotSupportedDialog(),
+            extractSelection: (destructive) => this._extractSelectionToLayer(destructive),
             showNoLayerDialog: () => this._showNoLayerSelectedDialog(),
-            selectTopmostLayer: () => this._selectTopmostLayer()
+            selectTopmostLayer: () => this._selectTopmostLayer(),
+            destructive: true,
+            toolClass: 'move-tool'
+        })
+
+        // Initialize clone tool (non-destructive - just clones)
+        this._cloneTool = new MoveTool({
+            overlay: this._selectionOverlay,
+            selectionManager: this._selectionManager,
+            getActiveLayer: () => this._getActiveLayer(),
+            getSelectedLayers: () => this._layerStack?.selectedLayerIds || [],
+            updateLayerPosition: (x, y) => this._updateActiveLayerPosition(x, y),
+            extractSelection: (destructive) => this._extractSelectionToLayer(destructive),
+            showNoLayerDialog: () => this._showNoLayerSelectedDialog(),
+            selectTopmostLayer: () => this._selectTopmostLayer(),
+            destructive: false,
+            toolClass: 'clone-tool'
         })
 
         if (!this._canvas) {
@@ -1058,6 +1073,11 @@ class LayersApp {
             if (display) display.textContent = value
         })
 
+        // Clone tool button
+        document.getElementById('cloneToolBtn')?.addEventListener('click', () => {
+            this._setToolMode('clone')
+        })
+
         // Move tool button
         document.getElementById('moveToolBtn')?.addEventListener('click', () => {
             this._setToolMode('move')
@@ -1584,14 +1604,15 @@ class LayersApp {
      * Rasterize a layer in place without UI updates or toast
      * Used internally before extraction
      * @param {string} layerId
+     * @returns {Promise<string|null>} The new layer id, or null if already media
      * @private
      */
     async _rasterizeLayerInPlace(layerId) {
         const layerIndex = this._layers.findIndex(l => l.id === layerId)
-        if (layerIndex === -1) return
+        if (layerIndex === -1) return null
 
         const layer = this._layers[layerIndex]
-        if (layer.sourceType === 'media') return
+        if (layer.sourceType === 'media') return layer.id
 
         // Save and hide other layers
         const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
@@ -1629,133 +1650,323 @@ class LayersApp {
         if (this._layerStack) {
             this._layerStack.selectedLayerId = newLayer.id
         }
+
+        return newLayer.id
     }
 
     /**
      * Extract current selection to a new layer
-     * Auto-rasterizes effect layers, then punches hole and moves pixels
+     * @param {boolean} destructive - If true, modify originals (punch holes/flatten). If false, just clone.
      * @private
      */
-    async _extractSelectionToLayer() {
+    async _extractSelectionToLayer(destructive = true) {
         try {
             if (!this._selectionManager?.hasSelection()) {
                 console.warn('[Extract] No selection')
                 return false
             }
 
-            const selectionPath = this._selectionManager.selectionPath
-            let activeLayer = this._getActiveLayer()
-
-            // Auto-rasterize effect layers before extracting
-            if (activeLayer && activeLayer.sourceType !== 'media') {
-                await this._rasterizeLayerInPlace(activeLayer.id)
-                activeLayer = this._getActiveLayer() // Get updated layer
-            }
-
-            const bounds = getSelectionBounds(selectionPath)
-            if (bounds.width <= 0 || bounds.height <= 0) {
-                console.warn('[Extract] Invalid bounds')
+            const selectedIds = this._layerStack?.selectedLayerIds || []
+            if (selectedIds.length === 0) {
+                console.warn('[Extract] No layers selected')
                 return false
             }
 
-            const canvasWidth = this._canvas.width
-            const canvasHeight = this._canvas.height
+            const selectedLayers = selectedIds
+                .map(id => this._layers.find(l => l.id === id))
+                .filter(Boolean)
 
-            // Clamp bounds to canvas
-            const extractBounds = {
-                x: Math.max(0, Math.floor(bounds.x)),
-                y: Math.max(0, Math.floor(bounds.y)),
-                width: Math.ceil(bounds.width),
-                height: Math.ceil(bounds.height)
+            const isSingleLayer = selectedLayers.length === 1
+            const singleLayer = isSingleLayer ? selectedLayers[0] : null
+
+            // Execute extraction
+            if (isSingleLayer) {
+                return await this._extractFromSingleLayer(singleLayer, destructive)
+            } else {
+                return await this._extractFromMultipleLayers(selectedIds, destructive)
             }
-            extractBounds.width = Math.min(extractBounds.width, canvasWidth - extractBounds.x)
-            extractBounds.height = Math.min(extractBounds.height, canvasHeight - extractBounds.y)
-
-            if (extractBounds.width <= 0 || extractBounds.height <= 0) {
-                return false
-            }
-
-            // Need an active layer to extract from
-            if (!activeLayer) {
-                console.warn('[Extract] No active layer')
-                return false
-            }
-
-            // Create selection mask at canvas size
-            const maskCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
-            const maskCtx = maskCanvas.getContext('2d')
-            this._drawSelectionMask(maskCtx, selectionPath)
-
-            // After auto-rasterization, layer is always media type
-            if (activeLayer.sourceType === 'media' && activeLayer.mediaFile) {
-                // Get source image
-                const sourceImg = await this._getLayerImage(activeLayer)
-                if (!sourceImg) {
-                    return false
-                }
-
-                // Create extracted pixels canvas
-                const extractedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
-                const extractedCtx = extractedCanvas.getContext('2d')
-                const layerOffsetX = activeLayer.offsetX || 0
-                const layerOffsetY = activeLayer.offsetY || 0
-                extractedCtx.drawImage(sourceImg, layerOffsetX, layerOffsetY)
-                extractedCtx.globalCompositeOperation = 'destination-in'
-                extractedCtx.drawImage(maskCanvas, 0, 0)
-                extractedCtx.globalCompositeOperation = 'source-over'
-
-                // Check if any pixels
-                const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
-                let hasAnyPixels = false
-                for (let i = 0; i < checkData.data.length; i += 4) {
-                    if (checkData.data[i + 3] > 0) {
-                        hasAnyPixels = true
-                        break
-                    }
-                }
-                if (!hasAnyPixels) {
-                    toast.warning('no pixels selected')
-                    return false
-                }
-
-                // Punch hole in source - translate mask from canvas coords to source coords
-                const sourceCanvas = new OffscreenCanvas(sourceImg.width, sourceImg.height)
-                const sourceCtx = sourceCanvas.getContext('2d')
-                sourceCtx.drawImage(sourceImg, 0, 0)
-                sourceCtx.globalCompositeOperation = 'destination-out'
-                sourceCtx.drawImage(maskCanvas, -layerOffsetX, -layerOffsetY)
-                sourceCtx.globalCompositeOperation = 'source-over'
-
-                // Update source layer
-                const sourceBlob = await sourceCanvas.convertToBlob({ type: 'image/png' })
-                const sourceFile = new File([sourceBlob], activeLayer.mediaFile?.name || 'layer.png', { type: 'image/png' })
-                activeLayer.mediaFile = sourceFile
-                await this._renderer.loadMedia(activeLayer.id, sourceFile, 'image')
-
-                // Create new layer with extracted pixels
-                const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
-                const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
-
-                const { createMediaLayer } = await import('./layers/layer-model.js')
-                const newLayer = createMediaLayer(extractedFile, 'image', 'moved selection')
-
-                // Insert after active layer
-                const activeIndex = this._layers.findIndex(l => l.id === activeLayer.id)
-                this._layers.splice(activeIndex + 1, 0, newLayer)
-
-                await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
-                this._layerStack.selectedLayerId = newLayer.id
-            }
-
-            this._selectionManager.clearSelection()
-            this._updateLayerStack()
-            await this._rebuild()
-            this._markDirty()
-            return true
         } catch (err) {
             console.error('[Extract] ERROR:', err)
             throw err
         }
+    }
+
+    /**
+     * Extract selection from a single layer
+     * @param {object} layer - The layer to extract from
+     * @param {boolean} punchHole - Whether to punch hole in original
+     * @private
+     */
+    async _extractFromSingleLayer(layer, punchHole) {
+        const selectionPath = this._selectionManager.selectionPath
+        const canvasWidth = this._canvas.width
+        const canvasHeight = this._canvas.height
+
+        const bounds = getSelectionBounds(selectionPath)
+        if (bounds.width <= 0 || bounds.height <= 0) return false
+
+        // Clamp bounds
+        const extractBounds = {
+            x: Math.max(0, Math.floor(bounds.x)),
+            y: Math.max(0, Math.floor(bounds.y)),
+            width: Math.ceil(bounds.width),
+            height: Math.ceil(bounds.height)
+        }
+        extractBounds.width = Math.min(extractBounds.width, canvasWidth - extractBounds.x)
+        extractBounds.height = Math.min(extractBounds.height, canvasHeight - extractBounds.y)
+        if (extractBounds.width <= 0 || extractBounds.height <= 0) return false
+
+        // Create selection mask
+        const maskCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const maskCtx = maskCanvas.getContext('2d')
+        this._drawSelectionMask(maskCtx, selectionPath)
+
+        // If punching hole and effect layer, rasterize first
+        if (punchHole && layer.sourceType !== 'media') {
+            const newLayerId = await this._rasterizeLayerInPlace(layer.id)
+            if (newLayerId) {
+                layer = this._layers.find(l => l.id === newLayerId) || layer
+            }
+        }
+
+        // Get source image - either from layer directly or render composite
+        let sourceImg
+        let layerOffsetX = 0
+        let layerOffsetY = 0
+
+        if (layer.sourceType === 'media' && layer.mediaFile) {
+            sourceImg = await this._getLayerImage(layer)
+            layerOffsetX = layer.offsetX || 0
+            layerOffsetY = layer.offsetY || 0
+        } else {
+            // Render just this layer to get composite
+            sourceImg = await this._renderLayerComposite([layer.id])
+        }
+
+        if (!sourceImg) return false
+
+        // Create extracted pixels canvas
+        const extractedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const extractedCtx = extractedCanvas.getContext('2d')
+        extractedCtx.drawImage(sourceImg, layerOffsetX, layerOffsetY)
+        extractedCtx.globalCompositeOperation = 'destination-in'
+        extractedCtx.drawImage(maskCanvas, 0, 0)
+        extractedCtx.globalCompositeOperation = 'source-over'
+
+        // Check if any pixels
+        const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
+        let hasAnyPixels = false
+        for (let i = 0; i < checkData.data.length; i += 4) {
+            if (checkData.data[i + 3] > 0) {
+                hasAnyPixels = true
+                break
+            }
+        }
+        if (!hasAnyPixels) {
+            toast.warning('no pixels selected')
+            return false
+        }
+
+        // Punch hole in source if requested (only for media layers)
+        if (punchHole && layer.sourceType === 'media' && layer.mediaFile) {
+            const originalImg = await this._getLayerImage(layer)
+            const sourceCanvas = new OffscreenCanvas(originalImg.width, originalImg.height)
+            const sourceCtx = sourceCanvas.getContext('2d')
+            sourceCtx.drawImage(originalImg, 0, 0)
+            sourceCtx.globalCompositeOperation = 'destination-out'
+            sourceCtx.drawImage(maskCanvas, -layerOffsetX, -layerOffsetY)
+            sourceCtx.globalCompositeOperation = 'source-over'
+
+            const sourceBlob = await sourceCanvas.convertToBlob({ type: 'image/png' })
+            const sourceFile = new File([sourceBlob], layer.mediaFile?.name || 'layer.png', { type: 'image/png' })
+            layer.mediaFile = sourceFile
+            await this._renderer.loadMedia(layer.id, sourceFile, 'image')
+        }
+
+        // Create new layer with extracted pixels
+        const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
+        const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
+
+        const { createMediaLayer } = await import('./layers/layer-model.js')
+        const newLayer = createMediaLayer(extractedFile, 'image', 'moved selection')
+
+        // Insert after source layer
+        const layerIndex = this._layers.findIndex(l => l.id === layer.id)
+        this._layers.splice(layerIndex + 1, 0, newLayer)
+
+        await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
+        this._layerStack.selectedLayerId = newLayer.id
+
+        this._selectionManager.clearSelection()
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        return true
+    }
+
+    /**
+     * Extract selection from multiple layers
+     * @param {string[]} layerIds - The layer IDs to extract from
+     * @param {boolean} punchHole - Whether to flatten and punch (true) or just clone (false)
+     * @private
+     */
+    async _extractFromMultipleLayers(layerIds, punchHole) {
+        const selectionPath = this._selectionManager.selectionPath
+        const canvasWidth = this._canvas.width
+        const canvasHeight = this._canvas.height
+
+        const bounds = getSelectionBounds(selectionPath)
+        if (bounds.width <= 0 || bounds.height <= 0) return false
+
+        // Clamp bounds
+        const extractBounds = {
+            x: Math.max(0, Math.floor(bounds.x)),
+            y: Math.max(0, Math.floor(bounds.y)),
+            width: Math.ceil(bounds.width),
+            height: Math.ceil(bounds.height)
+        }
+        extractBounds.width = Math.min(extractBounds.width, canvasWidth - extractBounds.x)
+        extractBounds.height = Math.min(extractBounds.height, canvasHeight - extractBounds.y)
+        if (extractBounds.width <= 0 || extractBounds.height <= 0) return false
+
+        // Create selection mask
+        const maskCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const maskCtx = maskCanvas.getContext('2d')
+        this._drawSelectionMask(maskCtx, selectionPath)
+
+        // Render composite of selected layers
+        const compositeImg = await this._renderLayerComposite(layerIds)
+        if (!compositeImg) return false
+
+        // Create extracted pixels canvas
+        const extractedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const extractedCtx = extractedCanvas.getContext('2d')
+        extractedCtx.drawImage(compositeImg, 0, 0)
+        extractedCtx.globalCompositeOperation = 'destination-in'
+        extractedCtx.drawImage(maskCanvas, 0, 0)
+        extractedCtx.globalCompositeOperation = 'source-over'
+
+        // Check if any pixels
+        const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
+        let hasAnyPixels = false
+        for (let i = 0; i < checkData.data.length; i += 4) {
+            if (checkData.data[i + 3] > 0) {
+                hasAnyPixels = true
+                break
+            }
+        }
+        if (!hasAnyPixels) {
+            toast.warning('no pixels selected')
+            return false
+        }
+
+        // Find topmost layer index for insertion
+        const topmostIndex = Math.max(...layerIds.map(id => this._layers.findIndex(l => l.id === id)))
+
+        if (punchHole) {
+            // Flatten layers, then punch hole
+            // First flatten (similar to _flattenLayers but we keep the result for punching)
+            const flattenedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+            const flattenedCtx = flattenedCanvas.getContext('2d')
+            flattenedCtx.drawImage(compositeImg, 0, 0)
+
+            // Punch hole
+            flattenedCtx.globalCompositeOperation = 'destination-out'
+            flattenedCtx.drawImage(maskCanvas, 0, 0)
+            flattenedCtx.globalCompositeOperation = 'source-over'
+
+            // Create flattened layer with hole
+            const flattenedBlob = await flattenedCanvas.convertToBlob({ type: 'image/png' })
+            const flattenedFile = new File([flattenedBlob], 'flattened.png', { type: 'image/png' })
+
+            const { createMediaLayer } = await import('./layers/layer-model.js')
+            const flattenedLayer = createMediaLayer(flattenedFile, 'image', 'flattened')
+
+            // Remove old layers
+            const selectedLayers = layerIds.map(id => this._layers.find(l => l.id === id)).filter(Boolean)
+            for (const layer of selectedLayers) {
+                if (layer.sourceType === 'media') {
+                    this._renderer.unloadMedia(layer.id)
+                }
+            }
+            const indicesToRemove = layerIds
+                .map(id => this._layers.findIndex(l => l.id === id))
+                .filter(i => i !== -1)
+                .sort((a, b) => b - a)
+            for (const idx of indicesToRemove) {
+                this._layers.splice(idx, 1)
+            }
+
+            // Insert flattened layer
+            const removedAboveTopmost = indicesToRemove.filter(idx => idx < topmostIndex).length
+            const insertIndex = topmostIndex - removedAboveTopmost
+            this._layers.splice(insertIndex, 0, flattenedLayer)
+            await this._renderer.loadMedia(flattenedLayer.id, flattenedFile, 'image')
+        }
+
+        // Create new layer with extracted pixels
+        const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
+        const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
+
+        const { createMediaLayer } = await import('./layers/layer-model.js')
+        const newLayer = createMediaLayer(extractedFile, 'image', 'moved selection')
+
+        // Insert at top
+        this._layers.push(newLayer)
+        await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
+        this._layerStack.selectedLayerId = newLayer.id
+
+        this._selectionManager.clearSelection()
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        return true
+    }
+
+    /**
+     * Render a composite image of specified layers
+     * @param {string[]} layerIds - Layer IDs to render
+     * @returns {Promise<HTMLImageElement|null>}
+     * @private
+     */
+    async _renderLayerComposite(layerIds) {
+        // Save visibility
+        const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
+
+        // Show only specified layers
+        for (const l of this._layers) {
+            l.visible = layerIds.includes(l.id)
+        }
+
+        await this._rebuild()
+
+        // Capture
+        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(this._canvas, 0, 0)
+
+        // Restore visibility
+        for (const snap of visibilitySnapshot) {
+            const l = this._layers.find(layer => layer.id === snap.id)
+            if (l) l.visible = snap.visible
+        }
+        await this._rebuild()
+
+        // Convert to image
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        return new Promise((resolve) => {
+            const img = new Image()
+            const url = URL.createObjectURL(blob)
+            img.onload = () => {
+                URL.revokeObjectURL(url)
+                resolve(img)
+            }
+            img.onerror = () => {
+                URL.revokeObjectURL(url)
+                resolve(null)
+            }
+            img.src = url
+        })
     }
 
     /**
@@ -1833,21 +2044,8 @@ class LayersApp {
     }
 
     /**
-     * Show dialog for multi-layer move not supported
-     * @private
-     */
-    _showMultiLayerNotSupportedDialog() {
-        confirmDialog.show({
-            message: 'Moving multiple layers is not yet supported. Please select a single layer.',
-            confirmText: 'OK',
-            cancelText: null,
-            danger: false
-        })
-    }
-
-    /**
      * Set current tool mode
-     * @param {'selection' | 'move'} tool
+     * @param {'selection' | 'move' | 'clone'} tool
      * @private
      */
     _setToolMode(tool) {
@@ -1855,19 +2053,25 @@ class LayersApp {
 
         // Deactivate all tools
         this._moveTool?.deactivate()
+        this._cloneTool?.deactivate()
 
         // Update button states
         const moveBtn = document.getElementById('moveToolBtn')
+        const cloneBtn = document.getElementById('cloneToolBtn')
+        const selectionToolBtn = document.getElementById('selectionToolBtn')
+
         if (moveBtn) {
             moveBtn.classList.toggle('active', tool === 'move')
         }
-        const selectionToolBtn = document.getElementById('selectionToolBtn')
+        if (cloneBtn) {
+            cloneBtn.classList.toggle('active', tool === 'clone')
+        }
         if (selectionToolBtn) {
-            selectionToolBtn.classList.toggle('active', tool !== 'move')
+            selectionToolBtn.classList.toggle('active', tool === 'selection')
         }
 
-        // Clear selection tool checkmarks when move tool is active
-        if (tool === 'move') {
+        // Clear selection tool checkmarks when not in selection mode
+        if (tool !== 'selection') {
             const items = ['Rect', 'Oval', 'Lasso', 'Polygon', 'Wand']
             items.forEach(item => {
                 const el = document.getElementById(`select${item}MenuItem`)
@@ -1880,9 +2084,16 @@ class LayersApp {
             this._moveTool?.activate()
             this._selectionManager.enabled = false
             this._selectionOverlay?.classList.add('move-tool')
+            this._selectionOverlay?.classList.remove('clone-tool')
+        } else if (tool === 'clone') {
+            this._cloneTool?.activate()
+            this._selectionManager.enabled = false
+            this._selectionOverlay?.classList.remove('move-tool')
+            this._selectionOverlay?.classList.add('clone-tool')
         } else {
             this._selectionManager.enabled = true
             this._selectionOverlay?.classList.remove('move-tool')
+            this._selectionOverlay?.classList.remove('clone-tool')
         }
     }
 

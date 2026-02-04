@@ -17,3 +17,8 @@
 #selectionOverlay.move-tool {
     cursor: move;
 }
+
+/* Clone tool cursor */
+#selectionOverlay.clone-tool {
+    cursor: copy;
+}

@@ -18,6 +18,7 @@ const State = {
 
 /**
  * Move tool for repositioning layers
+ * Can be destructive (punch holes) or non-destructive (clone only)
  */
 class MoveTool {
     constructor(options) {
@@ -27,9 +28,10 @@ class MoveTool {
         this._getSelectedLayers = options.getSelectedLayers
         this._updateLayerPosition = options.updateLayerPosition
         this._extractSelection = options.extractSelection
-        this._showMultiLayerDialog = options.showMultiLayerDialog
         this._showNoLayerDialog = options.showNoLayerDialog
         this._selectTopmostLayer = options.selectTopmostLayer
+        this._destructive = options.destructive !== false // Default true for backwards compat
+        this._toolClass = options.toolClass || 'move-tool'
 
         this._active = false
         this._state = State.IDLE
@@ -56,7 +58,7 @@ class MoveTool {
         this._overlay.addEventListener('mouseup', this._onMouseUp)
         this._overlay.addEventListener('mouseleave', this._onMouseUp)
 
-        this._overlay.classList.add('move-tool')
+        this._overlay.classList.add(this._toolClass)
     }
 
     deactivate() {
@@ -68,7 +70,7 @@ class MoveTool {
         this._overlay.removeEventListener('mouseup', this._onMouseUp)
         this._overlay.removeEventListener('mouseleave', this._onMouseUp)
 
-        this._overlay.classList.remove('move-tool')
+        this._overlay.classList.remove(this._toolClass)
         this._reset()
     }
 
@@ -96,13 +98,24 @@ class MoveTool {
         // Only start from IDLE state
         if (this._state !== State.IDLE) return
 
-        // Check for multiple layers selected
         const selectedLayers = this._getSelectedLayers()
-        if (selectedLayers.length > 1) {
-            this._showMultiLayerDialog()
+        const hasSelection = this._selectionManager.hasSelection()
+
+        // If there's a selection, extraction handles single/multi layer cases
+        if (hasSelection) {
+            if (selectedLayers.length === 0) {
+                if (this._showNoLayerDialog) {
+                    this._showNoLayerDialog()
+                }
+                return
+            }
+            const coords = this._getCanvasCoords(e)
+            this._state = State.EXTRACTING
+            this._doExtraction(coords)
             return
         }
 
+        // No selection - just drag (requires single layer)
         const layer = this._getActiveLayer()
         if (!layer) {
             if (this._showNoLayerDialog) {
@@ -112,25 +125,17 @@ class MoveTool {
         }
 
         const coords = this._getCanvasCoords(e)
-
-        // If there's a selection, extract it first
-        if (this._selectionManager.hasSelection()) {
-            this._state = State.EXTRACTING
-            this._doExtraction(coords)
-        } else {
-            // No selection - just start dragging the layer
-            this._state = State.DRAGGING
-            this._dragStart = coords
-            this._layerStartPos = {
-                x: layer.offsetX || 0,
-                y: layer.offsetY || 0
-            }
+        this._state = State.DRAGGING
+        this._dragStart = coords
+        this._layerStartPos = {
+            x: layer.offsetX || 0,
+            y: layer.offsetY || 0
         }
     }
 
     async _doExtraction(startCoords) {
         try {
-            const success = await this._extractSelection()
+            const success = await this._extractSelection(this._destructive)
             if (success) {
                 // Now start dragging the newly created layer
                 const layer = this._getActiveLayer()
