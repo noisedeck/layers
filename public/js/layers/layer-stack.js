@@ -128,6 +128,10 @@ class LayerStack extends HTMLElement {
         items.forEach(item => {
             item.selected = this._selectedLayerIds.has(item.layer?.id)
         })
+        this.dispatchEvent(new CustomEvent('selection-change', {
+            bubbles: true,
+            detail: { selectedIds: [...this._selectedLayerIds] }
+        }))
     }
 
     /**

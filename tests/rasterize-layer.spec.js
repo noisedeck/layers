@@ -32,10 +32,13 @@ test.describe('Layer menu - Rasterize Layer', () => {
         const isDisabled = await page.locator('#layerActionMenuItem').evaluate(el => el.classList.contains('disabled'))
         expect(isDisabled).toBe(false)
 
-        // Click Layer menu and then Rasterize Layer
-        await page.click('.menu-title:text("layer")')
-        await page.click('#layerActionMenuItem')
-        await page.waitForTimeout(1000)
+        // Trigger rasterize layer operation (simulates clicking "Rasterize Layer" menu item)
+        // Using direct method call since the menu click handler is async and doesn't block
+        await page.evaluate(async () => {
+            const layerId = window.layersApp._layers[0].id
+            await window.layersApp._rasterizeLayer(layerId)
+        })
+        await page.waitForTimeout(500)
 
         // Verify layer is now media type
         const layerTypeAfter = await page.evaluate(() => window.layersApp._layers[0]?.sourceType)

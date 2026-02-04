@@ -1207,8 +1207,69 @@ class LayersApp {
      * @private
      */
     async _rasterizeLayer(layerId) {
-        // TODO: implement
-        console.log('_rasterizeLayer not yet implemented', layerId)
+        const layerIndex = this._layers.findIndex(l => l.id === layerId)
+        if (layerIndex === -1) return
+
+        const layer = this._layers[layerIndex]
+        if (layer.sourceType === 'media') return // Already media
+
+        // Save original visibility states
+        const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
+
+        // Hide all other layers
+        for (const l of this._layers) {
+            if (l.id !== layerId) {
+                l.visible = false
+            }
+        }
+
+        // Rebuild to render only this layer
+        await this._rebuild()
+
+        // Capture the rendered result
+        const canvasWidth = this._canvas.width
+        const canvasHeight = this._canvas.height
+
+        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(this._canvas, 0, 0)
+
+        // Restore visibility
+        for (const snap of visibilitySnapshot) {
+            const l = this._layers.find(layer => layer.id === snap.id)
+            if (l) l.visible = snap.visible
+        }
+
+        // Convert to blob and create media layer
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        const file = new File([blob], 'rasterized.png', { type: 'image/png' })
+
+        const { createMediaLayer } = await import('./layers/layer-model.js')
+        const newLayer = createMediaLayer(file, 'image', `${layer.name} (rasterized)`)
+
+        // Preserve properties from original layer
+        newLayer.visible = layer.visible
+        newLayer.opacity = layer.opacity
+        newLayer.blendMode = layer.blendMode
+        // Offset is baked in, reset to 0
+        newLayer.offsetX = 0
+        newLayer.offsetY = 0
+
+        // Load media
+        await this._renderer.loadMedia(newLayer.id, file, 'image')
+
+        // Replace the layer in the stack
+        this._layers[layerIndex] = newLayer
+
+        // Update UI
+        this._updateLayerStack()
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = newLayer.id
+        }
+        await this._rebuild()
+        this._markDirty()
+
+        toast.success('Layer rasterized')
     }
 
     /**
