@@ -85,9 +85,9 @@ test.describe('Move tool - effect base layer', () => {
         const layerCountAfter = await page.evaluate(() => window.layersApp._layers.length)
         expect(layerCountAfter).toBe(layerCountBefore + 1)
 
-        // Verify the new layer is named "Moved Selection"
+        // Verify the new layer is named "moved selection"
         const newLayerName = await page.evaluate(() => window.layersApp._getActiveLayer()?.name)
-        expect(newLayerName).toBe('Moved Selection')
+        expect(newLayerName).toBe('moved selection')
 
         // Verify the new layer is a media layer (extracted pixels)
         const newLayerType = await page.evaluate(() => window.layersApp._getActiveLayer()?.sourceType)

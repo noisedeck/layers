@@ -126,8 +126,8 @@ test.describe('Move tool - real user flow', () => {
         const layerCountAfter = await page.evaluate(() => window.layersApp._layers.length)
         expect(layerCountAfter).toBe(layerCountBefore + 1)
 
-        // Verify the new layer is named "Moved Selection"
+        // Verify the new layer is named "moved selection"
         const newLayerName = await page.evaluate(() => window.layersApp._getActiveLayer()?.name)
-        expect(newLayerName).toBe('Moved Selection')
+        expect(newLayerName).toBe('moved selection')
     })
 })

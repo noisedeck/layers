@@ -162,6 +162,6 @@ test.describe('Move tool', () => {
             const layer = window.layersApp._getActiveLayer()
             return layer?.name
         })
-        expect(selectedLayerName).toBe('Moved Selection')
+        expect(selectedLayerName).toBe('moved selection')
     })
 })

@@ -1,6 +1,6 @@
 import { test, expect } from 'playwright/test'
 
-test.describe('Layer menu - Rasterize Layer', () => {
+test.describe('Layer menu - rasterize layer', () => {
     test('rasterize converts effect layer to media layer', async ({ page }) => {
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
@@ -26,13 +26,13 @@ test.describe('Layer menu - Rasterize Layer', () => {
         })
         await page.waitForTimeout(100)
 
-        // Verify menu shows "Rasterize Layer" and is enabled
+        // Verify menu shows "rasterize layer" and is enabled
         const menuText = await page.locator('#layerActionMenuItem').textContent()
-        expect(menuText).toBe('Rasterize Layer')
+        expect(menuText).toBe('rasterize layer')
         const isDisabled = await page.locator('#layerActionMenuItem').evaluate(el => el.classList.contains('disabled'))
         expect(isDisabled).toBe(false)
 
-        // Trigger rasterize layer operation (simulates clicking "Rasterize Layer" menu item)
+        // Trigger rasterize layer operation (simulates clicking "rasterize layer" menu item)
         // Using direct method call since the menu click handler is async and doesn't block
         await page.evaluate(async () => {
             const layerId = window.layersApp._layers[0].id
@@ -83,9 +83,9 @@ test.describe('Layer menu - Rasterize Layer', () => {
         })
         await page.waitForTimeout(100)
 
-        // Verify menu shows "Rasterize Layer" but is disabled
+        // Verify menu shows "rasterize layer" but is disabled
         const menuText = await page.locator('#layerActionMenuItem').textContent()
-        expect(menuText).toBe('Rasterize Layer')
+        expect(menuText).toBe('rasterize layer')
         const isDisabled = await page.locator('#layerActionMenuItem').evaluate(el => el.classList.contains('disabled'))
         expect(isDisabled).toBe(true)
     })

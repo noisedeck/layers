@@ -1,6 +1,6 @@
 import { test, expect } from 'playwright/test'
 
-test.describe('Layer menu - Flatten Layers', () => {
+test.describe('Layer menu - flatten layers', () => {
     test('flatten layers combines selected layers into one', async ({ page }) => {
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
@@ -33,9 +33,9 @@ test.describe('Layer menu - Flatten Layers', () => {
         })
         await page.waitForTimeout(100)
 
-        // Verify menu shows "Flatten Layers"
+        // Verify menu shows "flatten layers"
         const menuText = await page.locator('#layerActionMenuItem').textContent()
-        expect(menuText).toBe('Flatten Layers')
+        expect(menuText).toBe('flatten layers')
 
         // Call flatten layers directly (avoiding async menu timing issues)
         await page.evaluate(async () => {
@@ -49,9 +49,9 @@ test.describe('Layer menu - Flatten Layers', () => {
         const layerCountAfter = await page.evaluate(() => window.layersApp._layers.length)
         expect(layerCountAfter).toBe(2)
 
-        // Verify the new layer is named "Flattened"
+        // Verify the new layer is named "flattened"
         const topLayerName = await page.evaluate(() => window.layersApp._layers[1]?.name)
-        expect(topLayerName).toBe('Flattened')
+        expect(topLayerName).toBe('flattened')
 
         // Verify it's a media layer
         const topLayerType = await page.evaluate(() => window.layersApp._layers[1]?.sourceType)

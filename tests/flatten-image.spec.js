@@ -34,9 +34,9 @@ test.describe('Layer menu - Flatten Image', () => {
         const selectedIdsAfterClear = await page.evaluate(() => window.layersApp._layerStack.selectedLayerIds)
         expect(selectedIdsAfterClear.length).toBe(0)
 
-        // Verify menu shows "Flatten Image"
+        // Verify menu shows "flatten image"
         const menuText = await page.locator('#layerActionMenuItem').textContent()
-        expect(menuText).toBe('Flatten Image')
+        expect(menuText).toBe('flatten image')
 
         // Trigger flatten image operation (simulates clicking "Flatten Image" menu item)
         // Using direct method call since the menu click handler is async and doesn't block
