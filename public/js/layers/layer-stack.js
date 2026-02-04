@@ -74,6 +74,21 @@ class LayerStack extends HTMLElement {
     }
 
     /**
+     * Set multiple selected layer IDs
+     * @param {string[]} ids - Array of layer IDs to select
+     */
+    set selectedLayerIds(ids) {
+        this._selectedLayerIds.clear()
+        for (const id of ids) {
+            this._selectedLayerIds.add(id)
+        }
+        if (ids.length > 0) {
+            this._lastClickedLayerId = ids[ids.length - 1]
+        }
+        this._updateSelection()
+    }
+
+    /**
      * Get all selected layers
      * @returns {object[]} Array of selected layer objects
      */

@@ -1278,8 +1278,85 @@ class LayersApp {
      * @private
      */
     async _flattenLayers(layerIds) {
-        // TODO: implement
-        console.log('_flattenLayers not yet implemented', layerIds)
+        if (layerIds.length < 2) return
+
+        // Find the layers and their indices
+        const selectedLayers = layerIds
+            .map(id => ({ layer: this._layers.find(l => l.id === id), index: this._layers.findIndex(l => l.id === id) }))
+            .filter(item => item.layer && item.index !== -1)
+            .sort((a, b) => a.index - b.index)
+
+        if (selectedLayers.length < 2) return
+
+        // Find topmost selected layer index (highest index = top of stack)
+        const topmostIndex = Math.max(...selectedLayers.map(item => item.index))
+
+        // Save original visibility states
+        const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
+
+        // Hide all layers except selected visible ones
+        for (const l of this._layers) {
+            const isSelected = layerIds.includes(l.id)
+            if (!isSelected) {
+                l.visible = false
+            }
+            // Selected but hidden layers stay hidden (will be discarded)
+        }
+
+        // Rebuild to render only selected visible layers
+        await this._rebuild()
+
+        // Capture the rendered result
+        const canvasWidth = this._canvas.width
+        const canvasHeight = this._canvas.height
+
+        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(this._canvas, 0, 0)
+
+        // Restore visibility
+        for (const snap of visibilitySnapshot) {
+            const l = this._layers.find(layer => layer.id === snap.id)
+            if (l) l.visible = snap.visible
+        }
+
+        // Convert to blob and create media layer
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        const file = new File([blob], 'flattened.png', { type: 'image/png' })
+
+        const { createMediaLayer } = await import('./layers/layer-model.js')
+        const newLayer = createMediaLayer(file, 'image', 'Flattened')
+
+        // Load media
+        await this._renderer.loadMedia(newLayer.id, file, 'image')
+
+        // Unload media for selected layers that are media type
+        for (const item of selectedLayers) {
+            if (item.layer.sourceType === 'media') {
+                this._renderer.unloadMedia(item.layer.id)
+            }
+        }
+
+        // Remove selected layers from stack (in reverse order to preserve indices)
+        const indicesToRemove = selectedLayers.map(item => item.index).sort((a, b) => b - a)
+        for (const idx of indicesToRemove) {
+            this._layers.splice(idx, 1)
+        }
+
+        // Insert new layer at topmost position (adjusted for removed layers above it)
+        const removedAboveTopmost = indicesToRemove.filter(idx => idx < topmostIndex).length
+        const insertIndex = topmostIndex - removedAboveTopmost
+        this._layers.splice(insertIndex, 0, newLayer)
+
+        // Update UI
+        this._updateLayerStack()
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = newLayer.id
+        }
+        await this._rebuild()
+        this._markDirty()
+
+        toast.success('Layers flattened')
     }
 
     /**
