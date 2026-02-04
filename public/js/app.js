@@ -15,6 +15,7 @@ import { aboutDialog } from './ui/about-dialog.js'
 import { saveProjectDialog } from './ui/save-project-dialog.js'
 import { projectManagerDialog } from './ui/project-manager-dialog.js'
 import { confirmDialog } from './ui/confirm-dialog.js'
+import { infoDialog } from './ui/info-dialog.js'
 import { toast } from './ui/toast.js'
 import { exportPng, exportJpg, getTimestampedFilename } from './utils/export.js'
 import { saveProject, loadProject } from './utils/project-storage.js'
@@ -117,7 +118,8 @@ class LayersApp {
             updateLayerPosition: (x, y) => this._updateActiveLayerPosition(x, y),
             extractSelection: () => this._extractSelectionToLayer(),
             showMultiLayerDialog: () => this._showMultiLayerNotSupportedDialog(),
-            autoSelectLayer: () => this._autoSelectTopmostLayer()
+            showNoLayerDialog: () => this._showNoLayerSelectedDialog(),
+            selectTopmostLayer: () => this._selectTopmostLayer()
         })
 
         if (!this._canvas) {
@@ -387,6 +389,11 @@ class LayersApp {
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
+
+        // Select the new layer
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = layer.id
+        }
 
         toast.success(`Added layer: ${layer.name}`)
     }
@@ -1009,12 +1016,6 @@ class LayersApp {
             this._setZoom('200')
         })
 
-        // Add text layer button (layers panel)
-        document.getElementById('addTextLayerBtn')?.addEventListener('click', () => {
-            if (this._layers.length === 0) return
-            this._handleAddEffectLayer('filter/text')
-        })
-
         // Text tool button (toolbar)
         document.getElementById('textToolBtn')?.addEventListener('click', () => {
             if (this._layers.length === 0) return
@@ -1086,6 +1087,10 @@ class LayersApp {
             } else {
                 this._flattenLayers(selectedIds)
             }
+        })
+
+        document.getElementById('deselectAllLayersMenuItem')?.addEventListener('click', () => {
+            this._deselectAllLayers()
         })
     }
 
@@ -1530,20 +1535,32 @@ class LayersApp {
     }
 
     /**
-     * Auto-select the topmost layer and return it
-     * @returns {object|null}
+     * Select the topmost layer
      * @private
      */
-    _autoSelectTopmostLayer() {
-        // Find topmost layer
-        if (this._layers.length > 0) {
-            const layer = this._layers[this._layers.length - 1]
-            if (this._layerStack) {
-                this._layerStack.selectedLayerId = layer.id
-            }
-            return layer
+    _selectTopmostLayer() {
+        if (this._layers.length > 0 && this._layerStack) {
+            const topLayer = this._layers[this._layers.length - 1]
+            this._layerStack.selectedLayerId = topLayer.id
         }
-        return null
+    }
+
+    /**
+     * Show dialog when no layer is selected
+     * @private
+     */
+    _showNoLayerSelectedDialog() {
+        infoDialog.show({ message: 'No layers are currently selected.' })
+    }
+
+    /**
+     * Deselect all layers
+     * @private
+     */
+    _deselectAllLayers() {
+        if (this._layerStack) {
+            this._layerStack.selectedLayerIds = []
+        }
     }
 
     /**

@@ -28,7 +28,8 @@ class MoveTool {
         this._updateLayerPosition = options.updateLayerPosition
         this._extractSelection = options.extractSelection
         this._showMultiLayerDialog = options.showMultiLayerDialog
-        this._autoSelectLayer = options.autoSelectLayer
+        this._showNoLayerDialog = options.showNoLayerDialog
+        this._selectTopmostLayer = options.selectTopmostLayer
 
         this._active = false
         this._state = State.IDLE
@@ -44,6 +45,11 @@ class MoveTool {
         if (this._active) return
         this._active = true
         this._state = State.IDLE
+
+        // Auto-select topmost layer if none selected
+        if (!this._getActiveLayer() && this._selectTopmostLayer) {
+            this._selectTopmostLayer()
+        }
 
         this._overlay.addEventListener('mousedown', this._onMouseDown)
         this._overlay.addEventListener('mousemove', this._onMouseMove)
@@ -97,11 +103,13 @@ class MoveTool {
             return
         }
 
-        let layer = this._getActiveLayer()
-        if (!layer && this._autoSelectLayer) {
-            layer = this._autoSelectLayer()
+        const layer = this._getActiveLayer()
+        if (!layer) {
+            if (this._showNoLayerDialog) {
+                this._showNoLayerDialog()
+            }
+            return
         }
-        if (!layer) return
 
         const coords = this._getCanvasCoords(e)
 
