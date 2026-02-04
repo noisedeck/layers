@@ -1137,13 +1137,13 @@ class LayersApp {
         const selectedLayers = selectedIds.map(id => this._layers.find(l => l.id === id)).filter(Boolean)
 
         if (selectedIds.length === 0) {
-            // No selection: Flatten Image
-            menuItem.textContent = 'Flatten Image'
+            // No selection: flatten image
+            menuItem.textContent = 'flatten image'
             menuItem.classList.remove('disabled')
         } else if (selectedIds.length === 1) {
             // Single layer selected
             const layer = selectedLayers[0]
-            menuItem.textContent = 'Rasterize Layer'
+            menuItem.textContent = 'rasterize layer'
             if (layer?.sourceType === 'media') {
                 menuItem.classList.add('disabled')
             } else {
@@ -1151,7 +1151,7 @@ class LayersApp {
             }
         } else {
             // Multiple layers selected
-            menuItem.textContent = 'Flatten Layers'
+            menuItem.textContent = 'flatten layers'
             menuItem.classList.remove('disabled')
         }
     }
