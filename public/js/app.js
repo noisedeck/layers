@@ -1564,9 +1564,59 @@ class LayersApp {
     }
 
     /**
+     * Rasterize a layer in place without UI updates or toast
+     * Used internally before extraction
+     * @param {string} layerId
+     * @private
+     */
+    async _rasterizeLayerInPlace(layerId) {
+        const layerIndex = this._layers.findIndex(l => l.id === layerId)
+        if (layerIndex === -1) return
+
+        const layer = this._layers[layerIndex]
+        if (layer.sourceType === 'media') return
+
+        // Save and hide other layers
+        const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
+        for (const l of this._layers) {
+            if (l.id !== layerId) l.visible = false
+        }
+        await this._rebuild()
+
+        // Capture rendered result
+        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(this._canvas, 0, 0)
+
+        // Restore visibility
+        for (const snap of visibilitySnapshot) {
+            const l = this._layers.find(layer => layer.id === snap.id)
+            if (l) l.visible = snap.visible
+        }
+
+        // Convert to media layer
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        const file = new File([blob], 'rasterized.png', { type: 'image/png' })
+
+        const { createMediaLayer } = await import('./layers/layer-model.js')
+        const newLayer = createMediaLayer(file, 'image', layer.name)
+        newLayer.visible = layer.visible
+        newLayer.opacity = layer.opacity
+        newLayer.blendMode = layer.blendMode
+        newLayer.offsetX = 0
+        newLayer.offsetY = 0
+
+        await this._renderer.loadMedia(newLayer.id, file, 'image')
+        this._layers[layerIndex] = newLayer
+
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = newLayer.id
+        }
+    }
+
+    /**
      * Extract current selection to a new layer
-     * For media layers: punches a hole in source, moves pixels to new layer
-     * For effect layers: copies pixels (can't modify procedural content)
+     * Auto-rasterizes effect layers, then punches hole and moves pixels
      * @private
      */
     async _extractSelectionToLayer() {
@@ -1577,7 +1627,14 @@ class LayersApp {
             }
 
             const selectionPath = this._selectionManager.selectionPath
-            const activeLayer = this._getActiveLayer()
+            let activeLayer = this._getActiveLayer()
+
+            // Auto-rasterize effect layers before extracting
+            if (activeLayer && activeLayer.sourceType !== 'media') {
+                await this._rasterizeLayerInPlace(activeLayer.id)
+                activeLayer = this._getActiveLayer() // Get updated layer
+            }
+
             const bounds = getSelectionBounds(selectionPath)
             if (bounds.width <= 0 || bounds.height <= 0) {
                 console.warn('[Extract] Invalid bounds')
@@ -1601,14 +1658,19 @@ class LayersApp {
                 return false
             }
 
+            // Need an active layer to extract from
+            if (!activeLayer) {
+                console.warn('[Extract] No active layer')
+                return false
+            }
+
             // Create selection mask at canvas size
             const maskCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
             const maskCtx = maskCanvas.getContext('2d')
             this._drawSelectionMask(maskCtx, selectionPath)
 
-            // For media layers, punch hole in source and extract from source
-            // For effect layers, extract from rendered canvas (copy, not move)
-            if (activeLayer?.sourceType === 'media' && activeLayer.mediaFile) {
+            // After auto-rasterization, layer is always media type
+            if (activeLayer.sourceType === 'media' && activeLayer.mediaFile) {
                 // Get source image
                 const sourceImg = await this._getLayerImage(activeLayer)
                 if (!sourceImg) {
@@ -1664,38 +1726,6 @@ class LayersApp {
                 const activeIndex = this._layers.findIndex(l => l.id === activeLayer.id)
                 this._layers.splice(activeIndex + 1, 0, newLayer)
 
-                await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
-                this._layerStack.selectedLayerId = newLayer.id
-            } else {
-                // Effect layer or no active layer - extract from rendered canvas (copy)
-                const extractedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
-                const extractedCtx = extractedCanvas.getContext('2d')
-                extractedCtx.drawImage(this._canvas, 0, 0)
-                extractedCtx.globalCompositeOperation = 'destination-in'
-                extractedCtx.drawImage(maskCanvas, 0, 0)
-                extractedCtx.globalCompositeOperation = 'source-over'
-
-                // Check if any pixels
-                const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
-                let hasAnyPixels = false
-                for (let i = 0; i < checkData.data.length; i += 4) {
-                    if (checkData.data[i + 3] > 0) {
-                        hasAnyPixels = true
-                        break
-                    }
-                }
-                if (!hasAnyPixels) {
-                    toast.warning('no pixels selected')
-                    return false
-                }
-
-                const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
-                const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
-
-                const { createMediaLayer } = await import('./layers/layer-model.js')
-                const newLayer = createMediaLayer(extractedFile, 'image', 'moved selection')
-
-                this._layers.push(newLayer)
                 await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
                 this._layerStack.selectedLayerId = newLayer.id
             }
