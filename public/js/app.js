@@ -17,6 +17,7 @@ import { projectManagerDialog } from './ui/project-manager-dialog.js'
 import { confirmDialog } from './ui/confirm-dialog.js'
 import { infoDialog } from './ui/info-dialog.js'
 import { toast } from './ui/toast.js'
+import { imageSizeDialog } from './ui/image-size-dialog.js'
 import { exportPng, exportJpg, getTimestampedFilename } from './utils/export.js'
 import { saveProject, loadProject } from './utils/project-storage.js'
 import { registerServiceWorker } from './sw-register.js'
@@ -2499,7 +2500,63 @@ class LayersApp {
     }
 
     _showImageSizeDialog() {
-        // TODO: Task 4
+        imageSizeDialog.show({
+            width: this._canvas.width,
+            height: this._canvas.height,
+            onConfirm: async (width, height) => {
+                await this._resizeImage(width, height)
+            }
+        })
+    }
+
+    async _resizeImage(newWidth, newHeight) {
+        const oldWidth = this._canvas.width
+        const oldHeight = this._canvas.height
+        if (newWidth === oldWidth && newHeight === oldHeight) return
+
+        const scaleX = newWidth / oldWidth
+        const scaleY = newHeight / oldHeight
+
+        // Resize each media layer
+        for (const layer of this._layers) {
+            if (layer.sourceType === 'media') {
+                await this._resampleMediaLayer(layer, scaleX, scaleY)
+            } else {
+                layer.offsetX = Math.round((layer.offsetX || 0) * scaleX)
+                layer.offsetY = Math.round((layer.offsetY || 0) * scaleY)
+            }
+        }
+
+        this._resizeCanvas(newWidth, newHeight)
+        await this._rebuild()
+        this._markDirty()
+
+        toast.success(`Resized to ${newWidth} x ${newHeight}`)
+    }
+
+    async _resampleMediaLayer(layer, scaleX, scaleY) {
+        const media = this._renderer._mediaTextures.get(layer.id)
+        if (!media || !media.element) return
+
+        const srcW = media.width
+        const srcH = media.height
+        const dstW = Math.round(srcW * scaleX)
+        const dstH = Math.round(srcH * scaleY)
+
+        const offscreen = new OffscreenCanvas(dstW, dstH)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(media.element, 0, 0, srcW, srcH, 0, 0, dstW, dstH)
+
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        const file = new File([blob], 'resized.png', { type: 'image/png' })
+
+        this._renderer.unloadMedia(layer.id)
+        await this._renderer.loadMedia(layer.id, file, 'image')
+
+        layer.mediaFile = file
+        layer.mediaType = 'image'
+        layer.offsetX = Math.round((layer.offsetX || 0) * scaleX)
+        layer.offsetY = Math.round((layer.offsetY || 0) * scaleY)
     }
 
     _showCanvasSizeDialog() {
