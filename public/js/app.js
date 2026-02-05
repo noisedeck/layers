@@ -18,6 +18,7 @@ import { confirmDialog } from './ui/confirm-dialog.js'
 import { infoDialog } from './ui/info-dialog.js'
 import { toast } from './ui/toast.js'
 import { imageSizeDialog } from './ui/image-size-dialog.js'
+import { canvasResizeDialog } from './ui/canvas-resize-dialog.js'
 import { exportPng, exportJpg, getTimestampedFilename } from './utils/export.js'
 import { saveProject, loadProject } from './utils/project-storage.js'
 import { registerServiceWorker } from './sw-register.js'
@@ -2560,7 +2561,53 @@ class LayersApp {
     }
 
     _showCanvasSizeDialog() {
-        // TODO: Task 5
+        canvasResizeDialog.show({
+            width: this._canvas.width,
+            height: this._canvas.height,
+            onConfirm: async (width, height, anchor) => {
+                await this._changeCanvasSize(width, height, anchor)
+            }
+        })
+    }
+
+    async _changeCanvasSize(newWidth, newHeight, anchor = 'center') {
+        const oldWidth = this._canvas.width
+        const oldHeight = this._canvas.height
+        if (newWidth === oldWidth && newHeight === oldHeight) return
+
+        const deltaW = newWidth - oldWidth
+        const deltaH = newHeight - oldHeight
+
+        // Calculate offset based on anchor
+        let shiftX = 0, shiftY = 0
+
+        // Horizontal positioning
+        if (anchor.includes('center') && !anchor.includes('left') && !anchor.includes('right')) {
+            shiftX = Math.round(deltaW / 2)
+        } else if (anchor.includes('right')) {
+            shiftX = deltaW
+        }
+        // else left: shiftX = 0
+
+        // Vertical positioning
+        if (anchor === 'center' || anchor.includes('middle')) {
+            shiftY = Math.round(deltaH / 2)
+        } else if (anchor.includes('bottom')) {
+            shiftY = deltaH
+        }
+        // else top: shiftY = 0
+
+        // Adjust all layer offsets
+        for (const layer of this._layers) {
+            layer.offsetX = (layer.offsetX || 0) + shiftX
+            layer.offsetY = (layer.offsetY || 0) + shiftY
+        }
+
+        this._resizeCanvas(newWidth, newHeight)
+        await this._rebuild()
+        this._markDirty()
+
+        toast.success(`Canvas resized to ${newWidth} x ${newHeight}`)
     }
 
 }
