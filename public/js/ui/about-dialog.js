@@ -14,6 +14,7 @@ class AboutDialog {
         this._dialog = null
         this._metadata = null
         this._metadataFetched = false
+        this._noisemakerVersion = null
     }
 
     /**
@@ -74,6 +75,33 @@ class AboutDialog {
 
         this._metadataFetched = true
         this._updateBuildInfo()
+
+        // Fetch noisemaker version from vendor bundle
+        await this._fetchNoisemakerVersion()
+    }
+
+    /**
+     * Fetch noisemaker version from vendor bundle header
+     * @private
+     */
+    async _fetchNoisemakerVersion() {
+        try {
+            const response = await fetch('./js/noisemaker/vendor/noisemaker-shaders-core.esm.js', { cache: 'no-store' })
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`)
+            }
+            const reader = response.body.getReader()
+            const { value } = await reader.read()
+            reader.cancel()
+            const headerText = new TextDecoder().decode(value).slice(0, 500)
+            const match = headerText.match(/^\s*\*\s*Build:\s*(\S+)/m)
+            if (match) {
+                this._noisemakerVersion = match[1]
+                this._updateBuildInfo()
+            }
+        } catch (error) {
+            console.warn('[AboutDialog] Failed to fetch noisemaker version:', error)
+        }
     }
 
     /**
@@ -122,6 +150,12 @@ class AboutDialog {
         if (buildInfoEl && this._metadata) {
             buildInfoEl.textContent = `build: ${this._metadata.gitHash} / deployed: ${this._metadata.deployed}`
         }
+        const nmVersionEl = this._dialog.querySelector('.about-modal-build.noisemaker-version')
+        if (nmVersionEl) {
+            nmVersionEl.textContent = this._noisemakerVersion
+                ? `noisemaker version: ${this._noisemakerVersion}`
+                : ''
+        }
     }
 
     /**
@@ -148,6 +182,7 @@ class AboutDialog {
                     <div class="about-modal-title">Layers</div>
                     <div class="about-modal-copyright">&copy; 2026 <a href="https://noisefactor.io/" class="about-modal-link" target="_blank" rel="noopener">Noise Factor LLC.</a></div>
                     <div class="about-modal-build">build: local / deployed: n/a</div>
+                    <div class="about-modal-build noisemaker-version"></div>
                 </div>
             </div>
         `

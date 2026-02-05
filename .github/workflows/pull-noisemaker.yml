@@ -1,0 +1,45 @@
+# Pull latest noisemaker bundles (triggered by py-noisemaker)
+name: Pull Noisemaker
+
+on:
+  repository_dispatch:
+    types: [noisemaker-updated]
+  workflow_dispatch:  # Allow manual triggering
+
+concurrency:
+  group: pull-noisemaker-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Run pull-noisemaker
+        run: python3 pull-noisemaker
+        env:
+          NOISEMAKER_SHA: ${{ github.event.client_payload.sha }}
+
+      - name: Generate deployment metadata
+        run: |
+          GIT_HASH=$(git rev-parse HEAD)
+          DEPLOY_DATE=$(date -u +"%s")
+          printf '{\n  "git_hash": "%s",\n  "date": %s\n}\n' "$GIT_HASH" "$DEPLOY_DATE" > "$GITHUB_WORKSPACE/public/deployment-meta.json"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync public/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
+
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.DISTRIBUTION }} --paths "/*"
