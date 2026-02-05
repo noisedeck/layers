@@ -59,7 +59,7 @@
 /* Menu Bar Styles */
 #menu {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto;
     font-weight: bold;
     position: fixed;
     top: 0;
@@ -110,29 +110,8 @@
     height: 100%;
 }
 
-#menuCenter {
-    grid-column: 2;
-    grid-row: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    overflow: hidden;
-}
-
-#menuFilename {
-    font-size: 0.75em;
-    font-weight: 500;
-    color: var(--color-text-muted);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    opacity: 0.8;
-}
-
 #menuRight {
-    grid-column: 3;
+    grid-column: 2;
     grid-row: 1;
     padding-right: 1em;
     display: flex;

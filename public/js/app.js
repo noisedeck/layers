@@ -265,7 +265,6 @@ class LayersApp {
 
         this._currentProjectId = null
         this._currentProjectName = null
-        this._updateFilename('untitled')
         this._markDirty()
 
         openDialog.element.close()
@@ -359,7 +358,6 @@ class LayersApp {
         // Reset project state and update filename
         this._currentProjectId = null
         this._currentProjectName = null
-        this._updateFilename(file.name)
         this._markDirty()
 
         // Close the open dialog
@@ -743,18 +741,6 @@ class LayersApp {
         if (!result.success) {
             console.error('[Layers] Rebuild failed:', result.error)
             toast.error('Failed to render: ' + result.error)
-        }
-    }
-
-    /**
-     * Update the filename in the menu bar
-     * @param {string} filename - Filename to display
-     * @private
-     */
-    _updateFilename(filename) {
-        const el = document.getElementById('menuFilename')
-        if (el) {
-            el.textContent = filename.replace(/\.[^.]+$/, '')
         }
     }
 
@@ -2337,7 +2323,6 @@ class LayersApp {
 
             this._currentProjectId = savedId
             this._currentProjectName = projectName
-            this._updateFilename(projectName)
             this._markClean()
 
             toast.success('Project saved')
@@ -2388,8 +2373,6 @@ class LayersApp {
             // Update state
             this._currentProjectId = project.id
             this._currentProjectName = project.name
-            this._updateFilename(project.name)
-
             // Update UI and rebuild
             this._updateLayerStack()
             // Wait for any pending microtasks (canvas observer uses queueMicrotask)
