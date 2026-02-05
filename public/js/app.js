@@ -2438,7 +2438,64 @@ class LayersApp {
     }
 
     async _cropToSelection() {
-        // TODO: Task 3
+        if (!this._selectionManager?.hasSelection()) return
+
+        const selectionPath = this._selectionManager.selectionPath
+        const bounds = getSelectionBounds(selectionPath)
+        if (bounds.width <= 0 || bounds.height <= 0) return
+
+        // Crop each media layer
+        for (const layer of this._layers) {
+            if (layer.sourceType === 'media') {
+                await this._cropMediaLayer(layer, bounds)
+            } else {
+                // Effect layers: shift offsets
+                layer.offsetX = (layer.offsetX || 0) - bounds.x
+                layer.offsetY = (layer.offsetY || 0) - bounds.y
+            }
+        }
+
+        // Resize canvas
+        this._resizeCanvas(bounds.width, bounds.height)
+
+        // Clear selection
+        this._selectionManager.clearSelection()
+
+        // Re-render
+        await this._rebuild()
+        this._markDirty()
+
+        toast.success('Cropped to selection')
+    }
+
+    async _cropMediaLayer(layer, bounds) {
+        const media = this._renderer._mediaTextures.get(layer.id)
+        if (!media || !media.element) return
+
+        // Calculate the source region accounting for layer offset
+        const ox = layer.offsetX || 0
+        const oy = layer.offsetY || 0
+
+        const offscreen = new OffscreenCanvas(bounds.width, bounds.height)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(
+            media.element,
+            bounds.x - ox, bounds.y - oy, bounds.width, bounds.height,
+            0, 0, bounds.width, bounds.height
+        )
+
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        const file = new File([blob], 'cropped.png', { type: 'image/png' })
+
+        // Replace media
+        this._renderer.unloadMedia(layer.id)
+        await this._renderer.loadMedia(layer.id, file, 'image')
+
+        // Update layer
+        layer.mediaFile = file
+        layer.mediaType = 'image'
+        layer.offsetX = 0
+        layer.offsetY = 0
     }
 
     _showImageSizeDialog() {
