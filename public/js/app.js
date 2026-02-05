@@ -107,6 +107,7 @@ class LayersApp {
         // Set source canvas for magic wand
         if (this._selectionManager) {
             this._selectionManager.setSourceCanvas(this._canvas)
+            this._selectionManager.onSelectionChange = () => this._updateImageMenu()
         }
 
         // Initialize move tool (destructive - punches holes)
@@ -994,6 +995,21 @@ class LayersApp {
             this._quickSaveJpg()
         })
 
+        // Image menu - Crop to selection
+        document.getElementById('cropToSelectionMenuItem')?.addEventListener('click', async () => {
+            await this._cropToSelection()
+        })
+
+        // Image menu - Image size
+        document.getElementById('imageSizeMenuItem')?.addEventListener('click', () => {
+            this._showImageSizeDialog()
+        })
+
+        // Image menu - Canvas size
+        document.getElementById('canvasSizeMenuItem')?.addEventListener('click', () => {
+            this._showCanvasSizeDialog()
+        })
+
         // View menu - Zoom
         document.getElementById('zoomInMenuItem')?.addEventListener('click', () => {
             this._zoomIn()
@@ -1641,6 +1657,7 @@ class LayersApp {
             height: height
         }
         this._selectionManager._startAnimation()
+        this._updateImageMenu()
 
         // Switch to selection tool
         this._setToolMode('selection')
@@ -2411,6 +2428,25 @@ class LayersApp {
         const filename = getTimestampedFilename('layers')
         exportJpg(this._canvas, filename)
         toast.success('Saved as JPG')
+    }
+
+    _updateImageMenu() {
+        const cropItem = document.getElementById('cropToSelectionMenuItem')
+        if (!cropItem) return
+        const hasSelection = this._selectionManager?.hasSelection()
+        cropItem.classList.toggle('disabled', !hasSelection)
+    }
+
+    async _cropToSelection() {
+        // TODO: Task 3
+    }
+
+    _showImageSizeDialog() {
+        // TODO: Task 4
+    }
+
+    _showCanvasSizeDialog() {
+        // TODO: Task 5
     }
 
 }

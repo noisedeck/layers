@@ -113,6 +113,9 @@ class SelectionManager {
 
         /** @type {boolean} */
         this._enabled = true
+
+        /** @type {Function|null} */
+        this.onSelectionChange = null
     }
 
     /**
@@ -205,6 +208,7 @@ class SelectionManager {
         this._copyOrigin = null
         this._stopAnimation()
         this._clearOverlay()
+        this.onSelectionChange?.()
     }
 
     /**
@@ -467,6 +471,7 @@ class SelectionManager {
                     this._applySelectionWithMode(this._selectionPath)
                 }
                 this._startAnimation()
+                this.onSelectionChange?.()
             } else {
                 this.clearSelection()
             }
@@ -604,6 +609,7 @@ class SelectionManager {
             }
             this._applySelectionWithMode(newSelection)
             this._startAnimation()
+            this.onSelectionChange?.()
         }
         this._polygonPoints = []
         this._isPolygonDrawing = false
@@ -711,6 +717,7 @@ class SelectionManager {
         }
         this._applySelectionWithMode(newSelection)
         this._startAnimation()
+        this.onSelectionChange?.()
     }
 
     /**
