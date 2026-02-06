@@ -1157,3 +1157,194 @@ dialog[open] {
 .selection-param-dialog {
     width: 320px;
 }
+
+/* =========================================================================
+   Export Dialogs
+   ========================================================================= */
+
+.export-modal-title {
+    background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
+    border-bottom: 1px solid var(--color-border-muted, rgba(255,255,255,0.08));
+    padding: 0 0.75em;
+    min-height: 2.25em;
+    height: 2.25em;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-primary, var(--color6));
+    text-transform: lowercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5em;
+    border-radius: var(--radius-xl, 0.5rem) var(--radius-xl, 0.5rem) 0 0;
+}
+
+.export-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted, var(--color5));
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.25em 0.5em;
+    line-height: 1;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+    margin-left: auto;
+}
+
+.export-modal-close:hover {
+    opacity: 1;
+    color: var(--color-text-primary, var(--color6));
+}
+
+.export-modal-content {
+    padding: 0.75rem;
+}
+
+.export-settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.export-settings-grid .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.export-settings-grid .control-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.export-settings-grid .control-label {
+    font-size: 0.6875rem;
+    color: var(--color-text-muted, var(--color5));
+    text-transform: lowercase;
+}
+
+.export-settings-grid input,
+.export-settings-grid select {
+    width: 100%;
+    padding: 0.375rem 0.5rem;
+    background: var(--color1, #2a2a2a);
+    border: 1px solid var(--color3, #666666);
+    border-radius: var(--radius-sm, 0.375rem);
+    color: var(--color-text-primary, var(--color6));
+    font-family: var(--font-base, Nunito, sans-serif);
+    font-size: 0.75rem;
+}
+
+.export-settings-grid input:focus,
+.export-settings-grid select:focus {
+    outline: none;
+    border-color: var(--color-accent, var(--accent3));
+}
+
+.export-info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: color-mix(in srgb, var(--color1, #2a2a2a) 50%, transparent 50%);
+    border-radius: var(--radius-sm, 0.375rem);
+    font-size: 0.6875rem;
+    color: var(--color-text-muted, var(--color5));
+}
+
+.export-info-row span {
+    color: var(--color-text-primary, var(--color6));
+}
+
+.export-warning-row {
+    margin-top: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    background: color-mix(in srgb, var(--color1, #2a2a2a) 50%, transparent 50%);
+    border-radius: var(--radius-sm, 0.375rem);
+    font-size: 0.625rem;
+    color: var(--color-text-muted, var(--color5));
+    font-style: italic;
+}
+
+.export-button-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+}
+
+.export-btn {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-sm, 0.375rem);
+    font-family: var(--font-base, Nunito, sans-serif);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.export-btn--primary {
+    background: color-mix(in srgb, var(--color-accent, var(--accent3)) 40%, transparent 60%);
+    border: 1px solid var(--color-accent, var(--accent3));
+    color: var(--color-text-primary, var(--color7));
+}
+
+.export-btn--primary:hover {
+    background: color-mix(in srgb, var(--color-accent, var(--accent3)) 60%, transparent 40%);
+}
+
+.export-progress-container {
+    padding: 1rem;
+}
+
+.export-progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--color1, #2a2a2a);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+}
+
+.export-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-accent, var(--accent3)), var(--accent4, #c0c0c0));
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.1s ease-out;
+}
+
+.export-progress-text {
+    font-size: 0.8125rem;
+    color: var(--color-text-primary, var(--color6));
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.export-progress-time {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6875rem;
+    color: var(--color-text-muted, var(--color5));
+    margin-bottom: 1rem;
+}
+
+.export-progress-cancel {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    background: color-mix(in srgb, var(--red, #e74c3c) 20%, transparent 80%);
+    border: 1px solid color-mix(in srgb, var(--red, #e74c3c) 50%, transparent 50%);
+    border-radius: var(--radius-sm, 0.375rem);
+    color: var(--color-text-primary, var(--color6));
+    font-family: var(--font-base, Nunito, sans-serif);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.export-progress-cancel:hover {
+    background: color-mix(in srgb, var(--red, #e74c3c) 40%, transparent 60%);
+    border-color: var(--red, #e74c3c);
+}

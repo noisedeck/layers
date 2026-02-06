@@ -17,6 +17,10 @@
     --color7: #f0f0f0;
     --accent3: #b0b0b0;
     --accent4: #c0c0c0;
+    --color1: #2a2a2a;
+    --color3: #666666;
+    --color5: #999999;
+    --red: #e74c3c;
 
     /* Menu bar gradient */
     --ui-gradient-top: #484848;
@@ -31,6 +35,9 @@
     --color7: #1a1a1a;
     --accent3: #505050;
     --accent4: #383838;
+    --color1: #e0e0e0;
+    --color3: #999999;
+    --color5: #666666;
 
     /* Menu bar gradient - lighter for light mode */
     --ui-gradient-top: #c8c8c8;
@@ -45,6 +52,9 @@
         --color7: #1a1a1a;
         --accent3: #505050;
         --accent4: #383838;
+        --color1: #e0e0e0;
+        --color3: #999999;
+        --color5: #666666;
         --ui-gradient-top: #c8c8c8;
         --ui-gradient-bottom: #b8b8b8;
     }
