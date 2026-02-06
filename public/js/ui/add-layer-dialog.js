@@ -24,40 +24,41 @@ class AddLayerDialog {
      * @param {function} options.onAddMedia - Callback: (file, mediaType) => void
      * @param {function} options.onAddEffect - Callback: (effectId) => void
      * @param {Array} options.effects - Available effects
-     * @returns {Promise<void>}
      */
     show(options = {}) {
         this._onAddMedia = options.onAddMedia
         this._onAddEffect = options.onAddEffect
-        this._effects = options.effects || []
-
-        if (!this._dialog) {
-            this._createDialog()
-        }
-
-        this._setMode('choose')
-        // Restore back button in case it was hidden by showEffectOnly
-        const backBtn = this._dialog.querySelector('#add-effect-back-btn')
-        if (backBtn) backBtn.style.display = ''
-        this._dialog.showModal()
+        this._open(options.effects, 'choose')
     }
 
     /**
      * Show dialog in effect-only mode (skip media/effect choice)
      * @param {object} options
      */
-    showEffectOnly(options) {
-        this._effects = options.effects || []
+    showEffectOnly(options = {}) {
         this._onAddEffect = options.onAddEffect || null
+        this._open(options.effects, 'effect')
+    }
+
+    /**
+     * Shared open logic for both modes
+     * @param {Array} effects - Available effects
+     * @param {string} mode - 'choose' or 'effect'
+     * @private
+     */
+    _open(effects, mode) {
+        this._effects = effects || []
 
         if (!this._dialog) {
             this._createDialog()
         }
 
-        this._setMode('effect')
-        // Hide back button — there's no "choose" screen to go back to
+        this._setMode(mode)
+
+        // Hide back button when opening directly in effect mode
         const backBtn = this._dialog.querySelector('#add-effect-back-btn')
-        if (backBtn) backBtn.style.display = 'none'
+        if (backBtn) backBtn.style.display = mode === 'effect' ? 'none' : ''
+
         this._dialog.showModal()
     }
 

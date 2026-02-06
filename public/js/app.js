@@ -735,20 +735,13 @@ class LayersApp {
 
         // Handle child-specific property changes
         if (detail.parentLayerId) {
-            switch (detail.property) {
-                case 'effectParams':
-                    this._renderer.updateLayerParams(detail.layerId, detail.value)
-                    this._renderer.syncDsl()
-                    this._pushUndoStateDebounced()
-                    break
-                case 'visibility':
-                case 'name':
-                    await this._rebuild()
-                    this._pushUndoState()
-                    break
-                default:
-                    await this._rebuild()
-                    this._pushUndoState()
+            if (detail.property === 'effectParams') {
+                this._renderer.updateLayerParams(detail.layerId, detail.value)
+                this._renderer.syncDsl()
+                this._pushUndoStateDebounced()
+            } else {
+                await this._rebuild()
+                this._pushUndoState()
             }
             return
         }

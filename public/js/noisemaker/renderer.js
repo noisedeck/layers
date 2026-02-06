@@ -249,13 +249,12 @@ export class LayersRenderer {
         const visibleLayers = this._layers.filter(l => l.visible)
         const effectTypeCounts = {}
 
-        for (const layer of visibleLayers) {
-            const effectName = layer.sourceType === 'media'
-                ? 'media'
-                : layer.effectId?.split('/')[1]
-
-            if (!effectName) continue
-
+        /**
+         * Find the nth occurrence of effectName in pipeline passes and map it.
+         * @param {string} id - Layer or child ID
+         * @param {string} effectName - Effect function name
+         */
+        const mapStepIndex = (id, effectName) => {
             const seenCount = effectTypeCounts[effectName] || 0
             effectTypeCounts[effectName] = seenCount + 1
 
@@ -263,31 +262,28 @@ export class LayersRenderer {
             for (const pass of passes) {
                 if (pass.effectFunc === effectName || pass.effectKey === effectName) {
                     if (matchCount === seenCount) {
-                        this._layerStepMap.set(layer.id, pass.stepIndex)
-                        break
+                        this._layerStepMap.set(id, pass.stepIndex)
+                        return
                     }
                     matchCount++
                 }
             }
+        }
 
-            // Map visible child effects
-            const visibleChildren = (layer.children || []).filter(c => c.visible)
-            for (const child of visibleChildren) {
+        for (const layer of visibleLayers) {
+            const effectName = layer.sourceType === 'media'
+                ? 'media'
+                : layer.effectId?.split('/')[1]
+
+            if (effectName) {
+                mapStepIndex(layer.id, effectName)
+            }
+
+            for (const child of (layer.children || [])) {
+                if (!child.visible) continue
                 const childEffectName = child.effectId?.split('/')[1]
-                if (!childEffectName) continue
-
-                const childSeenCount = effectTypeCounts[childEffectName] || 0
-                effectTypeCounts[childEffectName] = childSeenCount + 1
-
-                let childMatchCount = 0
-                for (const pass of passes) {
-                    if (pass.effectFunc === childEffectName || pass.effectKey === childEffectName) {
-                        if (childMatchCount === childSeenCount) {
-                            this._layerStepMap.set(child.id, pass.stepIndex)
-                            break
-                        }
-                        childMatchCount++
-                    }
+                if (childEffectName) {
+                    mapStepIndex(child.id, childEffectName)
                 }
             }
         }
@@ -620,21 +616,15 @@ export class LayersRenderer {
             return 'search synth\n\nsolid(color: #000000, alpha: 0).write(o0)\n\nrender(o0)'
         }
 
-        // Collect namespaces used by effect layers
+        // Collect namespaces used by effect layers and their children
         const usedNamespaces = new Set(['synth', 'mixer']) // Always need synth for solid/media, mixer for blendMode
         for (const layer of visibleLayers) {
             if (layer.sourceType === 'effect' && layer.effectId) {
-                const [namespace] = layer.effectId.split('/')
-                usedNamespaces.add(namespace)
+                usedNamespaces.add(layer.effectId.split('/')[0])
             }
-        }
-
-        // Also collect namespaces from child effects
-        for (const layer of visibleLayers) {
             for (const child of (layer.children || [])) {
                 if (child.visible && child.effectId) {
-                    const [namespace] = child.effectId.split('/')
-                    usedNamespaces.add(namespace)
+                    usedNamespaces.add(child.effectId.split('/')[0])
                 }
             }
         }

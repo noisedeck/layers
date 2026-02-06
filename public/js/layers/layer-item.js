@@ -87,7 +87,6 @@ class LayerItem extends HTMLElement {
         const layer = this._layer
         const isVisible = layer.visible
         const isEffect = layer.sourceType === 'effect'
-        const hasParams = isEffect || layer.sourceType === 'media' || this._isChild
         const isBase = this.hasAttribute('base')
 
         const blendOptions = BLEND_MODES.map(mode =>
@@ -134,9 +133,9 @@ class LayerItem extends HTMLElement {
                 </button>
             </div>
             <div class="layer-controls">
-                ${hasParams ? `<button class="layer-params-toggle ${this._paramsExpanded ? 'expanded' : ''}" title="Toggle parameters">
+                <button class="layer-params-toggle ${this._paramsExpanded ? 'expanded' : ''}" title="Toggle parameters">
                     <span class="icon-material">arrow_right</span>
-                </button>` : ''}
+                </button>
                 ${!this._isChild ? `<select class="layer-blend-mode" title="Blend mode">
                     ${blendOptions}
                 </select>
@@ -145,13 +144,10 @@ class LayerItem extends HTMLElement {
                     <span class="layer-opacity-value">${layer.opacity}%</span>
                 </div>` : ''}
             </div>
-            ${hasParams ? '<effect-params class="layer-effect-params"></effect-params>' : ''}
+            <effect-params class="layer-effect-params"></effect-params>
         `
-        
-        // Initialize effect params if this layer has parameters
-        if (hasParams) {
-            this._initEffectParams()
-        }
+
+        this._initEffectParams()
     }
     
     /**
