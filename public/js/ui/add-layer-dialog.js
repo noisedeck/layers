@@ -36,6 +36,9 @@ class AddLayerDialog {
         }
 
         this._setMode('choose')
+        // Restore back button in case it was hidden by showEffectOnly
+        const backBtn = this._dialog.querySelector('#add-effect-back-btn')
+        if (backBtn) backBtn.style.display = ''
         this._dialog.showModal()
     }
 
@@ -51,8 +54,11 @@ class AddLayerDialog {
             this._createDialog()
         }
 
+        this._setMode('effect')
+        // Hide back button — there's no "choose" screen to go back to
+        const backBtn = this._dialog.querySelector('#add-effect-back-btn')
+        if (backBtn) backBtn.style.display = 'none'
         this._dialog.showModal()
-        this._showEffectPicker()
     }
 
     /**
