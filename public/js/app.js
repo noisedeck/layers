@@ -2457,14 +2457,19 @@ class LayersApp {
             }
         }
 
+        // Stop renderer before resizing (resize invalidates WebGL state)
+        this._renderer.stop()
+
         // Resize canvas
         this._resizeCanvas(bounds.width, bounds.height)
 
         // Clear selection
         this._selectionManager.clearSelection()
 
-        // Re-render
+        // Recompile pipeline at new dimensions and restart
         await this._rebuild()
+        await new Promise(resolve => requestAnimationFrame(resolve))
+        this._renderer.start()
         this._markDirty()
 
         toast.success('Cropped to selection')
@@ -2518,18 +2523,24 @@ class LayersApp {
         const scaleX = newWidth / oldWidth
         const scaleY = newHeight / oldHeight
 
-        // Resize each media layer
+        // Resize each layer
         for (const layer of this._layers) {
             if (layer.sourceType === 'media') {
                 await this._resampleMediaLayer(layer, scaleX, scaleY)
             } else {
+                // Effect layers: scale offsets only
                 layer.offsetX = Math.round((layer.offsetX || 0) * scaleX)
                 layer.offsetY = Math.round((layer.offsetY || 0) * scaleY)
             }
         }
 
+        // Stop renderer before resizing (resize invalidates WebGL state)
+        this._renderer.stop()
+
         this._resizeCanvas(newWidth, newHeight)
         await this._rebuild()
+        await new Promise(resolve => requestAnimationFrame(resolve))
+        this._renderer.start()
         this._markDirty()
 
         toast.success(`Resized to ${newWidth} x ${newHeight}`)
@@ -2544,18 +2555,26 @@ class LayersApp {
         const dstW = Math.round(srcW * scaleX)
         const dstH = Math.round(srcH * scaleY)
 
-        const offscreen = new OffscreenCanvas(dstW, dstH)
-        const ctx = offscreen.getContext('2d')
-        ctx.drawImage(media.element, 0, 0, srcW, srcH, 0, 0, dstW, dstH)
+        if (layer.mediaType === 'video') {
+            // Video: update stored dimensions so imageSize uniform reflects scale.
+            // Video element stays alive — animation continues.
+            media.width = dstW
+            media.height = dstH
+        } else {
+            // Image: create resampled pixels
+            const offscreen = new OffscreenCanvas(dstW, dstH)
+            const ctx = offscreen.getContext('2d')
+            ctx.drawImage(media.element, 0, 0, srcW, srcH, 0, 0, dstW, dstH)
 
-        const blob = await offscreen.convertToBlob({ type: 'image/png' })
-        const file = new File([blob], 'resized.png', { type: 'image/png' })
+            const blob = await offscreen.convertToBlob({ type: 'image/png' })
+            const file = new File([blob], 'resized.png', { type: 'image/png' })
 
-        this._renderer.unloadMedia(layer.id)
-        await this._renderer.loadMedia(layer.id, file, 'image')
+            this._renderer.unloadMedia(layer.id)
+            await this._renderer.loadMedia(layer.id, file, 'image')
 
-        layer.mediaFile = file
-        layer.mediaType = 'image'
+            layer.mediaFile = file
+        }
+
         layer.offsetX = Math.round((layer.offsetX || 0) * scaleX)
         layer.offsetY = Math.round((layer.offsetY || 0) * scaleY)
     }
@@ -2603,8 +2622,13 @@ class LayersApp {
             layer.offsetY = (layer.offsetY || 0) + shiftY
         }
 
+        // Stop renderer before resizing (resize invalidates WebGL state)
+        this._renderer.stop()
+
         this._resizeCanvas(newWidth, newHeight)
         await this._rebuild()
+        await new Promise(resolve => requestAnimationFrame(resolve))
+        this._renderer.start()
         this._markDirty()
 
         toast.success(`Canvas resized to ${newWidth} x ${newHeight}`)
