@@ -454,6 +454,10 @@ export class LayersRenderer {
         return { width: 0, height: 0 }
     }
 
+    getMediaInfo(layerId) {
+        return this._mediaTextures.get(layerId) || null
+    }
+
     unloadMedia(layerId) {
         const media = this._mediaTextures.get(layerId)
         if (!media) return
@@ -513,6 +517,7 @@ export class LayersRenderer {
         if (!state || !this._renderer.pipeline) return
 
         const { canvas } = state
+        // Text textures are square
         canvas.width = this.width
         canvas.height = this.width
 
@@ -628,19 +633,14 @@ export class LayersRenderer {
                     const toHex = (v) => Math.round(v * 255).toString(16).padStart(2, '0')
                     const hex = `#${toHex(color[0])}${toHex(color[1])}${toHex(color[2])}`
                     lines.push(`solid(color: ${hex}, alpha: ${effectAlpha.toFixed(4)}).write(o${currentOutput})`)
-                } else if (layer.sourceType === 'media') {
-                    // Media base - blend over transparent background for opacity support
-                    lines.push(`solid(color: #000000, alpha: 0).write(o${currentOutput})`)
-                    lines.push(`${this._buildMediaCall(layer)}.write(o${currentOutput + 1})`)
+                } else {
+                    // Media or effect base - blend over transparent background for opacity
+                    const layerCall = layer.sourceType === 'media'
+                        ? this._buildMediaCall()
+                        : this._buildEffectCall(layer)
                     const mixAmt = this._opacityToMixAmt(layer.opacity)
-                    lines.push(`read(o${currentOutput}).blendMode(tex: read(o${currentOutput + 1}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${currentOutput + 2})`)
-                    currentOutput += 2
-                } else if (layer.sourceType === 'effect') {
-                    // Other synth effect as base - blend over transparent background for opacity
-                    const effectCall = this._buildEffectCall(layer)
                     lines.push(`solid(color: #000000, alpha: 0).write(o${currentOutput})`)
-                    lines.push(`${effectCall}.write(o${currentOutput + 1})`)
-                    const mixAmt = this._opacityToMixAmt(layer.opacity)
+                    lines.push(`${layerCall}.write(o${currentOutput + 1})`)
                     lines.push(`read(o${currentOutput}).blendMode(tex: read(o${currentOutput + 1}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${currentOutput + 2})`)
                     currentOutput += 2
                 }
@@ -651,7 +651,7 @@ export class LayersRenderer {
                 const mixAmt = this._opacityToMixAmt(layer.opacity)
 
                 if (layer.sourceType === 'media') {
-                    lines.push(`${this._buildMediaCall(layer)}.write(o${currentOutput})`)
+                    lines.push(`${this._buildMediaCall()}.write(o${currentOutput})`)
                 } else if (layer.sourceType === 'effect') {
                     const effectCall = this._buildEffectCall(layer)
                     const isSynth = this._isEffectSynth(layer.effectId)

@@ -84,7 +84,14 @@ class LayerItem extends HTMLElement {
         if (isEffect) iconName = 'auto_awesome'
         else if (layer.mediaType === 'video') iconName = 'videocam'
 
-        this.className = `layer-item ${isEffect ? 'effect-layer' : 'media-layer'} ${isBase ? 'base-layer' : ''} ${layer.locked ? 'locked' : ''}`
+        const classes = [
+            'layer-item',
+            isEffect ? 'effect-layer' : 'media-layer',
+            isBase && 'base-layer',
+            layer.locked && 'locked',
+            this._selected && 'selected'
+        ].filter(Boolean).join(' ')
+        this.className = classes
         this.dataset.layerId = layer.id
         this.draggable = !isBase
 
@@ -230,9 +237,9 @@ class LayerItem extends HTMLElement {
         })
 
         this.addEventListener('dragstart', (e) => this._handleDragStart(e))
-        this.addEventListener('dragend', (e) => this._handleDragEnd(e))
+        this.addEventListener('dragend', () => this._handleDragEnd())
         this.addEventListener('dragover', (e) => this._handleDragOver(e))
-        this.addEventListener('dragleave', (e) => this._handleDragLeave(e))
+        this.addEventListener('dragleave', () => this._handleDragLeave())
         this.addEventListener('drop', (e) => this._handleDrop(e))
         
         // Effect parameter changes (from effect-params component)
@@ -402,7 +409,7 @@ class LayerItem extends HTMLElement {
         }))
     }
 
-    _handleDragEnd(e) {
+    _handleDragEnd() {
         this.classList.remove('dragging')
         this._dragFromHandle = false
 
@@ -432,7 +439,7 @@ class LayerItem extends HTMLElement {
         }))
     }
 
-    _handleDragLeave(e) {
+    _handleDragLeave() {
         this.classList.remove('drag-over', 'drag-over-above', 'drag-over-below')
     }
 

@@ -30,6 +30,7 @@ class MoveTool {
         this._selectTopmostLayer = options.selectTopmostLayer
         this._duplicateLayer = options.duplicateLayer
         this._onComplete = options.onComplete
+        this._isLayerBlocked = options.isLayerBlocked
         this._destructive = options.destructive !== false
         this._toolClass = options.toolClass || 'move-tool'
 
@@ -90,6 +91,9 @@ class MoveTool {
     _onMouseDown(e) {
         if (this._state !== State.IDLE) return
 
+        const layer = this._getActiveLayer()
+        if (this._isLayerBlocked?.(layer)) return
+
         const hasSelection = this._selectionManager.hasSelection()
 
         if (hasSelection) {
@@ -106,7 +110,6 @@ class MoveTool {
             return
         }
 
-        const layer = this._getActiveLayer()
         if (!layer) {
             this._showNoLayerDialog?.()
             return
@@ -165,8 +168,8 @@ class MoveTool {
         const didClone = this._didCloneOperation
         this._reset()
 
-        if (didClone && this._onComplete) {
-            this._onComplete()
+        if (didClone) {
+            this._onComplete?.()
         }
     }
 }

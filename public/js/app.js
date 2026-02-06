@@ -286,6 +286,13 @@ class LayersApp {
             extractSelection: (destructive) => this._extractSelectionToLayer(destructive),
             showNoLayerDialog: () => this._showNoLayerSelectedDialog(),
             selectTopmostLayer: () => this._selectTopmostLayer(),
+            isLayerBlocked: (layer) => {
+                if (layer?.mediaType === 'video') {
+                    toast.warning('Move tool not available for video layers')
+                    return true
+                }
+                return false
+            },
             destructive: true,
             toolClass: 'move-tool'
         })
@@ -998,19 +1005,15 @@ class LayersApp {
         if (!canvas) return
 
         // Update menu checkmarks
-        const modes = ['fit', '50', '100', '200']
-        const menuIds = {
-            'fit': 'fitInWindowMenuItem',
-            '50': 'zoom50MenuItem',
-            '100': 'zoom100MenuItem',
-            '200': 'zoom200MenuItem'
+        const zoomMenuIds = {
+            fit: 'fitInWindowMenuItem',
+            50: 'zoom50MenuItem',
+            100: 'zoom100MenuItem',
+            200: 'zoom200MenuItem'
         }
-        modes.forEach(mode => {
-            const el = document.getElementById(menuIds[mode])
-            if (el) {
-                el.classList.toggle('checked', mode === this._zoomMode)
-            }
-        })
+        for (const [mode, id] of Object.entries(zoomMenuIds)) {
+            document.getElementById(id)?.classList.toggle('checked', mode === this._zoomMode)
+        }
 
         let displayWidth, displayHeight
 
@@ -1037,17 +1040,12 @@ class LayersApp {
         const widthPx = displayWidth + 'px'
         const heightPx = displayHeight + 'px'
 
-        canvas.style.maxWidth = 'none'
-        canvas.style.maxHeight = 'none'
-        canvas.style.width = widthPx
-        canvas.style.height = heightPx
-
-        const overlay = this._selectionOverlay
-        if (overlay) {
-            overlay.style.maxWidth = 'none'
-            overlay.style.maxHeight = 'none'
-            overlay.style.width = widthPx
-            overlay.style.height = heightPx
+        for (const el of [canvas, this._selectionOverlay]) {
+            if (!el) continue
+            el.style.maxWidth = 'none'
+            el.style.maxHeight = 'none'
+            el.style.width = widthPx
+            el.style.height = heightPx
         }
     }
 
@@ -1345,6 +1343,11 @@ class LayersApp {
 
         this._layerStack.addEventListener('selection-change', () => {
             this._updateLayerMenu()
+            this._updateToolButtons()
+            // Switch off move tool if video layer selected
+            if (this._currentTool === 'move' && this._getActiveLayer()?.mediaType === 'video') {
+                this._setToolMode('selection')
+            }
         })
     }
 
@@ -1390,10 +1393,7 @@ class LayersApp {
         this._finalizePendingUndo()
 
         // Capture current canvas (all visible layers composited)
-        const canvasWidth = this._canvas.width
-        const canvasHeight = this._canvas.height
-
-        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
         const ctx = offscreen.getContext('2d')
         ctx.drawImage(this._canvas, 0, 0)
 
@@ -1427,60 +1427,24 @@ class LayersApp {
     }
 
     /**
-     * Rasterize a single effect layer to media
+     * Rasterize a single effect layer to media (user-facing with undo and toast)
      * @param {string} layerId
      * @private
      */
     async _rasterizeLayer(layerId) {
-        const layerIndex = this._layers.findIndex(l => l.id === layerId)
-        if (layerIndex === -1) return
-
-        const layer = this._layers[layerIndex]
-        if (layer.sourceType === 'media') return // Already media
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer || layer.sourceType === 'media') return
 
         this._finalizePendingUndo()
 
-        const savedVisibility = this._saveVisibility()
+        const newId = await this._rasterizeLayerInPlace(layerId)
+        if (!newId) return
 
-        // Hide all other layers
-        for (const l of this._layers) {
-            if (l.id !== layerId) l.visible = false
-        }
+        // Rename with "(rasterized)" suffix
+        const newLayer = this._layers.find(l => l.id === newId)
+        if (newLayer) newLayer.name = `${layer.name} (rasterized)`
 
-        // Rebuild to render only this layer
-        await this._rebuild()
-
-        // Capture the rendered result
-        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
-        const ctx = offscreen.getContext('2d')
-        ctx.drawImage(this._canvas, 0, 0)
-
-        this._restoreVisibility(savedVisibility)
-
-        const blob = await offscreen.convertToBlob({ type: 'image/png' })
-        const file = new File([blob], 'rasterized.png', { type: 'image/png' })
-
-        const newLayer = createMediaLayer(file, 'image', `${layer.name} (rasterized)`)
-
-        // Preserve properties from original layer
-        newLayer.visible = layer.visible
-        newLayer.opacity = layer.opacity
-        newLayer.blendMode = layer.blendMode
-        // Offset is baked in, reset to 0
-        newLayer.offsetX = 0
-        newLayer.offsetY = 0
-
-        // Load media
-        await this._renderer.loadMedia(newLayer.id, file, 'image')
-
-        // Replace the layer in the stack
-        this._layers[layerIndex] = newLayer
-
-        // Update UI
         this._updateLayerStack()
-        if (this._layerStack) {
-            this._layerStack.selectedLayerId = newLayer.id
-        }
         await this._rebuild()
         this._markDirty()
         this._pushUndoState()
@@ -1830,15 +1794,31 @@ class LayersApp {
         const layer = this._getActiveLayer()
         if (!layer) return
 
-        // Create a rect selection around the layer
-        this._selectionManager._selectionPath = {
-            type: 'rect',
-            x: layer.offsetX || 0,
-            y: layer.offsetY || 0,
-            width: this._canvas.width,
-            height: this._canvas.height
+        if (this._selectionManager.hasSelection()) {
+            // Clone-with-selection: move the selection to follow the dragged pixels
+            const dx = layer.offsetX || 0
+            const dy = layer.offsetY || 0
+            if (dx !== 0 || dy !== 0) {
+                const path = this._selectionManager._selectionPath
+                if (path.type === 'rect' || path.type === 'oval') {
+                    path.x = (path.x || 0) + dx
+                    path.y = (path.y || 0) + dy
+                    if (path.cx !== undefined) { path.cx += dx; path.cy += dy }
+                } else if (path.points) {
+                    for (const p of path.points) { p.x += dx; p.y += dy }
+                }
+            }
+        } else {
+            // Clone whole layer: create a rect selection around it
+            this._selectionManager._selectionPath = {
+                type: 'rect',
+                x: layer.offsetX || 0,
+                y: layer.offsetY || 0,
+                width: this._canvas.width,
+                height: this._canvas.height
+            }
+            this._selectionManager._startAnimation()
         }
-        this._selectionManager._startAnimation()
         this._updateImageMenu()
 
         // Switch to selection tool
@@ -2013,7 +1993,12 @@ class LayersApp {
         let layerOffsetX = 0
         let layerOffsetY = 0
 
-        if (layer.sourceType === 'media' && layer.mediaFile) {
+        if (layer.sourceType === 'media' && layer.mediaType === 'video') {
+            // Video: capture current frame at native dimensions
+            sourceImg = await this._captureVideoFrame(layer.id)
+            layerOffsetX = layer.offsetX || 0
+            layerOffsetY = layer.offsetY || 0
+        } else if (layer.sourceType === 'media' && layer.mediaFile) {
             sourceImg = await this._getLayerImage(layer)
             layerOffsetX = layer.offsetX || 0
             layerOffsetY = layer.offsetY || 0
@@ -2037,8 +2022,8 @@ class LayersApp {
             return false
         }
 
-        // Punch hole in source if requested (only for media layers)
-        if (punchHole && layer.sourceType === 'media' && layer.mediaFile) {
+        // Punch hole in source if requested (only for image media layers)
+        if (punchHole && layer.sourceType === 'media' && layer.mediaFile && layer.mediaType !== 'video') {
             const originalImg = await this._getLayerImage(layer)
             const sourceCanvas = new OffscreenCanvas(originalImg.width, originalImg.height)
             const sourceCtx = sourceCanvas.getContext('2d')
@@ -2066,7 +2051,9 @@ class LayersApp {
         await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
         this._layerStack.selectedLayerId = newLayer.id
 
-        this._selectionManager.clearSelection()
+        if (punchHole) {
+            this._selectionManager.clearSelection()
+        }
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
@@ -2164,7 +2151,9 @@ class LayersApp {
         await this._renderer.loadMedia(newLayer.id, extractedFile, 'image')
         this._layerStack.selectedLayerId = newLayer.id
 
-        this._selectionManager.clearSelection()
+        if (punchHole) {
+            this._selectionManager.clearSelection()
+        }
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
@@ -2232,6 +2221,22 @@ class LayersApp {
     }
 
     /**
+     * Capture current video frame as an image at native dimensions
+     * @param {string} layerId
+     * @returns {Promise<HTMLImageElement|null>}
+     * @private
+     */
+    async _captureVideoFrame(layerId) {
+        const media = this._renderer.getMediaInfo(layerId)
+        if (!media || media.type !== 'video') return null
+        const offscreen = new OffscreenCanvas(media.width, media.height)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(media.element, 0, 0)
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        return this._loadImageFromBlob(blob)
+    }
+
+    /**
      * Draw selection mask to canvas context
      * @param {CanvasRenderingContext2D} ctx
      * @param {object} selectionPath
@@ -2284,19 +2289,9 @@ class LayersApp {
         this._cloneTool?.deactivate()
 
         // Update button states
-        const moveBtn = document.getElementById('moveToolBtn')
-        const cloneBtn = document.getElementById('cloneToolBtn')
-        const selectionToolBtn = document.getElementById('selectionToolBtn')
-
-        if (moveBtn) {
-            moveBtn.classList.toggle('active', tool === 'move')
-        }
-        if (cloneBtn) {
-            cloneBtn.classList.toggle('active', tool === 'clone')
-        }
-        if (selectionToolBtn) {
-            selectionToolBtn.classList.toggle('active', tool === 'selection')
-        }
+        document.getElementById('moveToolBtn')?.classList.toggle('active', tool === 'move')
+        document.getElementById('cloneToolBtn')?.classList.toggle('active', tool === 'clone')
+        document.getElementById('selectionToolBtn')?.classList.toggle('active', tool === 'selection')
 
         // Clear selection tool checkmarks when not in selection mode
         if (tool !== 'selection') {
@@ -2308,21 +2303,17 @@ class LayersApp {
         }
 
         // Activate selected tool
-        if (tool === 'move') {
-            this._moveTool?.activate()
-            this._selectionManager.enabled = false
-            this._selectionOverlay?.classList.add('move-tool')
-            this._selectionOverlay?.classList.remove('clone-tool')
-        } else if (tool === 'clone') {
-            this._cloneTool?.activate()
-            this._selectionManager.enabled = false
-            this._selectionOverlay?.classList.remove('move-tool')
-            this._selectionOverlay?.classList.add('clone-tool')
-        } else {
-            this._selectionManager.enabled = true
-            this._selectionOverlay?.classList.remove('move-tool')
-            this._selectionOverlay?.classList.remove('clone-tool')
-        }
+        if (tool === 'move') this._moveTool?.activate()
+        else if (tool === 'clone') this._cloneTool?.activate()
+
+        this._selectionManager.enabled = (tool === 'selection')
+        this._selectionOverlay?.classList.toggle('move-tool', tool === 'move')
+        this._selectionOverlay?.classList.toggle('clone-tool', tool === 'clone')
+    }
+
+    _updateToolButtons() {
+        const isVideo = this._getActiveLayer()?.mediaType === 'video'
+        document.getElementById('moveToolBtn')?.classList.toggle('disabled', isVideo)
     }
 
     /**

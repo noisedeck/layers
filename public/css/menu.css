@@ -11,12 +11,6 @@
     --effect-surface-opacity: 85%;
     --effect-surface-transparency: 15%;
 
-    /* Chrome gradient settings */
-    --ui-chrome-highlight-blend: 60%;
-    --ui-chrome-highlight-tint: 40%;
-    --ui-chrome-shadow-blend: 72%;
-    --ui-chrome-shadow-shade: 28%;
-
     /* Menu colors - neutral */
     --color2: #555555;
     --color6: #d0d0d0;
@@ -79,12 +73,6 @@
     --ui-titlebar-base: color-mix(in srgb,
             var(--color2) 65%,
             transparent 35%);
-    --ui-titlebar-highlight: color-mix(in srgb,
-            var(--ui-titlebar-base, transparent) var(--ui-chrome-highlight-blend),
-            white var(--ui-chrome-highlight-tint));
-    --ui-titlebar-shadow: color-mix(in srgb,
-            var(--ui-titlebar-base, transparent) var(--ui-chrome-shadow-blend),
-            black var(--ui-chrome-shadow-shade));
     --ui-titlebar-gradient: linear-gradient(180deg,
             var(--ui-gradient-top) 0%,
             var(--ui-gradient-bottom) 100%);
@@ -307,6 +295,11 @@
 .menu-icon-btn:focus-visible {
     outline: none;
     box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.menu-icon-btn.disabled {
+    opacity: 0.3;
+    pointer-events: none;
 }
 
 .menu-icon-btn.active {
