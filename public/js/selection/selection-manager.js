@@ -212,18 +212,16 @@ class SelectionManager {
     }
 
     /**
-     * Set the selection to a mask programmatically.
-     * Used by Select menu operations.
+     * Set the selection programmatically.
      * @param {SelectionPath} path
      */
     setSelection(path) {
-        this._selectionPath = path
-        if (path) {
-            this._startAnimation()
-        } else {
-            this._stopAnimation()
-            this._clearOverlay()
+        if (!path) {
+            this.clearSelection()
+            return
         }
+        this._selectionPath = path
+        this._startAnimation()
         this.onSelectionChange?.()
     }
 
@@ -243,11 +241,10 @@ class SelectionManager {
     }
 
     /**
-     * Rasterize current selection to mask
+     * Rasterize current selection to an ImageData mask.
      * @returns {ImageData | null}
-     * @private
      */
-    _rasterizeSelection() {
+    rasterizeSelection() {
         if (!this._selectionPath || !this._overlay) return null
 
         const { width, height } = this._overlay
@@ -328,9 +325,9 @@ class SelectionManager {
         }
 
         this._selectionPath = this._previousSelection
-        const oldMask = this._rasterizeSelection()
+        const oldMask = this.rasterizeSelection()
         this._selectionPath = newSelection
-        const newMask = this._rasterizeSelection()
+        const newMask = this.rasterizeSelection()
 
         if (!oldMask || !newMask) {
             this._selectionPath = newSelection

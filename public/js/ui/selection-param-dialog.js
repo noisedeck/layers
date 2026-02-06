@@ -37,7 +37,6 @@ class SelectionParamDialog {
                 this._createDialog()
             }
 
-            // Update dialog content for this invocation
             this._dialog.querySelector('.dialog-header h2').textContent = title
             const inputEl = this._dialog.querySelector('#selection-param-input')
             const labelEl = this._dialog.querySelector('label[for="selection-param-input"]')
@@ -112,17 +111,17 @@ class SelectionParamDialog {
 
         if (isNaN(value) || value < min || value > max) return
 
-        this.hide()
-        if (this._resolve) {
-            this._resolve(value)
-            this._resolve = null
-        }
+        this._finish(value)
     }
 
     _cancel() {
+        this._finish(null)
+    }
+
+    _finish(result) {
         this.hide()
         if (this._resolve) {
-            this._resolve(null)
+            this._resolve(result)
             this._resolve = null
         }
     }

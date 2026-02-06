@@ -1222,7 +1222,7 @@ class LayersApp {
 
         // Select menu - Select Inverse
         document.getElementById('selectInverseMenuItem')?.addEventListener('click', () => {
-            const mask = this._rasterizeCurrentSelection()
+            const mask = this._selectionManager.rasterizeSelection()
             if (!mask) return
             const inverted = invertMask(mask)
             this._selectionManager.setSelection({ type: 'mask', data: inverted })
@@ -1233,59 +1233,21 @@ class LayersApp {
             this._startColorRangePick()
         })
 
-        // Select menu - Border
-        document.getElementById('borderSelectionMenuItem')?.addEventListener('click', async () => {
-            const r = await selectionParamDialog.show({
-                title: 'Border Selection', label: 'Width', defaultValue: 1
-            })
-            if (r === null) return
-            const mask = this._rasterizeCurrentSelection()
-            if (!mask) return
-            this._selectionManager.setSelection({ type: 'mask', data: borderMask(mask, r) })
+        // Select menu - Modify operations
+        document.getElementById('borderSelectionMenuItem')?.addEventListener('click', () => {
+            this._modifySelection({ title: 'Border Selection', label: 'Width', defaultValue: 1 }, borderMask)
         })
-
-        // Select menu - Smooth
-        document.getElementById('smoothSelectionMenuItem')?.addEventListener('click', async () => {
-            const r = await selectionParamDialog.show({
-                title: 'Smooth Selection', label: 'Radius', defaultValue: 2
-            })
-            if (r === null) return
-            const mask = this._rasterizeCurrentSelection()
-            if (!mask) return
-            this._selectionManager.setSelection({ type: 'mask', data: smoothMask(mask, r) })
+        document.getElementById('smoothSelectionMenuItem')?.addEventListener('click', () => {
+            this._modifySelection({ title: 'Smooth Selection', label: 'Radius', defaultValue: 2 }, smoothMask)
         })
-
-        // Select menu - Expand
-        document.getElementById('expandSelectionMenuItem')?.addEventListener('click', async () => {
-            const r = await selectionParamDialog.show({
-                title: 'Expand Selection', label: 'Radius', defaultValue: 1
-            })
-            if (r === null) return
-            const mask = this._rasterizeCurrentSelection()
-            if (!mask) return
-            this._selectionManager.setSelection({ type: 'mask', data: expandMask(mask, r) })
+        document.getElementById('expandSelectionMenuItem')?.addEventListener('click', () => {
+            this._modifySelection({ title: 'Expand Selection', label: 'Radius', defaultValue: 1 }, expandMask)
         })
-
-        // Select menu - Contract
-        document.getElementById('contractSelectionMenuItem')?.addEventListener('click', async () => {
-            const r = await selectionParamDialog.show({
-                title: 'Contract Selection', label: 'Radius', defaultValue: 1
-            })
-            if (r === null) return
-            const mask = this._rasterizeCurrentSelection()
-            if (!mask) return
-            this._selectionManager.setSelection({ type: 'mask', data: contractMask(mask, r) })
+        document.getElementById('contractSelectionMenuItem')?.addEventListener('click', () => {
+            this._modifySelection({ title: 'Contract Selection', label: 'Radius', defaultValue: 1 }, contractMask)
         })
-
-        // Select menu - Feather
-        document.getElementById('featherSelectionMenuItem')?.addEventListener('click', async () => {
-            const r = await selectionParamDialog.show({
-                title: 'Feather Selection', label: 'Radius', defaultValue: 2
-            })
-            if (r === null) return
-            const mask = this._rasterizeCurrentSelection()
-            if (!mask) return
-            this._selectionManager.setSelection({ type: 'mask', data: featherMask(mask, r) })
+        document.getElementById('featherSelectionMenuItem')?.addEventListener('click', () => {
+            this._modifySelection({ title: 'Feather Selection', label: 'Radius', defaultValue: 2 }, featherMask)
         })
 
         // View menu - Zoom
@@ -1645,7 +1607,7 @@ class LayersApp {
             if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'i' || e.key === 'I')) {
                 e.preventDefault()
                 if (this._selectionManager?.hasSelection()) {
-                    const mask = this._rasterizeCurrentSelection()
+                    const mask = this._selectionManager.rasterizeSelection()
                     if (mask) {
                         this._selectionManager.setSelection({ type: 'mask', data: invertMask(mask) })
                     }
@@ -2665,6 +2627,20 @@ class LayersApp {
         toast.success('Saved as JPG')
     }
 
+    /**
+     * Prompt for a radius parameter, rasterize the current selection, and apply a mask operation.
+     * @param {Object} dialogOptions - Options for selectionParamDialog.show()
+     * @param {function(ImageData, number): ImageData} maskFn - Mask transform function
+     * @private
+     */
+    async _modifySelection(dialogOptions, maskFn) {
+        const r = await selectionParamDialog.show(dialogOptions)
+        if (r === null) return
+        const mask = this._selectionManager.rasterizeSelection()
+        if (!mask) return
+        this._selectionManager.setSelection({ type: 'mask', data: maskFn(mask, r) })
+    }
+
     _updateSelectMenu() {
         const hasSelection = this._selectionManager?.hasSelection()
         const selectionItems = [
@@ -2679,36 +2655,6 @@ class LayersApp {
         for (const id of selectionItems) {
             document.getElementById(id)?.classList.toggle('disabled', !hasSelection)
         }
-    }
-
-    _rasterizeCurrentSelection() {
-        const sel = this._selectionManager
-        if (!sel.hasSelection()) return null
-        const path = sel.selectionPath
-        if (path.type === 'wand') return path.mask
-        if (path.type === 'mask') return path.data
-        const { width, height } = this._canvas
-        const offscreen = new OffscreenCanvas(width, height)
-        const ctx = offscreen.getContext('2d')
-        ctx.fillStyle = 'white'
-        if (path.type === 'rect') {
-            ctx.fillRect(path.x, path.y, path.width, path.height)
-        } else if (path.type === 'oval') {
-            ctx.beginPath()
-            ctx.ellipse(path.cx, path.cy, path.rx, path.ry, 0, 0, Math.PI * 2)
-            ctx.fill()
-        } else if (path.type === 'lasso' || path.type === 'polygon') {
-            if (path.points.length >= 3) {
-                ctx.beginPath()
-                ctx.moveTo(path.points[0].x, path.points[0].y)
-                for (let i = 1; i < path.points.length; i++) {
-                    ctx.lineTo(path.points[i].x, path.points[i].y)
-                }
-                ctx.closePath()
-                ctx.fill()
-            }
-        }
-        return ctx.getImageData(0, 0, width, height)
     }
 
     _startColorRangePick() {
