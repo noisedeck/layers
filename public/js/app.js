@@ -1980,39 +1980,15 @@ class LayersApp {
         const maskCtx = maskCanvas.getContext('2d')
         this._drawSelectionMask(maskCtx, selectionPath)
 
-        // If punching hole and effect layer, rasterize first
-        if (punchHole && layer.sourceType !== 'media') {
-            const newLayerId = await this._rasterizeLayerInPlace(layer.id)
-            if (newLayerId) {
-                layer = this._layers.find(l => l.id === newLayerId) || layer
-            }
-        }
-
-        // Get source image - either from layer directly or render composite
-        let sourceImg
-        let layerOffsetX = 0
-        let layerOffsetY = 0
-
-        if (layer.sourceType === 'media' && layer.mediaType === 'video') {
-            // Video: capture current frame at native dimensions
-            sourceImg = await this._captureVideoFrame(layer.id)
-            layerOffsetX = layer.offsetX || 0
-            layerOffsetY = layer.offsetY || 0
-        } else if (layer.sourceType === 'media' && layer.mediaFile) {
-            sourceImg = await this._getLayerImage(layer)
-            layerOffsetX = layer.offsetX || 0
-            layerOffsetY = layer.offsetY || 0
-        } else {
-            // Render just this layer to get composite
-            sourceImg = await this._renderLayerComposite([layer.id])
-        }
-
+        // Render the layer through the shader to capture what the user sees,
+        // correctly handling media scaling, positioning, rotation, etc.
+        const sourceImg = await this._renderLayerComposite([layer.id])
         if (!sourceImg) return false
 
         // Create extracted pixels canvas
         const extractedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
         const extractedCtx = extractedCanvas.getContext('2d')
-        extractedCtx.drawImage(sourceImg, layerOffsetX, layerOffsetY)
+        extractedCtx.drawImage(sourceImg, 0, 0)
         extractedCtx.globalCompositeOperation = 'destination-in'
         extractedCtx.drawImage(maskCanvas, 0, 0)
         extractedCtx.globalCompositeOperation = 'source-over'
@@ -2022,20 +1998,28 @@ class LayersApp {
             return false
         }
 
-        // Punch hole in source if requested (only for image media layers)
-        if (punchHole && layer.sourceType === 'media' && layer.mediaFile && layer.mediaType !== 'video') {
-            const originalImg = await this._getLayerImage(layer)
-            const sourceCanvas = new OffscreenCanvas(originalImg.width, originalImg.height)
-            const sourceCtx = sourceCanvas.getContext('2d')
-            sourceCtx.drawImage(originalImg, 0, 0)
-            sourceCtx.globalCompositeOperation = 'destination-out'
-            sourceCtx.drawImage(maskCanvas, -layerOffsetX, -layerOffsetY)
-            sourceCtx.globalCompositeOperation = 'source-over'
+        // Punch hole in source if requested
+        if (punchHole) {
+            const punchedCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
+            const punchedCtx = punchedCanvas.getContext('2d')
+            punchedCtx.drawImage(sourceImg, 0, 0)
+            punchedCtx.globalCompositeOperation = 'destination-out'
+            punchedCtx.drawImage(maskCanvas, 0, 0)
+            punchedCtx.globalCompositeOperation = 'source-over'
 
-            const sourceBlob = await sourceCanvas.convertToBlob({ type: 'image/png' })
-            const sourceFile = new File([sourceBlob], layer.mediaFile?.name || 'layer.png', { type: 'image/png' })
-            layer.mediaFile = sourceFile
-            await this._renderer.loadMedia(layer.id, sourceFile, 'image')
+            const punchedBlob = await punchedCanvas.convertToBlob({ type: 'image/png' })
+            const punchedFile = new File([punchedBlob], layer.mediaFile?.name || 'layer.png', { type: 'image/png' })
+
+            // Replace layer content with punched image (converts effect layers to media)
+            this._renderer.unloadMedia(layer.id)
+            layer.sourceType = 'media'
+            layer.mediaFile = punchedFile
+            layer.mediaType = 'image'
+            layer.effectId = null
+            layer.effectParams = {}
+            layer.offsetX = 0
+            layer.offsetY = 0
+            await this._renderer.loadMedia(layer.id, punchedFile, 'image')
         }
 
         // Create new layer with extracted pixels
@@ -2619,33 +2603,29 @@ class LayersApp {
     }
 
     async _cropMediaLayer(layer, bounds) {
-        const media = this._renderer._mediaTextures.get(layer.id)
-        if (!media || !media.element) return
-
-        // Calculate the source region accounting for layer offset
-        const ox = layer.offsetX || 0
-        const oy = layer.offsetY || 0
+        // Render through the shader to capture what the user sees
+        const compositeImg = await this._renderLayerComposite([layer.id])
+        if (!compositeImg) return
 
         const offscreen = new OffscreenCanvas(bounds.width, bounds.height)
         const ctx = offscreen.getContext('2d')
         ctx.drawImage(
-            media.element,
-            bounds.x - ox, bounds.y - oy, bounds.width, bounds.height,
+            compositeImg,
+            bounds.x, bounds.y, bounds.width, bounds.height,
             0, 0, bounds.width, bounds.height
         )
 
         const blob = await offscreen.convertToBlob({ type: 'image/png' })
         const file = new File([blob], 'cropped.png', { type: 'image/png' })
 
-        // Replace media
+        // Replace layer with rasterized crop (transforms are baked into the output)
         this._renderer.unloadMedia(layer.id)
-        await this._renderer.loadMedia(layer.id, file, 'image')
-
-        // Update layer
         layer.mediaFile = file
         layer.mediaType = 'image'
         layer.offsetX = 0
         layer.offsetY = 0
+        layer.effectParams = {}
+        await this._renderer.loadMedia(layer.id, file, 'image')
     }
 
     _showImageSizeDialog() {
