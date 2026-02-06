@@ -25,6 +25,7 @@ import { registerServiceWorker } from './sw-register.js'
 import { SelectionManager } from './selection/selection-manager.js'
 import { copySelection, pasteFromClipboard, getSelectionBounds } from './selection/clipboard-ops.js'
 import { MoveTool } from './tools/move-tool.js'
+import { UndoManager } from './utils/undo-manager.js'
 
 /**
  * Main application class
@@ -48,6 +49,11 @@ class LayersApp {
         this._reorderState = 'IDLE'  // IDLE | DRAGGING | PROCESSING | ROLLING_BACK
         this._reorderSnapshot = null  // { layers, dsl }
         this._reorderSource = null    // { layerId, index }
+
+        // Undo/redo
+        this._undoManager = new UndoManager(50)
+        this._undoDebounceTimer = null
+        this._restoring = false
     }
 
     /**
@@ -64,6 +70,155 @@ class LayersApp {
      */
     _markClean() {
         this._isDirty = false
+    }
+
+    /**
+     * Deep-clone the layer array for undo snapshots.
+     * File objects are immutable so sharing references is fine.
+     * @returns {Array} Cloned layer array
+     * @private
+     */
+    _cloneLayers(layers) {
+        return layers.map(l => ({
+            ...l,
+            effectParams: JSON.parse(JSON.stringify(l.effectParams))
+        }))
+    }
+
+    /**
+     * Push current state onto the undo stack (call AFTER mutation).
+     * Cancels any pending debounce timer.
+     * @private
+     */
+    _pushUndoState() {
+        if (this._undoDebounceTimer) {
+            clearTimeout(this._undoDebounceTimer)
+            this._undoDebounceTimer = null
+        }
+        this._undoManager.pushState({
+            layers: this._cloneLayers(this._layers),
+            canvasWidth: this._canvas.width,
+            canvasHeight: this._canvas.height
+        })
+        this._updateUndoMenuState()
+    }
+
+    /**
+     * Push undo state after a delay, coalescing rapid changes (slider drags).
+     * Each call resets the 500ms timer. When the timer fires, the final
+     * state is committed as one undo step.
+     * @private
+     */
+    _pushUndoStateDebounced() {
+        if (this._undoDebounceTimer) {
+            clearTimeout(this._undoDebounceTimer)
+        }
+        this._undoDebounceTimer = setTimeout(() => {
+            this._undoDebounceTimer = null
+            this._pushUndoState()
+        }, 500)
+        // Update menu immediately so undo shows as available
+        this._updateUndoMenuState()
+    }
+
+    /**
+     * If a debounce timer is pending, finalize it immediately.
+     * Call this before any non-debounced mutation so slider changes
+     * get their own undo step.
+     * @private
+     */
+    _finalizePendingUndo() {
+        if (this._undoDebounceTimer) {
+            clearTimeout(this._undoDebounceTimer)
+            this._undoDebounceTimer = null
+            this._pushUndoState()
+        }
+    }
+
+    /**
+     * Restore a snapshot from the undo stack
+     * @param {object} snapshot - { layers, canvasWidth, canvasHeight }
+     * @private
+     */
+    async _restoreState(snapshot) {
+        // Unload all current media
+        for (const layer of this._layers) {
+            if (layer.sourceType === 'media') {
+                this._renderer.unloadMedia(layer.id)
+            }
+        }
+
+        // Restore layers (deep clone to avoid aliasing with the stack)
+        this._layers = this._cloneLayers(snapshot.layers)
+
+        // Resize canvas if dimensions changed
+        if (snapshot.canvasWidth !== this._canvas.width ||
+            snapshot.canvasHeight !== this._canvas.height) {
+            this._renderer.stop()
+            this._resizeCanvas(snapshot.canvasWidth, snapshot.canvasHeight)
+        }
+
+        // Reload media for any media layers
+        for (const layer of this._layers) {
+            if (layer.sourceType === 'media' && layer.mediaFile) {
+                await this._renderer.loadMedia(layer.id, layer.mediaFile, layer.mediaType)
+            }
+        }
+
+        this._updateLayerStack()
+        await this._rebuild({ force: true })
+
+        // Restart renderer if it was stopped
+        if (!this._renderer.isRunning) {
+            await new Promise(resolve => requestAnimationFrame(resolve))
+            this._renderer.start()
+        }
+
+        this._updateUndoMenuState()
+        this._markDirty()
+    }
+
+    /**
+     * Undo the last action
+     * @private
+     */
+    async _undo() {
+        if (this._restoring) return
+        this._finalizePendingUndo()
+        const snapshot = this._undoManager.undo()
+        if (snapshot) {
+            this._restoring = true
+            try { await this._restoreState(snapshot) }
+            finally { this._restoring = false }
+        }
+    }
+
+    /**
+     * Redo the last undone action
+     * @private
+     */
+    async _redo() {
+        if (this._restoring) return
+        this._finalizePendingUndo()
+        const snapshot = this._undoManager.redo()
+        if (snapshot) {
+            this._restoring = true
+            try { await this._restoreState(snapshot) }
+            finally { this._restoring = false }
+        }
+    }
+
+    /**
+     * Update undo/redo menu item disabled states
+     * @private
+     */
+    _updateUndoMenuState() {
+        const undoItem = document.getElementById('undoMenuItem')
+        const redoItem = document.getElementById('redoMenuItem')
+        // Pending debounce timer means uncommitted changes exist that _undo() can finalize
+        const canUndo = this._undoManager.canUndo() || this._undoDebounceTimer !== null
+        if (undoItem) undoItem.classList.toggle('disabled', !canUndo)
+        if (redoItem) redoItem.classList.toggle('disabled', !this._undoManager.canRedo())
     }
 
     /**
@@ -270,6 +425,9 @@ class LayersApp {
         this._currentProjectName = null
         this._markDirty()
 
+        this._undoManager.clear()
+        this._pushUndoState()
+
         openDialog.element.close()
         toast.success(successMessage)
     }
@@ -363,6 +521,9 @@ class LayersApp {
         this._currentProjectName = null
         this._markDirty()
 
+        this._undoManager.clear()
+        this._pushUndoState()
+
         // Close the open dialog
         openDialog.element.close()
         toast.success(`Opened ${file.name}`)
@@ -375,6 +536,7 @@ class LayersApp {
      * @private
      */
     async _handleAddMediaLayer(file, mediaType) {
+        this._finalizePendingUndo()
         const layer = createMediaLayer(file, mediaType)
         this._layers.push(layer)
 
@@ -385,6 +547,7 @@ class LayersApp {
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
+        this._pushUndoState()
 
         // Select the new layer
         if (this._layerStack) {
@@ -400,6 +563,7 @@ class LayersApp {
      * @private
      */
     async _handleAddEffectLayer(effectId) {
+        this._finalizePendingUndo()
         const layer = createEffectLayer(effectId)
         this._layers.push(layer)
 
@@ -407,6 +571,7 @@ class LayersApp {
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
+        this._pushUndoState()
 
         // Select the new layer
         if (this._layerStack) {
@@ -421,12 +586,18 @@ class LayersApp {
      * @private
      */
     _resetLayers() {
+        if (this._undoDebounceTimer) {
+            clearTimeout(this._undoDebounceTimer)
+            this._undoDebounceTimer = null
+        }
         this._layers.forEach(l => {
             if (l.sourceType === 'media') {
                 this._renderer.unloadMedia(l.id)
             }
         })
         this._layers = []
+        this._undoManager.clear()
+        this._updateUndoMenuState()
     }
 
     /**
@@ -438,6 +609,7 @@ class LayersApp {
         const index = this._layers.findIndex(l => l.id === layerId)
         if (index <= 0) return // Can't delete base layer
 
+        this._finalizePendingUndo()
         const layer = this._layers[index]
 
         // Unload media if needed
@@ -452,6 +624,7 @@ class LayersApp {
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
+        this._pushUndoState()
 
         toast.info(`Deleted layer: ${layer.name}`)
     }
@@ -462,6 +635,11 @@ class LayersApp {
      * @private
      */
     async _handleLayerChange(detail) {
+        const isDebounced = detail.property === 'effectParams' || detail.property === 'opacity'
+        if (!isDebounced) {
+            this._finalizePendingUndo()
+        }
+
         // Update layer in our array
         const layer = this._layers.find(l => l.id === detail.layerId)
         if (layer) {
@@ -477,6 +655,7 @@ class LayersApp {
                 this._renderer.updateLayerParams(detail.layerId, detail.value)
                 // Keep DSL in sync to prevent spurious rebuild on next structural change
                 this._renderer.syncDsl()
+                this._pushUndoStateDebounced()
                 break
 
             case 'opacity':
@@ -492,17 +671,20 @@ class LayersApp {
                     // Keep DSL in sync to prevent spurious rebuild on next structural change
                     this._renderer.syncDsl()
                 }
+                this._pushUndoStateDebounced()
                 break
 
             case 'visibility':
             case 'blendMode':
                 // Structural changes require full rebuild
                 await this._rebuild()
+                this._pushUndoState()
                 break
 
             default:
                 // Unknown property - rebuild to be safe
                 await this._rebuild()
+                this._pushUndoState()
         }
     }
 
@@ -665,6 +847,8 @@ class LayersApp {
             const result = await this._renderer.tryCompile(newDsl)
 
             if (result.success) {
+                this._finalizePendingUndo()
+
                 // Commit the change
                 this._layers = newLayers
                 // Force rebuild to update layer-step mapping even if DSL is unchanged
@@ -673,6 +857,7 @@ class LayersApp {
                 this._updateLayerStack()
                 this._updateLayerZIndex()
                 this._markDirty()
+                this._pushUndoState()
 
                 this._reorderState = 'IDLE'
                 this._reorderSnapshot = null
@@ -997,6 +1182,16 @@ class LayersApp {
             this._quickSaveJpg()
         })
 
+        // Edit menu - Undo
+        document.getElementById('undoMenuItem')?.addEventListener('click', () => {
+            this._undo()
+        })
+
+        // Edit menu - Redo
+        document.getElementById('redoMenuItem')?.addEventListener('click', () => {
+            this._redo()
+        })
+
         // Image menu - Crop to selection
         document.getElementById('cropToSelectionMenuItem')?.addEventListener('click', async () => {
             await this._cropToSelection()
@@ -1195,6 +1390,8 @@ class LayersApp {
     async _flattenImage() {
         if (this._layers.length === 0) return
 
+        this._finalizePendingUndo()
+
         // Capture current canvas (all visible layers composited)
         const canvasWidth = this._canvas.width
         const canvasHeight = this._canvas.height
@@ -1228,6 +1425,7 @@ class LayersApp {
         }
         await this._rebuild()
         this._markDirty()
+        this._pushUndoState()
 
         toast.success('Image flattened')
     }
@@ -1243,6 +1441,8 @@ class LayersApp {
 
         const layer = this._layers[layerIndex]
         if (layer.sourceType === 'media') return // Already media
+
+        this._finalizePendingUndo()
 
         // Save original visibility states
         const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
@@ -1299,6 +1499,7 @@ class LayersApp {
         }
         await this._rebuild()
         this._markDirty()
+        this._pushUndoState()
 
         toast.success('Layer rasterized')
     }
@@ -1310,6 +1511,8 @@ class LayersApp {
      */
     async _flattenLayers(layerIds) {
         if (layerIds.length < 2) return
+
+        this._finalizePendingUndo()
 
         // Find the layers and their indices
         const selectedLayers = layerIds
@@ -1386,6 +1589,7 @@ class LayersApp {
         }
         await this._rebuild()
         this._markDirty()
+        this._pushUndoState()
 
         toast.success('Layers flattened')
     }
@@ -1407,6 +1611,20 @@ class LayersApp {
             if ((e.ctrlKey || e.metaKey) && e.key === 's') {
                 e.preventDefault()
                 this._showSaveProjectDialog()
+                return
+            }
+
+            // Cmd/Ctrl+Shift+Z - redo (check before undo since Shift+Z matches both)
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z') {
+                e.preventDefault()
+                this._redo()
+                return
+            }
+
+            // Cmd/Ctrl+Z - undo
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
+                e.preventDefault()
+                this._undo()
                 return
             }
 
@@ -1450,9 +1668,13 @@ class LayersApp {
             if (e.key === 'v' || e.key === 'V') {
                 const selected = this._layerStack?.getSelectedLayer()
                 if (selected) {
+                    this._finalizePendingUndo()
                     selected.visible = !selected.visible
                     this._updateLayerStack()
-                    this._rebuild()
+                    this._rebuild().then(() => {
+                        this._markDirty()
+                        this._pushUndoState()
+                    })
                 }
             }
 
@@ -1595,6 +1817,7 @@ class LayersApp {
      * @private
      */
     async _duplicateActiveLayer() {
+        this._finalizePendingUndo()
         const layer = this._getActiveLayer()
         if (!layer) return false
 
@@ -1626,6 +1849,7 @@ class LayersApp {
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
+        this._pushUndoState()
         return true
     }
 
@@ -1680,6 +1904,7 @@ class LayersApp {
 
         this._renderer.updateLayerOffset(layer.id, x, y)
         this._markDirty()
+        this._pushUndoStateDebounced()
     }
 
     /**
@@ -1753,6 +1978,8 @@ class LayersApp {
                 console.warn('[Extract] No layers selected')
                 return false
             }
+
+            this._finalizePendingUndo()
 
             const selectedLayers = selectedIds
                 .map(id => this._layers.find(l => l.id === id))
@@ -1883,6 +2110,7 @@ class LayersApp {
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
+        this._pushUndoState()
         return true
     }
 
@@ -2002,6 +2230,7 @@ class LayersApp {
         this._updateLayerStack()
         await this._rebuild()
         this._markDirty()
+        this._pushUndoState()
         return true
     }
 
@@ -2402,6 +2631,9 @@ class LayersApp {
             this._renderer.start()
             this._markClean()
 
+            this._undoManager.clear()
+            this._pushUndoState()
+
             // Close the open dialog (in case we came from there)
             openDialog.element.close()
             toast.success(`Loaded "${project.name}"`)
@@ -2442,6 +2674,8 @@ class LayersApp {
     async _cropToSelection() {
         if (!this._selectionManager?.hasSelection()) return
 
+        this._finalizePendingUndo()
+
         const selectionPath = this._selectionManager.selectionPath
         const bounds = getSelectionBounds(selectionPath)
         if (bounds.width <= 0 || bounds.height <= 0) return
@@ -2471,6 +2705,7 @@ class LayersApp {
         await new Promise(resolve => requestAnimationFrame(resolve))
         this._renderer.start()
         this._markDirty()
+        this._pushUndoState()
 
         toast.success('Cropped to selection')
     }
@@ -2520,6 +2755,8 @@ class LayersApp {
         const oldHeight = this._canvas.height
         if (newWidth === oldWidth && newHeight === oldHeight) return
 
+        this._finalizePendingUndo()
+
         const scaleX = newWidth / oldWidth
         const scaleY = newHeight / oldHeight
 
@@ -2542,6 +2779,7 @@ class LayersApp {
         await new Promise(resolve => requestAnimationFrame(resolve))
         this._renderer.start()
         this._markDirty()
+        this._pushUndoState()
 
         toast.success(`Resized to ${newWidth} x ${newHeight}`)
     }
@@ -2594,6 +2832,8 @@ class LayersApp {
         const oldHeight = this._canvas.height
         if (newWidth === oldWidth && newHeight === oldHeight) return
 
+        this._finalizePendingUndo()
+
         const deltaW = newWidth - oldWidth
         const deltaH = newHeight - oldHeight
 
@@ -2630,6 +2870,7 @@ class LayersApp {
         await new Promise(resolve => requestAnimationFrame(resolve))
         this._renderer.start()
         this._markDirty()
+        this._pushUndoState()
 
         toast.success(`Canvas resized to ${newWidth} x ${newHeight}`)
     }
