@@ -496,6 +496,10 @@ dialog[open] {
     color: var(--color-text-muted);
 }
 
+.about-modal-build {
+    font-size: 0.875rem;
+}
+
 .about-modal-link {
     color: var(--color-accent);
     text-decoration: none;
