@@ -1162,6 +1162,12 @@ dialog[open] {
    Export Dialogs
    ========================================================================= */
 
+#exportModal,
+#exportImageModal {
+    min-width: 380px;
+    max-width: 460px;
+}
+
 .export-modal-title {
     background: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 100%);
     border-bottom: 1px solid var(--color-border-muted, rgba(255,255,255,0.08));
