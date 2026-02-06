@@ -26,6 +26,8 @@ import { SelectionManager } from './selection/selection-manager.js'
 import { copySelection, pasteFromClipboard, getSelectionBounds } from './selection/clipboard-ops.js'
 import { MoveTool } from './tools/move-tool.js'
 import { UndoManager } from './utils/undo-manager.js'
+import { invertMask, expandMask, contractMask, borderMask, featherMask, smoothMask, colorRange } from './selection/selection-modify.js'
+import { selectionParamDialog } from './ui/selection-param-dialog.js'
 
 /**
  * Main application class
@@ -263,7 +265,10 @@ class LayersApp {
 
         // Set source canvas for magic wand
         this._selectionManager.setSourceCanvas(this._canvas)
-        this._selectionManager.onSelectionChange = () => this._updateImageMenu()
+        this._selectionManager.onSelectionChange = () => {
+            this._updateImageMenu()
+            this._updateSelectMenu()
+        }
 
         const getLayerPosition = (layer) => {
             if (layer?.effectId === 'filter/text') {
@@ -1202,6 +1207,87 @@ class LayersApp {
             this._showCanvasSizeDialog()
         })
 
+        // Select menu - Select All
+        document.getElementById('selectAllMenuItem')?.addEventListener('click', () => {
+            const { width, height } = this._canvas
+            this._selectionManager.setSelection({
+                type: 'rect', x: 0, y: 0, width, height
+            })
+        })
+
+        // Select menu - Select None
+        document.getElementById('selectNoneMenuItem')?.addEventListener('click', () => {
+            this._selectionManager.clearSelection()
+        })
+
+        // Select menu - Select Inverse
+        document.getElementById('selectInverseMenuItem')?.addEventListener('click', () => {
+            const mask = this._rasterizeCurrentSelection()
+            if (!mask) return
+            const inverted = invertMask(mask)
+            this._selectionManager.setSelection({ type: 'mask', data: inverted })
+        })
+
+        // Select menu - Color Range
+        document.getElementById('colorRangeMenuItem')?.addEventListener('click', () => {
+            this._startColorRangePick()
+        })
+
+        // Select menu - Border
+        document.getElementById('borderSelectionMenuItem')?.addEventListener('click', async () => {
+            const r = await selectionParamDialog.show({
+                title: 'Border Selection', label: 'Width', defaultValue: 1
+            })
+            if (r === null) return
+            const mask = this._rasterizeCurrentSelection()
+            if (!mask) return
+            this._selectionManager.setSelection({ type: 'mask', data: borderMask(mask, r) })
+        })
+
+        // Select menu - Smooth
+        document.getElementById('smoothSelectionMenuItem')?.addEventListener('click', async () => {
+            const r = await selectionParamDialog.show({
+                title: 'Smooth Selection', label: 'Radius', defaultValue: 2
+            })
+            if (r === null) return
+            const mask = this._rasterizeCurrentSelection()
+            if (!mask) return
+            this._selectionManager.setSelection({ type: 'mask', data: smoothMask(mask, r) })
+        })
+
+        // Select menu - Expand
+        document.getElementById('expandSelectionMenuItem')?.addEventListener('click', async () => {
+            const r = await selectionParamDialog.show({
+                title: 'Expand Selection', label: 'Radius', defaultValue: 1
+            })
+            if (r === null) return
+            const mask = this._rasterizeCurrentSelection()
+            if (!mask) return
+            this._selectionManager.setSelection({ type: 'mask', data: expandMask(mask, r) })
+        })
+
+        // Select menu - Contract
+        document.getElementById('contractSelectionMenuItem')?.addEventListener('click', async () => {
+            const r = await selectionParamDialog.show({
+                title: 'Contract Selection', label: 'Radius', defaultValue: 1
+            })
+            if (r === null) return
+            const mask = this._rasterizeCurrentSelection()
+            if (!mask) return
+            this._selectionManager.setSelection({ type: 'mask', data: contractMask(mask, r) })
+        })
+
+        // Select menu - Feather
+        document.getElementById('featherSelectionMenuItem')?.addEventListener('click', async () => {
+            const r = await selectionParamDialog.show({
+                title: 'Feather Selection', label: 'Radius', defaultValue: 2
+            })
+            if (r === null) return
+            const mask = this._rasterizeCurrentSelection()
+            if (!mask) return
+            this._selectionManager.setSelection({ type: 'mask', data: featherMask(mask, r) })
+        })
+
         // View menu - Zoom
         document.getElementById('zoomInMenuItem')?.addEventListener('click', () => {
             this._zoomIn()
@@ -1555,6 +1641,28 @@ class LayersApp {
                 return
             }
 
+            // Cmd/Ctrl+Shift+I - inverse selection
+            if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'i' || e.key === 'I')) {
+                e.preventDefault()
+                if (this._selectionManager?.hasSelection()) {
+                    const mask = this._rasterizeCurrentSelection()
+                    if (mask) {
+                        this._selectionManager.setSelection({ type: 'mask', data: invertMask(mask) })
+                    }
+                }
+                return
+            }
+
+            // Cmd/Ctrl+A - select all
+            if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'a' || e.key === 'A')) {
+                e.preventDefault()
+                const { width, height } = this._canvas
+                this._selectionManager.setSelection({
+                    type: 'rect', x: 0, y: 0, width, height
+                })
+                return
+            }
+
             // Cmd/Ctrl+Z - undo
             if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') {
                 e.preventDefault()
@@ -1820,6 +1928,7 @@ class LayersApp {
             this._selectionManager._startAnimation()
         }
         this._updateImageMenu()
+        this._updateSelectMenu()
 
         // Switch to selection tool
         this._setToolMode('selection')
@@ -2554,6 +2663,112 @@ class LayersApp {
         const filename = getTimestampedFilename('layers')
         exportJpg(this._canvas, filename)
         toast.success('Saved as JPG')
+    }
+
+    _updateSelectMenu() {
+        const hasSelection = this._selectionManager?.hasSelection()
+        const selectionItems = [
+            'selectNoneMenuItem',
+            'selectInverseMenuItem',
+            'borderSelectionMenuItem',
+            'smoothSelectionMenuItem',
+            'expandSelectionMenuItem',
+            'contractSelectionMenuItem',
+            'featherSelectionMenuItem'
+        ]
+        for (const id of selectionItems) {
+            document.getElementById(id)?.classList.toggle('disabled', !hasSelection)
+        }
+    }
+
+    _rasterizeCurrentSelection() {
+        const sel = this._selectionManager
+        if (!sel.hasSelection()) return null
+        const path = sel.selectionPath
+        if (path.type === 'wand') return path.mask
+        if (path.type === 'mask') return path.data
+        const { width, height } = this._canvas
+        const offscreen = new OffscreenCanvas(width, height)
+        const ctx = offscreen.getContext('2d')
+        ctx.fillStyle = 'white'
+        if (path.type === 'rect') {
+            ctx.fillRect(path.x, path.y, path.width, path.height)
+        } else if (path.type === 'oval') {
+            ctx.beginPath()
+            ctx.ellipse(path.cx, path.cy, path.rx, path.ry, 0, 0, Math.PI * 2)
+            ctx.fill()
+        } else if (path.type === 'lasso' || path.type === 'polygon') {
+            if (path.points.length >= 3) {
+                ctx.beginPath()
+                ctx.moveTo(path.points[0].x, path.points[0].y)
+                for (let i = 1; i < path.points.length; i++) {
+                    ctx.lineTo(path.points[i].x, path.points[i].y)
+                }
+                ctx.closePath()
+                ctx.fill()
+            }
+        }
+        return ctx.getImageData(0, 0, width, height)
+    }
+
+    _startColorRangePick() {
+        if (!this._canvas) return
+        this._colorRangePicking = true
+        this._selectionOverlay.style.cursor = 'crosshair'
+
+        const handler = (e) => {
+            this._selectionOverlay.removeEventListener('click', handler)
+            this._colorRangePicking = false
+            this._selectionOverlay.style.cursor = ''
+            this._handleColorRangePick(e)
+        }
+
+        this._selectionManager.enabled = false
+
+        this._selectionOverlay.addEventListener('click', handler)
+
+        const cancelHandler = (e) => {
+            if (e.key === 'Escape') {
+                this._selectionOverlay.removeEventListener('click', handler)
+                document.removeEventListener('keydown', cancelHandler)
+                this._colorRangePicking = false
+                this._selectionOverlay.style.cursor = ''
+                this._selectionManager.enabled = true
+            }
+        }
+        document.addEventListener('keydown', cancelHandler)
+
+        this._selectionOverlay.addEventListener('click', () => {
+            document.removeEventListener('keydown', cancelHandler)
+            this._selectionManager.enabled = true
+        }, { once: true })
+    }
+
+    _handleColorRangePick(e) {
+        const rect = this._selectionOverlay.getBoundingClientRect()
+        const scaleX = this._canvas.width / rect.width
+        const scaleY = this._canvas.height / rect.height
+        const x = Math.round((e.clientX - rect.left) * scaleX)
+        const y = Math.round((e.clientY - rect.top) * scaleY)
+
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = this._canvas.width
+        tempCanvas.height = this._canvas.height
+        const tempCtx = tempCanvas.getContext('2d')
+        tempCtx.drawImage(this._canvas, 0, 0)
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
+
+        const tolerance = this._selectionManager.wandTolerance
+        const mask = colorRange(imageData, x, y, tolerance)
+
+        let hasPixels = false
+        for (let i = 3; i < mask.data.length; i += 4) {
+            if (mask.data[i] > 127) { hasPixels = true; break }
+        }
+
+        if (hasPixels) {
+            this._selectionManager.setSelection({ type: 'mask', data: mask })
+        }
     }
 
     _updateImageMenu() {
