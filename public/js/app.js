@@ -28,6 +28,9 @@ import { MoveTool } from './tools/move-tool.js'
 import { UndoManager } from './utils/undo-manager.js'
 import { invertMask, expandMask, contractMask, borderMask, featherMask, smoothMask, colorRange } from './selection/selection-modify.js'
 import { selectionParamDialog } from './ui/selection-param-dialog.js'
+import { Files } from './utils/files.js'
+import { ExportImageDialog } from './ui/export-image-dialog.js'
+import { ExportVideoDialog } from './ui/export-video-dialog.js'
 
 /**
  * Main application class
@@ -359,6 +362,26 @@ class LayersApp {
         this._setupLayerStackHandlers()
         this._setupLayerMenuHandlers()
         this._setupKeyboardShortcuts()
+
+        // Export system
+        this._files = new Files()
+        this._exportImageDialog = new ExportImageDialog({
+            files: this._files,
+            canvas: this._canvas,
+            getResolution: () => ({ width: this._canvas.width, height: this._canvas.height }),
+            setResolution: (w, h) => this._resizeCanvas(w, h),
+            onComplete: (format) => toast.success(`Exported as ${format.toUpperCase()}`),
+            onCancel: () => {}
+        })
+        this._exportVideoDialog = new ExportVideoDialog({
+            files: this._files,
+            renderer: this._renderer,
+            canvas: this._canvas,
+            getResolution: () => ({ width: this._canvas.width, height: this._canvas.height }),
+            setResolution: (w, h) => this._resizeCanvas(w, h),
+            onComplete: (format) => toast.success(`Exported as ${format.toUpperCase()}`),
+            onCancel: () => {}
+        })
 
         // Set initial tool state
         this._setToolMode('selection')
@@ -1256,6 +1279,16 @@ class LayersApp {
 
         document.getElementById('saveJpgMenuItem')?.addEventListener('click', () => {
             this._quickSaveJpg()
+        })
+
+        // File menu - Export Image
+        document.getElementById('exportImageMenuItem')?.addEventListener('click', () => {
+            this._exportImageDialog.open()
+        })
+
+        // File menu - Export Video
+        document.getElementById('exportVideoMenuItem')?.addEventListener('click', () => {
+            this._exportVideoDialog.open()
         })
 
         // Edit menu - Undo
