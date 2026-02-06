@@ -212,6 +212,22 @@ class SelectionManager {
     }
 
     /**
+     * Set the selection to a mask programmatically.
+     * Used by Select menu operations.
+     * @param {SelectionPath} path
+     */
+    setSelection(path) {
+        this._selectionPath = path
+        if (path) {
+            this._startAnimation()
+        } else {
+            this._stopAnimation()
+            this._clearOverlay()
+        }
+        this.onSelectionChange?.()
+    }
+
+    /**
      * Set up mouse event listeners
      * @private
      */
