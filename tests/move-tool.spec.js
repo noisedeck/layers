@@ -1,25 +1,40 @@
 import { test, expect } from 'playwright/test'
 
+async function createTransparentProject(page) {
+    await page.waitForSelector('.open-dialog-backdrop.visible')
+    await page.click('.media-option[data-type="transparent"]')
+    await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
+    await page.click('.canvas-size-dialog .action-btn.primary')
+    await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
+    await page.waitForTimeout(500)
+}
+
+async function addColorLayer(page, color, size = 100) {
+    await page.evaluate(async ({ color, size }) => {
+        const canvas = document.createElement('canvas')
+        canvas.width = size
+        canvas.height = size
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = color
+        ctx.fillRect(0, 0, size, size)
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+        const file = new File([blob], 'test.png', { type: 'image/png' })
+        await window.layersApp._handleAddMediaLayer(file, 'image')
+    }, { color, size })
+    await page.waitForTimeout(500)
+}
+
 test.describe('Move tool', () => {
     test('move tool button exists and can be clicked', async ({ page }) => {
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
+        await createTransparentProject(page)
 
-        // Create a project first
-        await page.waitForSelector('.open-dialog-backdrop.visible')
-        await page.click('.media-option[data-type="transparent"]')
-        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
-        await page.click('.canvas-size-dialog .action-btn.primary')
-        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
-
-        // Check move tool button exists
         const moveBtn = await page.$('#moveToolBtn')
         expect(moveBtn).not.toBeNull()
 
-        // Click should activate move tool
         await page.click('#moveToolBtn')
 
-        // Verify it's active
         const isActive = await page.evaluate(() => {
             return document.getElementById('moveToolBtn').classList.contains('active')
         })
@@ -29,29 +44,8 @@ test.describe('Move tool', () => {
     test('dragging with move tool updates layer position', async ({ page }) => {
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
-
-        // Create a transparent project
-        await page.waitForSelector('.open-dialog-backdrop.visible')
-        await page.click('.media-option[data-type="transparent"]')
-        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
-        await page.click('.canvas-size-dialog .action-btn.primary')
-        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
-        await page.waitForTimeout(500)
-
-        // Add a test image layer
-        await page.evaluate(async () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = 100
-            canvas.height = 100
-            const ctx = canvas.getContext('2d')
-            ctx.fillStyle = 'red'
-            ctx.fillRect(0, 0, 100, 100)
-
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
-            const file = new File([blob], 'test.png', { type: 'image/png' })
-            await window.layersApp._handleAddMediaLayer(file, 'image')
-        })
-        await page.waitForTimeout(500)
+        await createTransparentProject(page)
+        await addColorLayer(page, 'red')
 
         // Select the new layer
         await page.evaluate(() => {
@@ -91,29 +85,8 @@ test.describe('Move tool', () => {
     test('moving selection extracts pixels to new layer', async ({ page }) => {
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
-
-        // Create transparent project
-        await page.waitForSelector('.open-dialog-backdrop.visible')
-        await page.click('.media-option[data-type="transparent"]')
-        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
-        await page.click('.canvas-size-dialog .action-btn.primary')
-        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
-        await page.waitForTimeout(500)
-
-        // Add a colored layer (full canvas size to ensure selection overlaps)
-        await page.evaluate(async () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = 1024
-            canvas.height = 1024
-            const ctx = canvas.getContext('2d')
-            ctx.fillStyle = 'blue'
-            ctx.fillRect(0, 0, 1024, 1024)
-
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
-            const file = new File([blob], 'test.png', { type: 'image/png' })
-            await window.layersApp._handleAddMediaLayer(file, 'image')
-        })
-        await page.waitForTimeout(500)
+        await createTransparentProject(page)
+        await addColorLayer(page, 'blue', 1024)
 
         const initialLayerCount = await page.evaluate(() => window.layersApp._layers.length)
 

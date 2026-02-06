@@ -180,10 +180,6 @@
     outline: none;
 }
 
-.layer-name[contenteditable="true"] {
-    cursor: text;
-}
-
 .layer-type {
     font-size: 10px;
     color: var(--color-text-muted);
@@ -376,23 +372,6 @@
 layer-stack {
     display: flex;
     flex-direction: column;
-}
-
-/* =========================================================================
-   Drag & Drop Indicators
-   ========================================================================= */
-
-.drop-indicator {
-    height: 2px;
-    background: var(--color-accent);
-    margin: -1px 8px;
-    border-radius: 1px;
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-}
-
-.drop-indicator.active {
-    opacity: 1;
 }
 
 /* =========================================================================

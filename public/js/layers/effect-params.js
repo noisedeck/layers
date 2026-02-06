@@ -113,12 +113,11 @@ class EffectParams extends HTMLElement {
 
         const globals = this._effectDef.globals || {}
 
-        // Check if there are any visible parameters
-        // Skip vec2/vec3 types as they're not properly supported yet
         const unsupportedTypes = ['vec2', 'vec3']
-        const visibleParams = Object.entries(globals).filter(([_, spec]) =>
+        const isVisible = spec =>
             !spec.ui?.hidden && !spec.internal && !unsupportedTypes.includes(spec.type)
-        )
+
+        const visibleParams = Object.entries(globals).filter(([_, spec]) => isVisible(spec))
 
         if (visibleParams.length === 0) {
             this.innerHTML = '<div class="effect-params-empty">No adjustable parameters</div>'
@@ -128,7 +127,6 @@ class EffectParams extends HTMLElement {
 
         this.classList.remove('empty')
 
-        // Build the controls container
         this.innerHTML = `
             <div class="effect-params-header">
                 <span class="effect-params-title">Parameters</span>
@@ -138,11 +136,7 @@ class EffectParams extends HTMLElement {
 
         const controlsContainer = this.querySelector('.effect-params-controls')
 
-        // Create controls for each parameter
-        for (const [paramName, spec] of Object.entries(globals)) {
-            // Skip hidden, internal, or unsupported type parameters
-            if (spec.ui?.hidden || spec.internal || unsupportedTypes.includes(spec.type)) continue
-
+        for (const [paramName, spec] of visibleParams) {
             const controlGroup = this._createControlGroup(paramName, spec)
             if (controlGroup) {
                 controlsContainer.appendChild(controlGroup)
@@ -482,10 +476,8 @@ class EffectParams extends HTMLElement {
      */
     _arrayToHex(arr) {
         if (!Array.isArray(arr)) return '#ffffff'
-        const r = Math.round((arr[0] || 0) * 255).toString(16).padStart(2, '0')
-        const g = Math.round((arr[1] || 0) * 255).toString(16).padStart(2, '0')
-        const b = Math.round((arr[2] || 0) * 255).toString(16).padStart(2, '0')
-        return `#${r}${g}${b}`
+        const hex = c => Math.round((c || 0) * 255).toString(16).padStart(2, '0')
+        return `#${hex(arr[0])}${hex(arr[1])}${hex(arr[2])}`
     }
 
     /**

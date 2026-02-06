@@ -32,14 +32,12 @@ async function initDB() {
         request.onupgradeneeded = (event) => {
             const database = event.target.result
 
-            // Projects store
             if (!database.objectStoreNames.contains(STORE_PROJECTS)) {
                 const projectStore = database.createObjectStore(STORE_PROJECTS, { keyPath: 'id' })
                 projectStore.createIndex('name', 'name', { unique: false })
                 projectStore.createIndex('modifiedAt', 'modifiedAt', { unique: false })
             }
 
-            // Media blobs store
             if (!database.objectStoreNames.contains(STORE_MEDIA)) {
                 database.createObjectStore(STORE_MEDIA, { keyPath: 'id' })
             }
@@ -52,7 +50,7 @@ async function initDB() {
  * @returns {string}
  */
 function generateId() {
-    return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
 }
 
 /**
@@ -111,15 +109,9 @@ async function loadMedia(mediaId) {
 
         const request = store.get(mediaId)
         request.onsuccess = () => {
-            if (request.result) {
-                resolve({
-                    blob: request.result.blob,
-                    name: request.result.name,
-                    type: request.result.type
-                })
-            } else {
-                resolve(null)
-            }
+            if (!request.result) return resolve(null)
+            const { blob, name, type } = request.result
+            resolve({ blob, name, type })
         }
         request.onerror = () => reject(request.error)
     })
@@ -200,20 +192,17 @@ export async function saveProject(projectData, existingId = null) {
     const projectId = existingId || generateId()
     const now = Date.now()
 
-    // Process layers and save media
     const processedLayers = []
     for (const layer of projectData.layers) {
         const processedLayer = { ...layer, mediaFile: null }
 
         if (layer.sourceType === 'media' && layer.mediaFile) {
-            // Generate media ID and save blob
             const mediaId = await generateMediaId(layer.mediaFile)
             await saveMedia(mediaId, layer.mediaFile, layer.mediaFile.name, layer.mediaFile.type)
             processedLayer.mediaId = mediaId
             processedLayer.mediaFileName = layer.mediaFile.name
             processedLayer.mediaFileType = layer.mediaFile.type
         } else if (layer.sourceType === 'media' && layer.mediaId) {
-            // Already has a media ID (from previous save)
             processedLayer.mediaId = layer.mediaId
             processedLayer.mediaFileName = layer.mediaFileName
             processedLayer.mediaFileType = layer.mediaFileType
@@ -271,14 +260,11 @@ export async function loadProject(projectId) {
 
     const mediaFiles = new Map()
 
-    // Load media for each layer
     for (const layer of project.layers) {
         if (layer.sourceType === 'media' && layer.mediaId) {
             const media = await loadMedia(layer.mediaId)
             if (media) {
-                // Create a File object from the blob
-                const file = new File([media.blob], media.name, { type: media.type })
-                mediaFiles.set(layer.id, file)
+                mediaFiles.set(layer.id, new File([media.blob], media.name, { type: media.type }))
             }
         }
     }
@@ -304,12 +290,8 @@ export async function listProjects() {
         request.onsuccess = (event) => {
             const cursor = event.target.result
             if (cursor) {
-                projects.push({
-                    id: cursor.value.id,
-                    name: cursor.value.name,
-                    modifiedAt: cursor.value.modifiedAt,
-                    createdAt: cursor.value.createdAt
-                })
+                const { id, name, modifiedAt, createdAt } = cursor.value
+                projects.push({ id, name, modifiedAt, createdAt })
                 cursor.continue()
             } else {
                 resolve(projects)
@@ -327,23 +309,21 @@ export async function listProjects() {
 export async function deleteProject(projectId) {
     const database = await initDB()
 
-    return new Promise((resolve, reject) => {
+    await new Promise((resolve, reject) => {
         const tx = database.transaction(STORE_PROJECTS, 'readwrite')
         const store = tx.objectStore(STORE_PROJECTS)
 
         const request = store.delete(projectId)
-        request.onsuccess = async () => {
-            // Cleanup unused media
-            try {
-                const usedIds = await getAllUsedMediaIds()
-                await cleanupUnusedMedia(usedIds)
-            } catch (e) {
-                console.warn('[ProjectStorage] Media cleanup failed:', e)
-            }
-            resolve()
-        }
+        request.onsuccess = () => resolve()
         request.onerror = () => reject(request.error)
     })
+
+    try {
+        const usedIds = await getAllUsedMediaIds()
+        await cleanupUnusedMedia(usedIds)
+    } catch (e) {
+        console.warn('[ProjectStorage] Media cleanup failed:', e)
+    }
 }
 
 /**
@@ -361,9 +341,6 @@ export async function checkProjectName(name, excludeId = null) {
     }
 }
 
-/**
- * Initialize the database on module load
- */
 initDB().catch(err => {
     console.error('[ProjectStorage] Failed to initialize database:', err)
 })

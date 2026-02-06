@@ -67,12 +67,8 @@ class CanvasSizeDialog {
         const closeBtn = this._dialog.querySelector('.dialog-close')
         const cancelBtn = this._dialog.querySelector('#canvas-size-cancel')
 
-        if (closeBtn) {
-            closeBtn.style.display = this._isRequired ? 'none' : ''
-        }
-        if (cancelBtn) {
-            cancelBtn.textContent = this._isRequired ? 'Back' : 'Cancel'
-        }
+        closeBtn.style.display = this._isRequired ? 'none' : ''
+        cancelBtn.textContent = this._isRequired ? 'Back' : 'Cancel'
     }
 
     /**

@@ -143,14 +143,12 @@ class ToastManager {
         toast.classList.add('toast-hiding')
 
         setTimeout(() => {
-            if (toast.parentNode) {
-                toast.parentNode.removeChild(toast)
-            }
+            toast.remove()
             const index = this._toasts.indexOf(toast)
             if (index > -1) {
                 this._toasts.splice(index, 1)
             }
-        }, 200) // Match transition duration
+        }, 200)
     }
 
     /**

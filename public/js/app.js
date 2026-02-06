@@ -262,10 +262,8 @@ class LayersApp {
         }
 
         // Set source canvas for magic wand
-        if (this._selectionManager) {
-            this._selectionManager.setSourceCanvas(this._canvas)
-            this._selectionManager.onSelectionChange = () => this._updateImageMenu()
-        }
+        this._selectionManager.setSourceCanvas(this._canvas)
+        this._selectionManager.onSelectionChange = () => this._updateImageMenu()
 
         // Initialize move tool (destructive - punches holes)
         this._moveTool = new MoveTool({
@@ -319,9 +317,9 @@ class LayersApp {
             await this._renderer.init()
 
             // Set up effect loader for effect-params components
-            EffectParams.setEffectLoader(async (effectId) => {
-                return await this._renderer.getEffectDefinition(effectId)
-            })
+            EffectParams.setEffectLoader((effectId) =>
+                this._renderer.getEffectDefinition(effectId)
+            )
         } catch (err) {
             console.error('[Layers] Failed to initialize renderer:', err)
             toast.error('Failed to initialize renderer')
@@ -919,6 +917,26 @@ class LayersApp {
     }
 
     /**
+     * Save visibility state of all layers
+     * @returns {Map<string, boolean>}
+     * @private
+     */
+    _saveVisibility() {
+        return new Map(this._layers.map(l => [l.id, l.visible]))
+    }
+
+    /**
+     * Restore previously saved visibility state
+     * @param {Map<string, boolean>} snapshot
+     * @private
+     */
+    _restoreVisibility(snapshot) {
+        for (const l of this._layers) {
+            if (snapshot.has(l.id)) l.visible = snapshot.get(l.id)
+        }
+    }
+
+    /**
      * Rebuild and render
      * @param {object} [options={}] - Options passed to renderer
      * @param {boolean} [options.force=false] - Force rebuild even if DSL unchanged
@@ -982,50 +1000,42 @@ class LayersApp {
             }
         })
 
-        const overlay = this._selectionOverlay
+        let displayWidth, displayHeight
 
         if (this._zoomMode === 'fit') {
-            // Fit in window - calculate size to maintain aspect ratio
             const container = canvas.parentElement
             const containerWidth = container.clientWidth
             const containerHeight = container.clientHeight
             const canvasAspect = canvas.width / canvas.height
             const containerAspect = containerWidth / containerHeight
 
-            let displayWidth, displayHeight
             if (canvasAspect > containerAspect) {
-                // Canvas is wider than container - fit to width
                 displayWidth = containerWidth
                 displayHeight = containerWidth / canvasAspect
             } else {
-                // Canvas is taller than container - fit to height
                 displayHeight = containerHeight
                 displayWidth = containerHeight * canvasAspect
             }
-
-            canvas.style.maxWidth = 'none'
-            canvas.style.maxHeight = 'none'
-            canvas.style.width = displayWidth + 'px'
-            canvas.style.height = displayHeight + 'px'
-            if (overlay) {
-                overlay.style.maxWidth = 'none'
-                overlay.style.maxHeight = 'none'
-                overlay.style.width = displayWidth + 'px'
-                overlay.style.height = displayHeight + 'px'
-            }
         } else {
-            // Specific percentage
             const percent = parseInt(this._zoomMode) / 100
-            canvas.style.maxWidth = 'none'
-            canvas.style.maxHeight = 'none'
-            canvas.style.width = (canvas.width * percent) + 'px'
-            canvas.style.height = (canvas.height * percent) + 'px'
-            if (overlay) {
-                overlay.style.maxWidth = 'none'
-                overlay.style.maxHeight = 'none'
-                overlay.style.width = (canvas.width * percent) + 'px'
-                overlay.style.height = (canvas.height * percent) + 'px'
-            }
+            displayWidth = canvas.width * percent
+            displayHeight = canvas.height * percent
+        }
+
+        const widthPx = displayWidth + 'px'
+        const heightPx = displayHeight + 'px'
+
+        canvas.style.maxWidth = 'none'
+        canvas.style.maxHeight = 'none'
+        canvas.style.width = widthPx
+        canvas.style.height = heightPx
+
+        const overlay = this._selectionOverlay
+        if (overlay) {
+            overlay.style.maxWidth = 'none'
+            overlay.style.maxHeight = 'none'
+            overlay.style.width = widthPx
+            overlay.style.height = heightPx
         }
     }
 
@@ -1100,59 +1110,34 @@ class LayersApp {
             aboutDialog.show()
         })
 
-        // File menu - New
-        document.getElementById('newMenuItem')?.addEventListener('click', async () => {
-            if (!await this._confirmUnsavedChanges()) return
-            openDialog.show({
-                canClose: true,
-                onOpen: async (file, mediaType) => {
-                    this._resetLayers()
-                    await this._handleOpenMedia(file, mediaType)
-                },
-                onSolid: async (width, height) => {
-                    this._resetLayers()
-                    await this._handleCreateSolidBase(width, height)
-                },
-                onGradient: async (width, height) => {
-                    this._resetLayers()
-                    await this._handleCreateGradientBase(width, height)
-                },
-                onTransparent: async (width, height) => {
-                    this._resetLayers()
-                    await this._handleCreateTransparentBase(width, height)
-                },
-                onLoadProject: () => {
-                    this._showLoadProjectDialog(true)
-                }
+        // File menu - New / Open (both show the same open dialog with reset)
+        for (const id of ['newMenuItem', 'openMenuItem']) {
+            document.getElementById(id)?.addEventListener('click', async () => {
+                if (!await this._confirmUnsavedChanges()) return
+                openDialog.show({
+                    canClose: true,
+                    onOpen: async (file, mediaType) => {
+                        this._resetLayers()
+                        await this._handleOpenMedia(file, mediaType)
+                    },
+                    onSolid: async (width, height) => {
+                        this._resetLayers()
+                        await this._handleCreateSolidBase(width, height)
+                    },
+                    onGradient: async (width, height) => {
+                        this._resetLayers()
+                        await this._handleCreateGradientBase(width, height)
+                    },
+                    onTransparent: async (width, height) => {
+                        this._resetLayers()
+                        await this._handleCreateTransparentBase(width, height)
+                    },
+                    onLoadProject: () => {
+                        this._showLoadProjectDialog(true)
+                    }
+                })
             })
-        })
-
-        // File menu - Open
-        document.getElementById('openMenuItem')?.addEventListener('click', async () => {
-            if (!await this._confirmUnsavedChanges()) return
-            openDialog.show({
-                canClose: true,
-                onOpen: async (file, mediaType) => {
-                    this._resetLayers()
-                    await this._handleOpenMedia(file, mediaType)
-                },
-                onSolid: async (width, height) => {
-                    this._resetLayers()
-                    await this._handleCreateSolidBase(width, height)
-                },
-                onGradient: async (width, height) => {
-                    this._resetLayers()
-                    await this._handleCreateGradientBase(width, height)
-                },
-                onTransparent: async (width, height) => {
-                    this._resetLayers()
-                    await this._handleCreateTransparentBase(width, height)
-                },
-                onLoadProject: () => {
-                    this._showLoadProjectDialog(true)
-                }
-            })
-        })
+        }
 
         // File menu - Save Project (uses Save As if no project ID)
         document.getElementById('saveProjectMenuItem')?.addEventListener('click', () => {
@@ -1404,7 +1389,6 @@ class LayersApp {
         const blob = await offscreen.convertToBlob({ type: 'image/png' })
         const file = new File([blob], 'flattened-image.png', { type: 'image/png' })
 
-        const { createMediaLayer } = await import('./layers/layer-model.js')
         const newLayer = createMediaLayer(file, 'image', this._currentProjectName || 'flattened image')
 
         // Unload all existing media
@@ -1444,38 +1428,26 @@ class LayersApp {
 
         this._finalizePendingUndo()
 
-        // Save original visibility states
-        const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
+        const savedVisibility = this._saveVisibility()
 
         // Hide all other layers
         for (const l of this._layers) {
-            if (l.id !== layerId) {
-                l.visible = false
-            }
+            if (l.id !== layerId) l.visible = false
         }
 
         // Rebuild to render only this layer
         await this._rebuild()
 
         // Capture the rendered result
-        const canvasWidth = this._canvas.width
-        const canvasHeight = this._canvas.height
-
-        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
         const ctx = offscreen.getContext('2d')
         ctx.drawImage(this._canvas, 0, 0)
 
-        // Restore visibility
-        for (const snap of visibilitySnapshot) {
-            const l = this._layers.find(layer => layer.id === snap.id)
-            if (l) l.visible = snap.visible
-        }
+        this._restoreVisibility(savedVisibility)
 
-        // Convert to blob and create media layer
         const blob = await offscreen.convertToBlob({ type: 'image/png' })
         const file = new File([blob], 'rasterized.png', { type: 'image/png' })
 
-        const { createMediaLayer } = await import('./layers/layer-model.js')
         const newLayer = createMediaLayer(file, 'image', `${layer.name} (rasterized)`)
 
         // Preserve properties from original layer
@@ -1525,40 +1497,26 @@ class LayersApp {
         // Find topmost selected layer index (highest index = top of stack)
         const topmostIndex = Math.max(...selectedLayers.map(item => item.index))
 
-        // Save original visibility states
-        const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
+        const savedVisibility = this._saveVisibility()
 
         // Hide all layers except selected visible ones
         for (const l of this._layers) {
-            const isSelected = layerIds.includes(l.id)
-            if (!isSelected) {
-                l.visible = false
-            }
-            // Selected but hidden layers stay hidden (will be discarded)
+            if (!layerIds.includes(l.id)) l.visible = false
         }
 
         // Rebuild to render only selected visible layers
         await this._rebuild()
 
         // Capture the rendered result
-        const canvasWidth = this._canvas.width
-        const canvasHeight = this._canvas.height
-
-        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
+        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
         const ctx = offscreen.getContext('2d')
         ctx.drawImage(this._canvas, 0, 0)
 
-        // Restore visibility
-        for (const snap of visibilitySnapshot) {
-            const l = this._layers.find(layer => layer.id === snap.id)
-            if (l) l.visible = snap.visible
-        }
+        this._restoreVisibility(savedVisibility)
 
-        // Convert to blob and create media layer
         const blob = await offscreen.convertToBlob({ type: 'image/png' })
         const file = new File([blob], 'flattened.png', { type: 'image/png' })
 
-        const { createMediaLayer } = await import('./layers/layer-model.js')
         const newLayer = createMediaLayer(file, 'image', 'flattened')
 
         // Load media
@@ -1836,7 +1794,6 @@ class LayersApp {
         const blob = await offscreen.convertToBlob({ type: 'image/png' })
         const file = new File([blob], 'duplicated.png', { type: 'image/png' })
 
-        const { createMediaLayer } = await import('./layers/layer-model.js')
         const newLayer = createMediaLayer(file, 'image', `${layer.name} copy`)
 
         // Insert after source layer
@@ -1861,26 +1818,13 @@ class LayersApp {
         const layer = this._getActiveLayer()
         if (!layer) return
 
-        // Get layer bounds (for media layers, use the image dimensions + offset)
-        let x = layer.offsetX || 0
-        let y = layer.offsetY || 0
-        let width = this._canvas.width
-        let height = this._canvas.height
-
-        // For media layers, try to get actual dimensions
-        if (layer.sourceType === 'media' && layer.mediaFile) {
-            // Use canvas size as fallback since we rendered to canvas size
-            width = this._canvas.width
-            height = this._canvas.height
-        }
-
         // Create a rect selection around the layer
         this._selectionManager._selectionPath = {
             type: 'rect',
-            x: x,
-            y: y,
-            width: width,
-            height: height
+            x: layer.offsetX || 0,
+            y: layer.offsetY || 0,
+            width: this._canvas.width,
+            height: this._canvas.height
         }
         this._selectionManager._startAnimation()
         this._updateImageMenu()
@@ -1921,29 +1865,22 @@ class LayersApp {
         const layer = this._layers[layerIndex]
         if (layer.sourceType === 'media') return layer.id
 
-        // Save and hide other layers
-        const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
+        const savedVisibility = this._saveVisibility()
         for (const l of this._layers) {
             if (l.id !== layerId) l.visible = false
         }
         await this._rebuild()
 
-        // Capture rendered result
         const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
         const ctx = offscreen.getContext('2d')
         ctx.drawImage(this._canvas, 0, 0)
 
-        // Restore visibility
-        for (const snap of visibilitySnapshot) {
-            const l = this._layers.find(layer => layer.id === snap.id)
-            if (l) l.visible = snap.visible
-        }
+        this._restoreVisibility(savedVisibility)
 
         // Convert to media layer
         const blob = await offscreen.convertToBlob({ type: 'image/png' })
         const file = new File([blob], 'rasterized.png', { type: 'image/png' })
 
-        const { createMediaLayer } = await import('./layers/layer-model.js')
         const newLayer = createMediaLayer(file, 'image', layer.name)
         newLayer.visible = layer.visible
         newLayer.opacity = layer.opacity
@@ -1967,37 +1904,60 @@ class LayersApp {
      * @private
      */
     async _extractSelectionToLayer(destructive = true) {
-        try {
-            if (!this._selectionManager?.hasSelection()) {
-                console.warn('[Extract] No selection')
-                return false
-            }
-
-            const selectedIds = this._layerStack?.selectedLayerIds || []
-            if (selectedIds.length === 0) {
-                console.warn('[Extract] No layers selected')
-                return false
-            }
-
-            this._finalizePendingUndo()
-
-            const selectedLayers = selectedIds
-                .map(id => this._layers.find(l => l.id === id))
-                .filter(Boolean)
-
-            const isSingleLayer = selectedLayers.length === 1
-            const singleLayer = isSingleLayer ? selectedLayers[0] : null
-
-            // Execute extraction
-            if (isSingleLayer) {
-                return await this._extractFromSingleLayer(singleLayer, destructive)
-            } else {
-                return await this._extractFromMultipleLayers(selectedIds, destructive)
-            }
-        } catch (err) {
-            console.error('[Extract] ERROR:', err)
-            throw err
+        if (!this._selectionManager?.hasSelection()) {
+            console.warn('[Extract] No selection')
+            return false
         }
+
+        const selectedIds = this._layerStack?.selectedLayerIds || []
+        if (selectedIds.length === 0) {
+            console.warn('[Extract] No layers selected')
+            return false
+        }
+
+        this._finalizePendingUndo()
+
+        const selectedLayers = selectedIds
+            .map(id => this._layers.find(l => l.id === id))
+            .filter(Boolean)
+
+        if (selectedLayers.length === 1) {
+            return this._extractFromSingleLayer(selectedLayers[0], destructive)
+        }
+        return this._extractFromMultipleLayers(selectedIds, destructive)
+    }
+
+    /**
+     * Clamp selection bounds to canvas dimensions
+     * @returns {object|null} Clamped bounds, or null if empty
+     * @private
+     */
+    _clampBounds(bounds) {
+        if (bounds.width <= 0 || bounds.height <= 0) return null
+
+        const clamped = {
+            x: Math.max(0, Math.floor(bounds.x)),
+            y: Math.max(0, Math.floor(bounds.y)),
+            width: Math.ceil(bounds.width),
+            height: Math.ceil(bounds.height)
+        }
+        clamped.width = Math.min(clamped.width, this._canvas.width - clamped.x)
+        clamped.height = Math.min(clamped.height, this._canvas.height - clamped.y)
+        if (clamped.width <= 0 || clamped.height <= 0) return null
+
+        return clamped
+    }
+
+    /**
+     * Check whether an image region contains any non-transparent pixels
+     * @private
+     */
+    _hasVisiblePixels(ctx, bounds) {
+        const data = ctx.getImageData(bounds.x, bounds.y, bounds.width, bounds.height).data
+        for (let i = 3; i < data.length; i += 4) {
+            if (data[i] > 0) return true
+        }
+        return false
     }
 
     /**
@@ -2011,19 +1971,8 @@ class LayersApp {
         const canvasWidth = this._canvas.width
         const canvasHeight = this._canvas.height
 
-        const bounds = getSelectionBounds(selectionPath)
-        if (bounds.width <= 0 || bounds.height <= 0) return false
-
-        // Clamp bounds
-        const extractBounds = {
-            x: Math.max(0, Math.floor(bounds.x)),
-            y: Math.max(0, Math.floor(bounds.y)),
-            width: Math.ceil(bounds.width),
-            height: Math.ceil(bounds.height)
-        }
-        extractBounds.width = Math.min(extractBounds.width, canvasWidth - extractBounds.x)
-        extractBounds.height = Math.min(extractBounds.height, canvasHeight - extractBounds.y)
-        if (extractBounds.width <= 0 || extractBounds.height <= 0) return false
+        const extractBounds = this._clampBounds(getSelectionBounds(selectionPath))
+        if (!extractBounds) return false
 
         // Create selection mask
         const maskCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
@@ -2062,16 +2011,7 @@ class LayersApp {
         extractedCtx.drawImage(maskCanvas, 0, 0)
         extractedCtx.globalCompositeOperation = 'source-over'
 
-        // Check if any pixels
-        const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
-        let hasAnyPixels = false
-        for (let i = 0; i < checkData.data.length; i += 4) {
-            if (checkData.data[i + 3] > 0) {
-                hasAnyPixels = true
-                break
-            }
-        }
-        if (!hasAnyPixels) {
+        if (!this._hasVisiblePixels(extractedCtx, extractBounds)) {
             toast.warning('no pixels selected')
             return false
         }
@@ -2096,7 +2036,6 @@ class LayersApp {
         const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
         const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
 
-        const { createMediaLayer } = await import('./layers/layer-model.js')
         const newLayer = createMediaLayer(extractedFile, 'image', 'moved selection')
 
         // Insert after source layer
@@ -2125,19 +2064,8 @@ class LayersApp {
         const canvasWidth = this._canvas.width
         const canvasHeight = this._canvas.height
 
-        const bounds = getSelectionBounds(selectionPath)
-        if (bounds.width <= 0 || bounds.height <= 0) return false
-
-        // Clamp bounds
-        const extractBounds = {
-            x: Math.max(0, Math.floor(bounds.x)),
-            y: Math.max(0, Math.floor(bounds.y)),
-            width: Math.ceil(bounds.width),
-            height: Math.ceil(bounds.height)
-        }
-        extractBounds.width = Math.min(extractBounds.width, canvasWidth - extractBounds.x)
-        extractBounds.height = Math.min(extractBounds.height, canvasHeight - extractBounds.y)
-        if (extractBounds.width <= 0 || extractBounds.height <= 0) return false
+        const extractBounds = this._clampBounds(getSelectionBounds(selectionPath))
+        if (!extractBounds) return false
 
         // Create selection mask
         const maskCanvas = new OffscreenCanvas(canvasWidth, canvasHeight)
@@ -2156,16 +2084,7 @@ class LayersApp {
         extractedCtx.drawImage(maskCanvas, 0, 0)
         extractedCtx.globalCompositeOperation = 'source-over'
 
-        // Check if any pixels
-        const checkData = extractedCtx.getImageData(extractBounds.x, extractBounds.y, extractBounds.width, extractBounds.height)
-        let hasAnyPixels = false
-        for (let i = 0; i < checkData.data.length; i += 4) {
-            if (checkData.data[i + 3] > 0) {
-                hasAnyPixels = true
-                break
-            }
-        }
-        if (!hasAnyPixels) {
+        if (!this._hasVisiblePixels(extractedCtx, extractBounds)) {
             toast.warning('no pixels selected')
             return false
         }
@@ -2189,7 +2108,6 @@ class LayersApp {
             const flattenedBlob = await flattenedCanvas.convertToBlob({ type: 'image/png' })
             const flattenedFile = new File([flattenedBlob], 'flattened.png', { type: 'image/png' })
 
-            const { createMediaLayer } = await import('./layers/layer-model.js')
             const flattenedLayer = createMediaLayer(flattenedFile, 'image', 'flattened')
 
             // Remove old layers
@@ -2218,7 +2136,6 @@ class LayersApp {
         const extractedBlob = await extractedCanvas.convertToBlob({ type: 'image/png' })
         const extractedFile = new File([extractedBlob], 'moved-selection.png', { type: 'image/png' })
 
-        const { createMediaLayer } = await import('./layers/layer-model.js')
         const newLayer = createMediaLayer(extractedFile, 'image', 'moved selection')
 
         // Insert at top
@@ -2235,36 +2152,12 @@ class LayersApp {
     }
 
     /**
-     * Render a composite image of specified layers
-     * @param {string[]} layerIds - Layer IDs to render
+     * Load an Image element from a Blob
+     * @param {Blob} blob
      * @returns {Promise<HTMLImageElement|null>}
      * @private
      */
-    async _renderLayerComposite(layerIds) {
-        // Save visibility
-        const visibilitySnapshot = this._layers.map(l => ({ id: l.id, visible: l.visible }))
-
-        // Show only specified layers
-        for (const l of this._layers) {
-            l.visible = layerIds.includes(l.id)
-        }
-
-        await this._rebuild()
-
-        // Capture
-        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
-        const ctx = offscreen.getContext('2d')
-        ctx.drawImage(this._canvas, 0, 0)
-
-        // Restore visibility
-        for (const snap of visibilitySnapshot) {
-            const l = this._layers.find(layer => layer.id === snap.id)
-            if (l) l.visible = snap.visible
-        }
-        await this._rebuild()
-
-        // Convert to image
-        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+    _loadImageFromBlob(blob) {
         return new Promise((resolve) => {
             const img = new Image()
             const url = URL.createObjectURL(blob)
@@ -2281,48 +2174,51 @@ class LayersApp {
     }
 
     /**
+     * Render a composite image of specified layers
+     * @param {string[]} layerIds - Layer IDs to render
+     * @returns {Promise<HTMLImageElement|null>}
+     * @private
+     */
+    async _renderLayerComposite(layerIds) {
+        const savedVisibility = this._saveVisibility()
+
+        for (const l of this._layers) {
+            l.visible = layerIds.includes(l.id)
+        }
+
+        await this._rebuild()
+
+        const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
+        const ctx = offscreen.getContext('2d')
+        ctx.drawImage(this._canvas, 0, 0)
+
+        this._restoreVisibility(savedVisibility)
+        await this._rebuild()
+
+        const blob = await offscreen.convertToBlob({ type: 'image/png' })
+        return this._loadImageFromBlob(blob)
+    }
+
+    /**
      * Get image element for a layer
      * @param {object} layer
      * @returns {Promise<HTMLImageElement|null>}
      * @private
      */
-    async _getLayerImage(layer) {
+    _getLayerImage(layer) {
         if (!layer.mediaFile) return null
-
-        return new Promise((resolve) => {
-            const img = new Image()
-            const url = URL.createObjectURL(layer.mediaFile)
-            img.onload = () => {
-                URL.revokeObjectURL(url)
-                resolve(img)
-            }
-            img.onerror = () => {
-                URL.revokeObjectURL(url)
-                resolve(null)
-            }
-            img.src = url
-        })
+        return this._loadImageFromBlob(layer.mediaFile)
     }
 
     /**
      * Draw selection mask to canvas context
      * @param {CanvasRenderingContext2D} ctx
      * @param {object} selectionPath
+     * @param {number} [offsetX=0]
+     * @param {number} [offsetY=0]
      * @private
      */
-    _drawSelectionMask(ctx, selectionPath) {
-        this._drawSelectionMaskOffset(ctx, selectionPath, 0, 0)
-    }
-
-    /**
-     * Draw selection mask to canvas context with offset
-     * @param {CanvasRenderingContext2D} ctx
-     * @param {object} selectionPath
-     * @param {number} offsetX
-     * @param {number} offsetY
-     * @private
-     */
-    _drawSelectionMaskOffset(ctx, selectionPath, offsetX, offsetY) {
+    _drawSelectionMask(ctx, selectionPath, offsetX = 0, offsetY = 0) {
         ctx.imageSmoothingEnabled = false
         ctx.fillStyle = 'white'
 

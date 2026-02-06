@@ -55,14 +55,8 @@ class ProjectManagerDialog {
         const closeBtn = this._dialog.querySelector('.dialog-close')
         const cancelBtn = this._dialog.querySelector('.pm-cancel-btn')
 
-        if (closeBtn) {
-            closeBtn.style.display = this._isRequired ? 'none' : ''
-        }
-
-        // Update cancel button text for required mode
-        if (cancelBtn) {
-            cancelBtn.textContent = this._isRequired ? 'Back' : 'Cancel'
-        }
+        closeBtn.style.display = this._isRequired ? 'none' : ''
+        cancelBtn.textContent = this._isRequired ? 'Back' : 'Cancel'
     }
 
     /**
@@ -272,7 +266,6 @@ class ProjectManagerDialog {
         })
 
         confirmDeleteBtn.addEventListener('click', () => this._handleDelete())
-
     }
 
     /**

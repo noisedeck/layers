@@ -55,11 +55,8 @@ class AboutDialog {
             }
             const data = await response.json()
             const rawHash = typeof data?.git_hash === 'string' ? data.git_hash.trim() : ''
-            const rawDate = typeof data?.date === 'number' || typeof data?.date === 'string'
-                ? data.date
-                : null
             const normalizedHash = rawHash ? rawHash.replace(/\s+/g, '').slice(0, 8) : 'LOCAL'
-            const normalizedTimestamp = this._normalizeTimestamp(rawDate)
+            const normalizedTimestamp = this._normalizeTimestamp(data?.date)
             const formattedDate = typeof normalizedTimestamp === 'number'
                 ? this._formatDate(normalizedTimestamp)
                 : 'n/a'
@@ -131,7 +128,7 @@ class AboutDialog {
         if (Number.isNaN(date.getTime())) return 'n/a'
 
         const pad = (value, length = 2) => String(Math.trunc(value)).padStart(length, '0')
-        const year = String(date.getFullYear()).padStart(4, '0')
+        const year = pad(date.getFullYear(), 4)
         const month = pad(date.getMonth() + 1)
         const day = pad(date.getDate())
         const hour = pad(date.getHours())

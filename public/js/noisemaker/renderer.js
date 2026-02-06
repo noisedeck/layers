@@ -9,36 +9,15 @@
 
 import { CanvasRenderer, extractEffectNamesFromDsl, getAllEffects } from './bundle.js'
 
-/**
- * LayersRenderer - Main rendering class for Layers
- *
- * Manages:
- * - Layer stack (media + effects)
- * - Building DSL from layers
- * - Compilation and rendering
- *
- * @class
- */
 export class LayersRenderer {
-    /**
-     * Create a new LayersRenderer
-     * @param {HTMLCanvasElement} canvas - Target canvas element
-     * @param {object} [options={}] - Configuration options
-     * @param {number} [options.width=1024] - Render width
-     * @param {number} [options.height=1024] - Render height
-     * @param {number} [options.loopDuration=10] - Animation loop duration in seconds
-     * @param {function} [options.onFPS] - Callback when FPS updates
-     * @param {function} [options.onError] - Callback on render error
-     */
     constructor(canvas, options = {}) {
         this._canvas = canvas
         this.width = options.width || canvas?.width || 1024
         this.height = options.height || canvas?.height || 1024
         this.loopDuration = options.loopDuration || 10
 
-        // Create internal CanvasRenderer
         this._renderer = new CanvasRenderer({
-            canvas: canvas,
+            canvas,
             canvasContainer: canvas?.parentElement || null,
             width: this.width,
             height: this.height,
@@ -51,61 +30,35 @@ export class LayersRenderer {
             onError: options.onError
         })
 
-        // State
         this._initialized = false
         this._layers = []
         this._currentDsl = ''
-
-        // Media textures (loaded from files)
         this._mediaTextures = new Map()
-
-        // Text canvases for filter/text effects (layerId -> canvas state)
         this._textCanvases = new Map()
-
-        // Video update loop RAF handle
         this._videoUpdateRAF = null
-
-        // Layer to step index mapping (populated after compile)
         this._layerStepMap = new Map()
     }
 
-    // =========================================================================
-    // Public Getters
-    // =========================================================================
-
-    /** @returns {HTMLCanvasElement} Current canvas element */
     get canvas() {
         return this._renderer.canvas || this._canvas
     }
 
-    /** @returns {boolean} Whether the render loop is running */
     get isRunning() {
         return this._renderer.isRunning
     }
 
-    /** @returns {string} Current DSL source */
     get currentDsl() {
         return this._currentDsl
     }
 
-    /** @returns {object} Effect manifest */
     get manifest() {
         return this._renderer.manifest
     }
 
-    /** @returns {Array} Current layer stack */
     get layers() {
         return this._layers
     }
 
-    // =========================================================================
-    // Lifecycle
-    // =========================================================================
-
-    /**
-     * Initialize the renderer (load manifest)
-     * @returns {Promise<void>}
-     */
     async init() {
         if (this._initialized) return
 
@@ -114,26 +67,16 @@ export class LayersRenderer {
         this._initialized = true
     }
 
-    /**
-     * Start the render loop
-     */
     start() {
         this._startVideoUpdateLoop()
         this._renderer.start()
     }
 
-    /**
-     * Stop the render loop
-     */
     stop() {
         this._stopVideoUpdateLoop()
         this._renderer.stop()
     }
 
-    /**
-     * Start the video texture update loop
-     * @private
-     */
     _startVideoUpdateLoop() {
         if (this._videoUpdateRAF) return
 
@@ -144,10 +87,6 @@ export class LayersRenderer {
         this._videoUpdateRAF = requestAnimationFrame(updateVideoTextures)
     }
 
-    /**
-     * Stop the video texture update loop
-     * @private
-     */
     _stopVideoUpdateLoop() {
         if (this._videoUpdateRAF) {
             cancelAnimationFrame(this._videoUpdateRAF)
@@ -155,76 +94,52 @@ export class LayersRenderer {
         }
     }
 
-    /**
-     * Update all video textures for the current frame
-     * @private
-     */
     _updateVideoTextures() {
-        const pipeline = this._renderer.pipeline
-        if (!pipeline?.graph?.passes) return
+        const stepIndices = this._getMediaStepIndices()
+        if (!stepIndices) return
 
-        // Find all media effect passes
-        const mediaStepIndices = []
-        for (const pass of pipeline.graph.passes) {
-            if (pass.effectFunc === 'media' || pass.effectKey === 'media') {
-                mediaStepIndices.push(pass.stepIndex)
-            }
-        }
-        const uniqueStepIndices = [...new Set(mediaStepIndices)]
-
-        // Get visible media layers in order
         const visibleMediaLayers = this._layers.filter(l => l.visible && l.sourceType === 'media')
 
-        // Update video textures
-        for (let i = 0; i < visibleMediaLayers.length && i < uniqueStepIndices.length; i++) {
-            const layer = visibleMediaLayers[i]
-            const stepIndex = uniqueStepIndices[i]
-            const media = this._mediaTextures.get(layer.id)
-
+        for (let i = 0; i < visibleMediaLayers.length && i < stepIndices.length; i++) {
+            const media = this._mediaTextures.get(visibleMediaLayers[i].id)
             if (!media || media.type !== 'video') continue
 
-            const textureId = `imageTex_step_${stepIndex}`
             try {
-                if (this._renderer.updateTextureFromSource) {
-                    this._renderer.updateTextureFromSource(textureId, media.element, { flipY: false })
-                }
-            } catch (err) {
+                this._renderer.updateTextureFromSource?.(`imageTex_step_${stepIndices[i]}`, media.element, { flipY: false })
+            } catch {
                 // Silently ignore texture update errors during playback
             }
         }
     }
 
     /**
-     * Resize the renderer
-     * @param {number} width - New width
-     * @param {number} height - New height
+     * Get deduplicated step indices for all media effect passes
+     * @returns {number[]|null} Step indices, or null if pipeline unavailable
+     * @private
      */
+    _getMediaStepIndices() {
+        const passes = this._renderer.pipeline?.graph?.passes
+        if (!passes) return null
+
+        const indices = []
+        for (const pass of passes) {
+            if (pass.effectFunc === 'media' || pass.effectKey === 'media') {
+                indices.push(pass.stepIndex)
+            }
+        }
+        return [...new Set(indices)]
+    }
+
     resize(width, height) {
         this.width = width
         this.height = height
-        if (this._renderer.resize) {
-            this._renderer.resize(width, height)
-        }
+        this._renderer.resize?.(width, height)
     }
 
-    /**
-     * Render a single frame at a specific time
-     * @param {number} normalizedTime - Time value 0-1
-     */
     render(normalizedTime) {
         this._renderer.render(normalizedTime)
     }
 
-    // =========================================================================
-    // Layer Management
-    // =========================================================================
-
-    /**
-     * Set the layer stack and rebuild DSL
-     * @param {Array} layers - Array of layer objects
-     * @param {object} [options={}] - Options passed to rebuild()
-     * @returns {Promise<{success: boolean, error?: string}>}
-     */
     async setLayers(layers, options = {}) {
         this._layers = layers
         return this.rebuild(options)
@@ -249,105 +164,74 @@ export class LayersRenderer {
         }
 
         try {
-            // Build DSL from layers
             const dsl = this._buildDsl()
 
-            // Skip recompilation if DSL hasn't changed (unless forced)
-            // Note: force=true is needed after layer reorder because the DSL may be
+            // force=true is needed after layer reorder because the DSL may be
             // string-identical but the layer-to-step mapping needs to be rebuilt
             if (dsl === this._currentDsl && !force) {
                 return { success: true }
             }
 
             this._currentDsl = dsl
-
             console.debug('[LayersRenderer] Built DSL:', dsl)
 
-            // Extract and load required effects
-            const effectData = extractEffectNamesFromDsl(dsl, this._renderer.manifest || {})
-            const effectIds = effectData.map(e => e.effectId)
+            await this._loadAndCompile(dsl)
 
-            // Filter out effects already loaded
-            const registeredEffects = getAllEffects()
-            const effectIdsToLoad = effectIds.filter(id => {
-                const dotKey = id.replace('/', '.')
-                return !registeredEffects.has(id) && !registeredEffects.has(dotKey)
-            })
-
-            if (effectIdsToLoad.length > 0) {
-                await this._renderer.loadEffects(effectIdsToLoad)
-            }
-
-            // Compile the DSL
-            await this._renderer.compile(dsl)
-
-            // Build layer-to-step mapping after compile
             this._buildLayerStepMap()
-
-            // Upload media textures after compile (pipeline must exist first)
             this._uploadMediaTextures()
-
-            // Upload text textures for filter/text effects
             this._uploadTextTextures()
-
-            // Apply initial parameter values
             this._applyAllLayerParams()
 
             return { success: true }
         } catch (err) {
             console.error('[LayersRenderer] Compilation error:', err)
-            return {
-                success: false,
-                error: err.message || String(err)
-            }
+            return { success: false, error: err.message || String(err) }
         }
     }
 
     /**
-     * Try to compile DSL without side effects
+     * Try to compile DSL without rebuilding layer state
      * @param {string} dsl - DSL to compile
      * @returns {Promise<{success: boolean, error?: string}>}
      */
     async tryCompile(dsl) {
-        if (!dsl || dsl.trim() === '') {
+        if (!dsl?.trim()) {
             return { success: true }
         }
 
         try {
-            // Extract and load required effects (this is idempotent)
-            const effectData = extractEffectNamesFromDsl(dsl, this._renderer.manifest || {})
-            const effectIds = effectData.map(e => e.effectId)
-
-            const registeredEffects = getAllEffects()
-            const effectIdsToLoad = effectIds.filter(id => {
-                const dotKey = id.replace('/', '.')
-                return !registeredEffects.has(id) && !registeredEffects.has(dotKey)
-            })
-
-            if (effectIdsToLoad.length > 0) {
-                await this._renderer.loadEffects(effectIdsToLoad)
-            }
-
-            // Try to compile - this validates the DSL
-            // Note: This DOES have side effects on the renderer, but we'll
-            // recompile the old DSL on rollback if needed
-            await this._renderer.compile(dsl)
-
+            await this._loadAndCompile(dsl)
             return { success: true }
         } catch (err) {
             console.error('[LayersRenderer] tryCompile failed:', err)
-            return {
-                success: false,
-                error: err.message || String(err)
-            }
+            return { success: false, error: err.message || String(err) }
         }
     }
 
     /**
-     * Build DSL from a given layers array (for validation)
-     * @param {Array} layers - Layer array to build DSL from
-     * @returns {string} DSL program
+     * Load any unregistered effects referenced by the DSL, then compile it
+     * @param {string} dsl - DSL to compile
+     * @returns {Promise<void>}
+     * @private
      */
+    async _loadAndCompile(dsl) {
+        const effectData = extractEffectNamesFromDsl(dsl, this._renderer.manifest || {})
+        const registeredEffects = getAllEffects()
+
+        const effectIdsToLoad = effectData
+            .map(e => e.effectId)
+            .filter(id => {
+                const dotKey = id.replace('/', '.')
+                return !registeredEffects.has(id) && !registeredEffects.has(dotKey)
+            })
+
+        if (effectIdsToLoad.length > 0) {
+            await this._renderer.loadEffects(effectIdsToLoad)
+        }
+
+        await this._renderer.compile(dsl)
+    }
+
     buildDslFromLayers(layers) {
         const originalLayers = this._layers
         this._layers = layers
@@ -356,39 +240,27 @@ export class LayersRenderer {
         return dsl
     }
 
-    /**
-     * Build mapping from layer IDs to pipeline step indices
-     * @private
-     */
     _buildLayerStepMap() {
         this._layerStepMap.clear()
 
-        const pipeline = this._renderer.pipeline
-        if (!pipeline?.graph?.passes) return
+        const passes = this._renderer.pipeline?.graph?.passes
+        if (!passes) return
 
         const visibleLayers = this._layers.filter(l => l.visible)
-
-        // Track how many times we've seen each effect type
         const effectTypeCounts = {}
 
         for (const layer of visibleLayers) {
-            let effectName = null
-
-            if (layer.sourceType === 'effect') {
-                effectName = layer.effectId?.split('/')[1]
-            } else if (layer.sourceType === 'media') {
-                effectName = 'media'
-            }
+            const effectName = layer.sourceType === 'media'
+                ? 'media'
+                : layer.effectId?.split('/')[1]
 
             if (!effectName) continue
 
-            // How many of this effect type have we seen before?
             const seenCount = effectTypeCounts[effectName] || 0
             effectTypeCounts[effectName] = seenCount + 1
 
-            // Find the Nth occurrence of this effect in the pipeline
             let matchCount = 0
-            for (const pass of pipeline.graph.passes) {
+            for (const pass of passes) {
                 if (pass.effectFunc === effectName || pass.effectKey === effectName) {
                     if (matchCount === seenCount) {
                         this._layerStepMap.set(layer.id, pass.stepIndex)
@@ -398,14 +270,8 @@ export class LayersRenderer {
                 }
             }
         }
-
     }
 
-    /**
-     * Update parameters for a specific layer without recompiling
-     * @param {string} layerId - Layer ID
-     * @param {object} params - Parameter values to update
-     */
     updateLayerParams(layerId, params) {
         const stepIndex = this._layerStepMap.get(layerId)
         if (stepIndex === undefined) {
@@ -413,44 +279,25 @@ export class LayersRenderer {
             return
         }
 
-        const stepKey = `step_${stepIndex}`
-        const stepParams = { [stepKey]: params }
+        this._renderer.applyStepParameterValues?.({ [`step_${stepIndex}`]: params })
 
-        if (this._renderer.applyStepParameterValues) {
-            this._renderer.applyStepParameterValues(stepParams)
-        }
-
-        // If this is a text effect, re-render the text texture
         const layer = this._layers.find(l => l.id === layerId)
         if (layer && this._isTextEffect(layer.effectId)) {
-            // Merge with existing params to get full state
-            const fullParams = { ...(layer.effectParams || {}), ...params }
-            this._renderTextCanvas(layerId, fullParams)
+            this._renderTextCanvas(layerId, { ...(layer.effectParams || {}), ...params })
         }
     }
 
-    /**
-     * Update offset for a media layer without recompiling
-     * @param {string} layerId - Layer ID
-     * @param {number} x - X offset in pixels
-     * @param {number} y - Y offset in pixels
-     */
     updateLayerOffset(layerId, x, y) {
         const stepIndex = this._layerStepMap.get(layerId)
         if (stepIndex === undefined) return
 
-        const normalizedX = (x / this.width) / 1.5 * 100
-        const normalizedY = (y / this.height) / 1.5 * 100
-
-        const stepKey = `step_${stepIndex}`
-        if (this._renderer.applyStepParameterValues) {
-            this._renderer.applyStepParameterValues({
-                [stepKey]: {
-                    offsetX: Math.max(-100, Math.min(100, normalizedX)),
-                    offsetY: Math.max(-100, Math.min(100, normalizedY))
-                }
-            })
-        }
+        const clamp = (v) => Math.max(-100, Math.min(100, v))
+        this._renderer.applyStepParameterValues?.({
+            [`step_${stepIndex}`]: {
+                offsetX: clamp((x / this.width) / 1.5 * 100),
+                offsetY: clamp((y / this.height) / 1.5 * 100)
+            }
+        })
     }
 
     /**
@@ -464,15 +311,9 @@ export class LayersRenderer {
         }
     }
 
-    /**
-     * Update opacity for a layer (updates blendMode mixAmt)
-     * @param {string} layerId - Layer ID
-     * @param {number} opacity - Opacity 0-100
-     */
     updateLayerOpacity(layerId, opacity) {
-        // Opacity is applied via blendMode's mixAmt parameter
-        const pipeline = this._renderer.pipeline
-        if (!pipeline?.graph?.passes) return
+        const passes = this._renderer.pipeline?.graph?.passes
+        if (!passes) return
 
         const layer = this._layers.find(l => l.id === layerId)
         if (!layer) return
@@ -481,109 +322,63 @@ export class LayersRenderer {
         const layerIndex = visibleLayers.indexOf(layer)
         if (layerIndex < 0) return
 
-        // Check if base layer is a solid (which doesn't use blendMode for opacity)
-        const baseLayer = visibleLayers[0]
-        const baseSolid = baseLayer?.effectId === 'synth/solid'
-
-        // Find the blendMode pass for this layer
-        const blendPasses = pipeline.graph.passes.filter(p =>
+        const baseSolid = visibleLayers[0]?.effectId === 'synth/solid'
+        const blendPasses = passes.filter(p =>
             p.effectFunc === 'blendMode' || p.effectKey === 'blendMode'
         )
 
-        // Calculate blend pass index:
-        // - If base is solid: it has no blend pass, so non-base layers use index-1
-        // - If base is not solid: all layers have blend passes, use index directly
-        let blendPassIndex
-        if (baseSolid) {
-            // Solid base has no blend pass, skip it
-            blendPassIndex = layerIndex - 1
-        } else {
-            // All layers including base have blend passes
-            blendPassIndex = layerIndex
-        }
+        // Solid base has no blend pass, so non-base layers use index-1
+        const blendPassIndex = baseSolid ? layerIndex - 1 : layerIndex
 
         if (blendPassIndex >= 0 && blendPassIndex < blendPasses.length) {
-            const blendPass = blendPasses[blendPassIndex]
-            const mixAmt = this._opacityToMixAmt(opacity)
-            const stepKey = `step_${blendPass.stepIndex}`
-
-            if (this._renderer.applyStepParameterValues) {
-                this._renderer.applyStepParameterValues({
-                    [stepKey]: { mixAmt }
-                })
-            }
+            const { stepIndex } = blendPasses[blendPassIndex]
+            this._renderer.applyStepParameterValues?.({
+                [`step_${stepIndex}`]: { mixAmt: this._opacityToMixAmt(opacity) }
+            })
         }
     }
 
-    /**
-     * Apply all layer parameters to the pipeline
-     * @private
-     */
     _applyAllLayerParams() {
-        for (const layer of this._layers) {
-            const isBase = this._layers.indexOf(layer) === 0
-            const isBaseSolid = isBase && layer.effectId === 'synth/solid'
+        for (let i = 0; i < this._layers.length; i++) {
+            const layer = this._layers[i]
+            const isBaseSolid = i === 0 && layer.effectId === 'synth/solid'
 
-            // Apply effect params for both effect and media layers
             if (layer.effectParams && Object.keys(layer.effectParams).length > 0) {
-                // For base layer solid, skip alpha param (already baked into DSL with opacity)
                 if (isBaseSolid) {
-                    const paramsWithoutAlpha = { ...layer.effectParams }
-                    delete paramsWithoutAlpha.alpha
-                    if (Object.keys(paramsWithoutAlpha).length > 0) {
-                        this.updateLayerParams(layer.id, paramsWithoutAlpha)
+                    // Skip alpha param for base solid (already baked into DSL with opacity)
+                    const { alpha, ...rest } = layer.effectParams
+                    if (Object.keys(rest).length > 0) {
+                        this.updateLayerParams(layer.id, rest)
                     }
                 } else {
                     this.updateLayerParams(layer.id, layer.effectParams)
                 }
             }
-            // Apply opacity via blendMode for all layers except base solid
-            // (base solid uses alpha parameter, all others use blendMode)
+
+            // Base solid uses alpha parameter; all others use blendMode
             if (layer.visible && !isBaseSolid) {
                 this.updateLayerOpacity(layer.id, layer.opacity)
             }
 
-            // Apply offset for media layers
             if (layer.sourceType === 'media') {
                 this.updateLayerOffset(layer.id, layer.offsetX || 0, layer.offsetY || 0)
             }
         }
     }
 
-    /**
-     * Upload all media textures to the renderer
-     * @private
-     */
     _uploadMediaTextures() {
-        // Get the pipeline to find step indices for media effects
-        const pipeline = this._renderer.pipeline
-        if (!pipeline?.graph?.passes) {
+        const stepIndices = this._getMediaStepIndices()
+        if (!stepIndices) {
             console.warn('[LayersRenderer] No pipeline graph, cannot upload textures')
             return
         }
 
-        // Find all media effect passes and their step indices
-        const mediaStepIndices = []
-        for (const pass of pipeline.graph.passes) {
-            // Check if this pass is from a 'media' effect
-            if (pass.effectFunc === 'media' || pass.effectKey === 'media') {
-                mediaStepIndices.push(pass.stepIndex)
-            }
-        }
-        
-        // Deduplicate (multiple passes may have same stepIndex)
-        const uniqueStepIndices = [...new Set(mediaStepIndices)]
-
-        // Get visible media layers in order (should match DSL generation order)
         const visibleMediaLayers = this._layers.filter(l => l.visible && l.sourceType === 'media')
-
-        // Collect step parameter updates for imageSize
         const stepParameterValues = {}
 
-        // Match layers to step indices and upload textures
-        for (let i = 0; i < visibleMediaLayers.length && i < uniqueStepIndices.length; i++) {
+        for (let i = 0; i < visibleMediaLayers.length && i < stepIndices.length; i++) {
             const layer = visibleMediaLayers[i]
-            const stepIndex = uniqueStepIndices[i]
+            const stepIndex = stepIndices[i]
             const media = this._mediaTextures.get(layer.id)
 
             if (!media) {
@@ -591,18 +386,12 @@ export class LayersRenderer {
                 continue
             }
 
-            // The texture ID format expected by the pipeline is: imageTex_step_N
             const textureId = `imageTex_step_${stepIndex}`
-
             try {
-                if (this._renderer.updateTextureFromSource) {
-                    this._renderer.updateTextureFromSource(textureId, media.element, { flipY: false })
-                }
-                
-                // Set imageSize uniform for this media step
+                this._renderer.updateTextureFromSource?.(textureId, media.element, { flipY: false })
+
                 if (media.width > 0 && media.height > 0) {
-                    const stepKey = `step_${stepIndex}`
-                    stepParameterValues[stepKey] = {
+                    stepParameterValues[`step_${stepIndex}`] = {
                         imageSize: [media.width, media.height]
                     }
                 }
@@ -611,23 +400,13 @@ export class LayersRenderer {
             }
         }
 
-        // Apply all step parameter updates at once
-        if (Object.keys(stepParameterValues).length > 0 && this._renderer.applyStepParameterValues) {
-            this._renderer.applyStepParameterValues(stepParameterValues)
+        if (Object.keys(stepParameterValues).length > 0) {
+            this._renderer.applyStepParameterValues?.(stepParameterValues)
         }
     }
 
-    /**
-     * Load media from a File object
-     * @param {string} layerId - Layer ID
-     * @param {File} file - Media file
-     * @param {string} mediaType - 'image' or 'video'
-     * @returns {Promise<void>}
-     */
     async loadMedia(layerId, file, mediaType) {
         const url = URL.createObjectURL(file)
-        let width = 0
-        let height = 0
 
         if (mediaType === 'image') {
             const img = new Image()
@@ -636,10 +415,13 @@ export class LayersRenderer {
                 img.onerror = reject
                 img.src = url
             })
-            width = img.naturalWidth || img.width
-            height = img.naturalHeight || img.height
+            const width = img.naturalWidth || img.width
+            const height = img.naturalHeight || img.height
             this._mediaTextures.set(layerId, { type: 'image', element: img, url, width, height })
-        } else if (mediaType === 'video') {
+            return { width, height }
+        }
+
+        if (mediaType === 'video') {
             const video = document.createElement('video')
             video.loop = true
             video.muted = true
@@ -657,50 +439,35 @@ export class LayersRenderer {
                 video.src = url
                 video.load()
             })
-            width = video.videoWidth
-            height = video.videoHeight
+            const width = video.videoWidth
+            const height = video.videoHeight
             this._mediaTextures.set(layerId, { type: 'video', element: video, url, width, height })
 
-            // Start playback - await to catch autoplay policy errors
             try {
                 await video.play()
             } catch (playError) {
                 console.warn('[LayersRenderer] Video autoplay blocked:', playError.message)
-                // Video is still loaded, user interaction may start it later
             }
+            return { width, height }
         }
-        
-        return { width, height }
+
+        return { width: 0, height: 0 }
     }
 
-    /**
-     * Unload media for a layer
-     * @param {string} layerId - Layer ID
-     */
     unloadMedia(layerId) {
         const media = this._mediaTextures.get(layerId)
-        if (media) {
-            if (media.url) {
-                URL.revokeObjectURL(media.url)
-            }
-            if (media.type === 'video' && media.element) {
-                media.element.pause()
-                media.element.src = ''
-            }
-            this._mediaTextures.delete(layerId)
+        if (!media) return
+
+        if (media.url) {
+            URL.revokeObjectURL(media.url)
         }
+        if (media.type === 'video' && media.element) {
+            media.element.pause()
+            media.element.src = ''
+        }
+        this._mediaTextures.delete(layerId)
     }
 
-    // =========================================================================
-    // Text Texture Management
-    // =========================================================================
-
-    /**
-     * Check if an effect requires a text texture
-     * @param {string} effectId - Effect ID
-     * @returns {boolean}
-     * @private
-     */
     _isTextEffect(effectId) {
         if (!effectId) return false
         const manifest = this._renderer.manifest || {}
@@ -708,70 +475,49 @@ export class LayersRenderer {
         return entry?.externalTexture === 'textTex'
     }
 
-    /**
-     * Initialize and upload text textures for all text effect layers
-     * @private
-     */
     _uploadTextTextures() {
-        const pipeline = this._renderer.pipeline
-        if (!pipeline?.graph?.passes) return
+        const passes = this._renderer.pipeline?.graph?.passes
+        if (!passes) return
 
-        // Find all filter/text effect passes (filter namespace with text func)
-        const textPasses = []
-        for (const pass of pipeline.graph.passes) {
+        const textStepIndices = []
+        for (const pass of passes) {
             if (pass.effectNamespace === 'filter' && pass.effectFunc === 'text') {
-                textPasses.push(pass.stepIndex)
+                textStepIndices.push(pass.stepIndex)
             }
         }
-        const uniqueStepIndices = [...new Set(textPasses)]
+        const uniqueStepIndices = [...new Set(textStepIndices)]
 
-        // Get visible text effect layers
         const textLayers = this._layers.filter(l =>
             l.visible && l.sourceType === 'effect' && this._isTextEffect(l.effectId)
         )
 
-        // Match layers to step indices
         for (let i = 0; i < textLayers.length && i < uniqueStepIndices.length; i++) {
             const layer = textLayers[i]
             const stepIndex = uniqueStepIndices[i]
 
-            // Create canvas if needed
-            if (!this._textCanvases.has(layer.id)) {
-                const canvas = document.createElement('canvas')
+            if (this._textCanvases.has(layer.id)) {
+                this._textCanvases.get(layer.id).stepIndex = stepIndex
+            } else {
                 this._textCanvases.set(layer.id, {
-                    canvas,
+                    canvas: document.createElement('canvas'),
                     stepIndex
                 })
-            } else {
-                // Update step index
-                const state = this._textCanvases.get(layer.id)
-                state.stepIndex = stepIndex
             }
 
-            // Render text to canvas and upload
             this._renderTextCanvas(layer.id, layer.effectParams || {})
         }
     }
 
-    /**
-     * Render text to canvas and upload as texture
-     * @param {string} layerId - Layer ID
-     * @param {object} params - Text parameters
-     * @private
-     */
     _renderTextCanvas(layerId, params) {
         const state = this._textCanvases.get(layerId)
         if (!state || !this._renderer.pipeline) return
 
-        const canvas = state.canvas
-        const resolution = this.width
-
-        canvas.width = resolution
-        canvas.height = resolution
+        const { canvas } = state
+        canvas.width = this.width
+        canvas.height = this.width
 
         const ctx = canvas.getContext('2d')
 
-        // Parse parameters with defaults
         const text = String(params.text || 'Hello World')
         const font = params.font || 'Nunito'
         const size = params.size ?? 0.1
@@ -783,96 +529,64 @@ export class LayersRenderer {
         const bgOpacity = params.bgOpacity ?? 0
         const justify = params.justify || 'center'
 
-        // Clear and draw background
         ctx.clearRect(0, 0, canvas.width, canvas.height)
 
         if (bgOpacity > 0) {
-            const bgRgb = this._hexToRgb(bgColor)
-            ctx.fillStyle = `rgba(${Math.round(bgRgb[0] * 255)}, ${Math.round(bgRgb[1] * 255)}, ${Math.round(bgRgb[2] * 255)}, ${bgOpacity})`
+            ctx.fillStyle = this._rgbToCss(this._hexToRgb(bgColor), bgOpacity)
             ctx.fillRect(0, 0, canvas.width, canvas.height)
         }
 
-        // Draw text
         const lines = text.split('\n')
         const fontSize = Math.round(size * canvas.height)
         const lineHeight = fontSize * 1.2
-        const textRgb = this._hexToRgb(color)
-        const rotationRad = rotation * Math.PI / 180
 
         ctx.font = `${fontSize}px ${font}`
         ctx.textAlign = justify
         ctx.textBaseline = 'middle'
-        ctx.fillStyle = `rgba(${Math.round(textRgb[0] * 255)}, ${Math.round(textRgb[1] * 255)}, ${Math.round(textRgb[2] * 255)}, 1)`
-
-        const x = posX * canvas.width
-        const y = posY * canvas.height
+        ctx.fillStyle = this._rgbToCss(this._hexToRgb(color), 1)
 
         ctx.save()
-        ctx.translate(x, y)
-        ctx.rotate(rotationRad)
+        ctx.translate(posX * canvas.width, posY * canvas.height)
+        ctx.rotate(rotation * Math.PI / 180)
 
-        const totalHeight = (lines.length - 1) * lineHeight
-        const startY = -totalHeight / 2
-
+        const startY = -(lines.length - 1) * lineHeight / 2
         for (let i = 0; i < lines.length; i++) {
-            const lineY = startY + i * lineHeight
-            ctx.fillText(lines[i], 0, lineY)
+            ctx.fillText(lines[i], 0, startY + i * lineHeight)
         }
 
         ctx.restore()
 
-        // Upload texture
-        const textureId = `textTex_step_${state.stepIndex}`
         try {
-            if (this._renderer.updateTextureFromSource) {
-                this._renderer.updateTextureFromSource(textureId, canvas, { flipY: true })
-            }
+            this._renderer.updateTextureFromSource?.(`textTex_step_${state.stepIndex}`, canvas, { flipY: true })
         } catch (err) {
-            console.warn(`[LayersRenderer] Failed to upload text texture ${textureId}:`, err)
+            console.warn(`[LayersRenderer] Failed to upload text texture textTex_step_${state.stepIndex}:`, err)
         }
     }
 
     /**
-     * Parse hex color to RGB array (0-1 range)
-     * @param {string|Array} hex - Hex color string or RGB array
-     * @returns {number[]} RGB values 0-1
+     * Convert 0-1 RGB array to CSS rgba() string
      * @private
      */
-    _hexToRgb(hex) {
-        if (Array.isArray(hex)) {
-            return hex.slice(0, 3)
-        }
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-        return result ? [
-            parseInt(result[1], 16) / 255,
-            parseInt(result[2], 16) / 255,
-            parseInt(result[3], 16) / 255
-        ] : [1, 1, 1]
+    _rgbToCss(rgb, alpha) {
+        return `rgba(${Math.round(rgb[0] * 255)}, ${Math.round(rgb[1] * 255)}, ${Math.round(rgb[2] * 255)}, ${alpha})`
     }
 
-    /**
-     * Update text texture for a layer when parameters change
-     * @param {string} layerId - Layer ID
-     * @param {object} params - Updated text parameters
-     */
+    _hexToRgb(hex) {
+        if (Array.isArray(hex)) return hex.slice(0, 3)
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+        return result
+            ? [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255]
+            : [1, 1, 1]
+    }
+
     updateTextParams(layerId, params) {
         const layer = this._layers.find(l => l.id === layerId)
         if (!layer || !this._isTextEffect(layer.effectId)) return
-
         if (this._textCanvases.has(layerId)) {
             this._renderTextCanvas(layerId, params)
         }
     }
 
-    // =========================================================================
-    // DSL Building
-    // =========================================================================
-
-    /**
-     * Build DSL from the current layer stack
-     * @returns {string} DSL program
-     * @private
-     */
     _buildDsl() {
         const visibleLayers = this._layers.filter(l => l.visible)
 
@@ -961,92 +675,43 @@ export class LayersRenderer {
         return lines.join('\n')
     }
 
-    /**
-     * Build an effect call string from a layer
-     * @param {object} layer - Layer object
-     * @returns {string} Effect call DSL
-     * @private
-     */
     _buildEffectCall(layer) {
-        const effectId = layer.effectId
-        if (!effectId) return 'noise()'
+        if (!layer.effectId) return 'noise()'
 
-        // Extract effect name from ID (namespace/name -> name)
-        const parts = effectId.split('/')
-        const effectName = parts[parts.length - 1]
-
-        // Build parameter string
+        const effectName = layer.effectId.split('/').pop()
         const params = layer.effectParams || {}
         const paramPairs = Object.entries(params)
             .map(([key, value]) => {
-                if (typeof value === 'string') {
-                    return `${key}: "${value}"`
-                }
-                if (Array.isArray(value)) {
-                    // Use vec constructors for array types (vec2, vec3, vec4)
-                    const vecType = `vec${value.length}`
-                    return `${key}: ${vecType}(${value.join(', ')})`
-                }
+                if (typeof value === 'string') return `${key}: "${value}"`
+                if (Array.isArray(value)) return `${key}: vec${value.length}(${value.join(', ')})`
                 return `${key}: ${value}`
             })
 
-        if (paramPairs.length > 0) {
-            return `${effectName}(${paramPairs.join(', ')})`
-        }
-
-        return `${effectName}()`
+        return paramPairs.length > 0
+            ? `${effectName}(${paramPairs.join(', ')})`
+            : `${effectName}()`
     }
 
-    /**
-     * Build a media call string
-     * @param {object} layer - Layer object
-     * @returns {string} Media call DSL
-     * @private
-     */
-    _buildMediaCall(layer) {
+    _buildMediaCall() {
         return 'media()'
     }
 
     /**
      * Convert layer opacity (0-100) to blendMode mixAmt (-100 to 100)
-     * 100% opacity = mixAmt 100 (full effect)
-     * 50% opacity = mixAmt 0 (50/50 blend)
-     * 0% opacity = mixAmt -100 (invisible)
-     * @param {number} opacity - Opacity 0-100
-     * @returns {number} mixAmt -100 to 100
      * @private
      */
     _opacityToMixAmt(opacity) {
         return (opacity - 50) * 2
     }
 
-    /**
-     * Check if an effect can generate content standalone (synth) vs needs input (filter)
-     * @param {string} effectId - Effect ID like 'filter/blur'
-     * @returns {boolean} True if effect is a synth, false if it's a filter
-     * @private
-     */
     _isEffectSynth(effectId) {
         if (!effectId) return true
-        const manifest = this._renderer.manifest || {}
-        const entry = manifest[effectId]
-        // Starter effects and synth namespace effects can generate content standalone
-        if (entry && entry.starter) return true
+        const entry = (this._renderer.manifest || {})[effectId]
+        if (entry?.starter) return true
         const [namespace] = effectId.split('/')
         return namespace === 'synth' || namespace === 'synth3d'
     }
 
-    // =========================================================================
-    // Effect Library
-    // =========================================================================
-
-    /**
-     * Check if a namespace should be hidden from the UI
-     * @param {string} namespace - Namespace to check
-     * @param {Array<string>} hiddenList - List of namespaces to hide
-     * @returns {boolean} True if namespace should be hidden
-     * @private
-     */
     _isHiddenNamespace(namespace, hiddenList) {
         return hiddenList.includes(namespace) ||
             namespace.startsWith('classic') ||
@@ -1054,113 +719,72 @@ export class LayersRenderer {
     }
 
     /**
-     * Sort effects by namespace then name
-     * @param {Array} effects - Effects array to sort
+     * Query the manifest for effects matching a filter
+     * @param {object} options
+     * @param {string[]} options.hiddenNamespaces - Namespaces to exclude
+     * @param {function} [options.filter] - Additional per-entry filter
+     * @param {string[]} [options.extraFields] - Additional entry fields to include
+     * @returns {Array} Sorted effect descriptors
      * @private
      */
-    _sortEffects(effects) {
-        effects.sort((a, b) => {
-            if (a.namespace !== b.namespace) {
-                return a.namespace.localeCompare(b.namespace)
+    _queryEffects({ hiddenNamespaces, filter, extraFields = [] }) {
+        const manifest = this._renderer.manifest || {}
+        const effects = []
+
+        for (const [effectId, entry] of Object.entries(manifest)) {
+            if (filter && !filter(entry)) continue
+
+            const [namespace, name] = effectId.split('/')
+            if (this._isHiddenNamespace(namespace, hiddenNamespaces)) continue
+
+            const item = {
+                effectId,
+                namespace,
+                name,
+                description: entry.description || '',
+                tags: entry.tags || []
             }
-            return a.name.localeCompare(b.name)
+            for (const field of extraFields) {
+                item[field] = entry[field] || false
+            }
+            effects.push(item)
+        }
+
+        effects.sort((a, b) =>
+            a.namespace !== b.namespace
+                ? a.namespace.localeCompare(b.namespace)
+                : a.name.localeCompare(b.name)
+        )
+        return effects
+    }
+
+    getStarterEffects() {
+        return this._queryEffects({
+            hiddenNamespaces: ['3d', 'points', 'render', 'synth', 'synth3d', 'mixer', 'filter3d'],
+            filter: (entry) => entry.starter
+        })
+    }
+
+    getAllEffects() {
+        return this._queryEffects({
+            hiddenNamespaces: ['3d', 'points', 'render', 'synth', 'synth3d', 'mixer', 'filter3d'],
+            extraFields: ['starter']
         })
     }
 
     /**
-     * Get all starter effects from manifest
-     * @returns {Array<{effectId: string, namespace: string, name: string, description?: string, tags?: string[]}>}
-     */
-    getStarterEffects() {
-        const manifest = this._renderer.manifest || {}
-        const effects = []
-        const hiddenNamespaces = ['3d', 'points', 'render', 'synth', 'synth3d', 'mixer', 'filter3d']
-
-        for (const [effectId, entry] of Object.entries(manifest)) {
-            if (!entry.starter) continue
-
-            const [namespace, name] = effectId.split('/')
-            if (this._isHiddenNamespace(namespace, hiddenNamespaces)) continue
-
-            effects.push({
-                effectId,
-                namespace,
-                name,
-                description: entry.description || '',
-                tags: entry.tags || []
-            })
-        }
-
-        this._sortEffects(effects)
-        return effects
-    }
-
-    /**
-     * Get all effects from manifest
-     * @returns {Array<{effectId: string, namespace: string, name: string, description?: string, tags?: string[]}>}
-     */
-    getAllEffects() {
-        const manifest = this._renderer.manifest || {}
-        const effects = []
-        const hiddenNamespaces = ['3d', 'points', 'render', 'synth', 'synth3d', 'mixer', 'filter3d']
-
-        for (const [effectId, entry] of Object.entries(manifest)) {
-            const [namespace, name] = effectId.split('/')
-            if (this._isHiddenNamespace(namespace, hiddenNamespaces)) continue
-
-            effects.push({
-                effectId,
-                namespace,
-                name,
-                description: entry.description || '',
-                tags: entry.tags || [],
-                starter: entry.starter || false
-            })
-        }
-
-        this._sortEffects(effects)
-        return effects
-    }
-
-    /**
-     * Get effects suitable for layers (non-starter, non-mixer effects)
-     * These are filter/processing effects that work on existing content
-     * @returns {Array<{effectId: string, namespace: string, name: string, description?: string, tags?: string[]}>}
+     * Get filter/processing effects that work on existing content (non-starter, non-mixer)
      */
     getLayerEffects() {
-        const manifest = this._renderer.manifest || {}
-        const effects = []
-        const excludedNamespaces = ['synth', 'synth3d', 'mixer', 'points', 'render', '3d', 'filter3d']
-
-        for (const [effectId, entry] of Object.entries(manifest)) {
-            if (entry.starter) continue
-
-            const [namespace, name] = effectId.split('/')
-            if (this._isHiddenNamespace(namespace, excludedNamespaces)) continue
-
-            effects.push({
-                effectId,
-                namespace,
-                name,
-                description: entry.description || '',
-                tags: entry.tags || []
-            })
-        }
-
-        this._sortEffects(effects)
-        return effects
+        return this._queryEffects({
+            hiddenNamespaces: ['synth', 'synth3d', 'mixer', 'points', 'render', '3d', 'filter3d'],
+            filter: (entry) => !entry.starter
+        })
     }
 
-    /**
-     * Get effect definition by ID (loads if needed)
-     * @param {string} effectId - Effect ID (namespace/name)
-     * @returns {Promise<object|null>} Effect definition with globals, or null if not found
-     */
     async getEffectDefinition(effectId) {
         if (!effectId) return null
-
         try {
-            // Load the effect (this registers it too)
             const effect = await this._renderer.loadEffect(effectId)
             return effect?.instance || null
         } catch (err) {

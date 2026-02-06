@@ -1,11 +1,7 @@
 /**
- * Move Tool
- * Handles moving layers and extracting selections
+ * Move Tool - Handles moving layers and extracting selections
  *
- * FSM States:
- * - IDLE: Ready for interaction
- * - EXTRACTING: Async extraction in progress (no other actions allowed)
- * - DRAGGING: Actively dragging layer
+ * FSM States: IDLE -> EXTRACTING (async) -> DRAGGING -> IDLE
  *
  * @module tools/move-tool
  */
@@ -16,10 +12,8 @@ const State = {
     DRAGGING: 'dragging'
 }
 
-/**
- * Move tool for repositioning layers
- * Can be destructive (punch holes) or non-destructive (clone only)
- */
+const MOUSE_EVENTS = ['mousedown', 'mousemove', 'mouseup', 'mouseleave']
+
 class MoveTool {
     constructor(options) {
         this._overlay = options.overlay
@@ -32,14 +26,14 @@ class MoveTool {
         this._selectTopmostLayer = options.selectTopmostLayer
         this._duplicateLayer = options.duplicateLayer
         this._onComplete = options.onComplete
-        this._destructive = options.destructive !== false // Default true for backwards compat
+        this._destructive = options.destructive !== false
         this._toolClass = options.toolClass || 'move-tool'
 
         this._active = false
         this._state = State.IDLE
         this._dragStart = null
         this._layerStartPos = null
-        this._didCloneOperation = false // Track if we cloned/extracted (vs just moved)
+        this._didCloneOperation = false
 
         this._onMouseDown = this._onMouseDown.bind(this)
         this._onMouseMove = this._onMouseMove.bind(this)
@@ -51,16 +45,12 @@ class MoveTool {
         this._active = true
         this._state = State.IDLE
 
-        // Auto-select topmost layer if none selected
         if (!this._getActiveLayer() && this._selectTopmostLayer) {
             this._selectTopmostLayer()
         }
 
-        this._overlay.addEventListener('mousedown', this._onMouseDown)
-        this._overlay.addEventListener('mousemove', this._onMouseMove)
-        this._overlay.addEventListener('mouseup', this._onMouseUp)
-        this._overlay.addEventListener('mouseleave', this._onMouseUp)
-
+        const handlers = [this._onMouseDown, this._onMouseMove, this._onMouseUp, this._onMouseUp]
+        MOUSE_EVENTS.forEach((evt, i) => this._overlay.addEventListener(evt, handlers[i]))
         this._overlay.classList.add(this._toolClass)
     }
 
@@ -68,11 +58,8 @@ class MoveTool {
         if (!this._active) return
         this._active = false
 
-        this._overlay.removeEventListener('mousedown', this._onMouseDown)
-        this._overlay.removeEventListener('mousemove', this._onMouseMove)
-        this._overlay.removeEventListener('mouseup', this._onMouseUp)
-        this._overlay.removeEventListener('mouseleave', this._onMouseUp)
-
+        const handlers = [this._onMouseDown, this._onMouseMove, this._onMouseUp, this._onMouseUp]
+        MOUSE_EVENTS.forEach((evt, i) => this._overlay.removeEventListener(evt, handlers[i]))
         this._overlay.classList.remove(this._toolClass)
         this._reset()
     }
@@ -90,125 +77,94 @@ class MoveTool {
 
     _getCanvasCoords(e) {
         const rect = this._overlay.getBoundingClientRect()
-        const scaleX = this._overlay.width / rect.width
-        const scaleY = this._overlay.height / rect.height
         return {
-            x: (e.clientX - rect.left) * scaleX,
-            y: (e.clientY - rect.top) * scaleY
+            x: (e.clientX - rect.left) * (this._overlay.width / rect.width),
+            y: (e.clientY - rect.top) * (this._overlay.height / rect.height)
         }
     }
 
     _onMouseDown(e) {
-        // Only start from IDLE state
         if (this._state !== State.IDLE) return
 
-        const selectedLayers = this._getSelectedLayers()
         const hasSelection = this._selectionManager.hasSelection()
 
-        // If there's a selection, extraction handles single/multi layer cases
         if (hasSelection) {
-            if (selectedLayers.length === 0) {
-                if (this._showNoLayerDialog) {
-                    this._showNoLayerDialog()
-                }
+            if (this._getSelectedLayers().length === 0) {
+                this._showNoLayerDialog?.()
                 return
             }
-            const coords = this._getCanvasCoords(e)
             this._state = State.EXTRACTING
-            this._doExtraction(coords)
+            this._doAsyncThenDrag(
+                () => this._extractSelection(this._destructive),
+                this._getCanvasCoords(e),
+                'Extraction'
+            )
             return
         }
 
-        // No selection - clone tool duplicates layer, move tool drags
         const layer = this._getActiveLayer()
         if (!layer) {
-            if (this._showNoLayerDialog) {
-                this._showNoLayerDialog()
-            }
+            this._showNoLayerDialog?.()
             return
         }
 
         const coords = this._getCanvasCoords(e)
 
-        // Clone tool without selection: duplicate layer then drag
         if (!this._destructive && this._duplicateLayer) {
             this._state = State.EXTRACTING
-            this._doDuplication(coords)
+            this._doAsyncThenDrag(
+                () => this._duplicateLayer(),
+                coords,
+                'Duplication'
+            )
             return
         }
 
-        // Move tool without selection: just drag
+        this._startDrag(coords, layer)
+    }
+
+    /**
+     * Run an async operation, then transition to dragging on success
+     * @private
+     */
+    async _doAsyncThenDrag(asyncFn, startCoords, label) {
+        try {
+            const success = await asyncFn()
+            if (success) {
+                this._didCloneOperation = true
+                this._startDrag(startCoords, this._getActiveLayer())
+            } else {
+                this._reset()
+            }
+        } catch (err) {
+            console.error(`[MoveTool] ${label} error:`, err)
+            this._reset()
+        }
+    }
+
+    _startDrag(coords, layer) {
         this._state = State.DRAGGING
         this._dragStart = coords
         this._layerStartPos = {
-            x: layer.offsetX || 0,
-            y: layer.offsetY || 0
-        }
-    }
-
-    async _doDuplication(startCoords) {
-        try {
-            const success = await this._duplicateLayer()
-            if (success) {
-                this._didCloneOperation = true
-                const layer = this._getActiveLayer()
-                this._state = State.DRAGGING
-                this._dragStart = startCoords
-                this._layerStartPos = {
-                    x: layer?.offsetX || 0,
-                    y: layer?.offsetY || 0
-                }
-            } else {
-                this._reset()
-            }
-        } catch (err) {
-            console.error('[MoveTool] Duplication error:', err)
-            this._reset()
-        }
-    }
-
-    async _doExtraction(startCoords) {
-        try {
-            const success = await this._extractSelection(this._destructive)
-            if (success) {
-                this._didCloneOperation = true
-                // Now start dragging the newly created layer
-                const layer = this._getActiveLayer()
-                this._state = State.DRAGGING
-                this._dragStart = startCoords
-                this._layerStartPos = {
-                    x: layer?.offsetX || 0,
-                    y: layer?.offsetY || 0
-                }
-            } else {
-                // Extraction failed, go back to idle
-                this._reset()
-            }
-        } catch (err) {
-            console.error('[MoveTool] Extraction error:', err)
-            this._reset()
+            x: layer?.offsetX || 0,
+            y: layer?.offsetY || 0
         }
     }
 
     _onMouseMove(e) {
-        // Only move in DRAGGING state
         if (this._state !== State.DRAGGING) return
         if (!this._dragStart || !this._layerStartPos) return
 
         const coords = this._getCanvasCoords(e)
-        const dx = coords.x - this._dragStart.x
-        const dy = coords.y - this._dragStart.y
-
-        const newX = this._layerStartPos.x + dx
-        const newY = this._layerStartPos.y + dy
-        this._updateLayerPosition(newX, newY)
+        this._updateLayerPosition(
+            this._layerStartPos.x + coords.x - this._dragStart.x,
+            this._layerStartPos.y + coords.y - this._dragStart.y
+        )
     }
 
     _onMouseUp() {
-        // Always reset to IDLE on mouse up (unless extracting)
         if (this._state === State.EXTRACTING) return
 
-        // Call onComplete callback if we did a clone operation
         const didClone = this._didCloneOperation
         this._reset()
 

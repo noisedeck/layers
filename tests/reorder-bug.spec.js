@@ -1,14 +1,28 @@
 import { test, expect } from 'playwright/test'
 
+async function addColorLayer(page, color, size = 512) {
+    await page.evaluate(async ({ color, size }) => {
+        const canvas = document.createElement('canvas')
+        canvas.width = size
+        canvas.height = size
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = color
+        ctx.fillRect(0, 0, size, size)
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'))
+        const file = new File([blob], `${color}.png`, { type: 'image/png' })
+        await window.layersApp._handleAddMediaLayer(file, 'image')
+    }, { color, size })
+    await page.waitForTimeout(500)
+}
+
 test.describe('Layer reorder texture mapping', () => {
     test('reordering layers updates texture mapping correctly', async ({ page }) => {
-        // Regression test for bug where layer reorder didn't update texture mapping
-        // when DSL was string-identical after reorder (e.g., multiple media() layers)
+        // Regression: layer reorder didn't update texture mapping when DSL was
+        // string-identical after reorder (e.g., multiple media() layers)
 
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
 
-        // Create a solid project
         await page.waitForSelector('.open-dialog-backdrop.visible')
         await page.click('.media-option[data-type="solid"]')
         await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
@@ -16,33 +30,8 @@ test.describe('Layer reorder texture mapping', () => {
         await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
         await page.waitForTimeout(500)
 
-        // Add red layer
-        await page.evaluate(async () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = 512
-            canvas.height = 512
-            const ctx = canvas.getContext('2d')
-            ctx.fillStyle = 'red'
-            ctx.fillRect(0, 0, 512, 512)
-            const blob = await new Promise(r => canvas.toBlob(r, 'image/png'))
-            const file = new File([blob], 'red.png', { type: 'image/png' })
-            await window.layersApp._handleAddMediaLayer(file, 'image')
-        })
-        await page.waitForTimeout(500)
-
-        // Add blue layer
-        await page.evaluate(async () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = 512
-            canvas.height = 512
-            const ctx = canvas.getContext('2d')
-            ctx.fillStyle = 'blue'
-            ctx.fillRect(0, 0, 512, 512)
-            const blob = await new Promise(r => canvas.toBlob(r, 'image/png'))
-            const file = new File([blob], 'blue.png', { type: 'image/png' })
-            await window.layersApp._handleAddMediaLayer(file, 'image')
-        })
-        await page.waitForTimeout(500)
+        await addColorLayer(page, 'red')
+        await addColorLayer(page, 'blue')
 
         // Get layer order and step mappings before reorder
         const beforeState = await page.evaluate(() => {

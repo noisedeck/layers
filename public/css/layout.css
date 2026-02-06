@@ -178,38 +178,6 @@ html, body {
     font-size: 14px;
 }
 
-/* Canvas Overlay Controls */
-.canvas-controls {
-    position: absolute;
-    bottom: 16px;
-    left: 16px;
-    display: flex;
-    gap: 8px;
-}
-
-.canvas-controls .control-btn {
-    background: var(--color-glass);
-    backdrop-filter: blur(8px);
-    border: none;
-    border-radius: var(--radius-sm);
-    color: var(--color-text-secondary);
-    padding: 8px;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.canvas-controls .control-btn:hover {
-    color: var(--color-text-primary);
-    background: var(--color-bg-hover);
-}
-
-.canvas-controls .control-btn.active {
-    color: var(--color-accent);
-}
-
 /* Hidden utility */
 .hidden {
     display: none !important;
@@ -219,10 +187,6 @@ html, body {
 
 /* Medium screens: layers panel moves below menu bar, menu goes full width */
 @media (max-width: 910px) {
-    #app {
-        grid-template-columns: 1fr 320px;
-    }
-
     #layers-panel {
         grid-row: 2;
         margin: 0;

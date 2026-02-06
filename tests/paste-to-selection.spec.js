@@ -1,34 +1,35 @@
 import { test, expect } from 'playwright/test'
 
+async function createTransparentProject(page) {
+    await page.waitForSelector('.open-dialog-backdrop.visible')
+    await page.click('.media-option[data-type="transparent"]')
+    await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
+    await page.click('.canvas-size-dialog .action-btn.primary')
+    await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
+    await page.waitForTimeout(1000)
+}
+
+async function copyColorSquareToClipboard(page, color) {
+    await page.evaluate(async (fillColor) => {
+        const canvas = document.createElement('canvas')
+        canvas.width = 50
+        canvas.height = 50
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = fillColor
+        ctx.fillRect(0, 0, 50, 50)
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+    }, color)
+}
+
 test.describe('Paste to selection', () => {
     test('SQUARE selection pastes SQUARE image (not rectangle)', async ({ page, context }) => {
         await context.grantPermissions(['clipboard-read', 'clipboard-write'])
 
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
-
-        // Create a transparent project
-        await page.waitForSelector('.open-dialog-backdrop.visible')
-        await page.click('.media-option[data-type="transparent"]')
-        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
-        await page.click('.canvas-size-dialog .action-btn.primary')
-        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
-        await page.waitForTimeout(1000)
-
-        // Create a 50x50 red square and copy to clipboard
-        await page.evaluate(async () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = 50
-            canvas.height = 50
-            const ctx = canvas.getContext('2d')
-            ctx.fillStyle = 'red'
-            ctx.fillRect(0, 0, 50, 50)
-
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
-            await navigator.clipboard.write([
-                new ClipboardItem({ 'image/png': blob })
-            ])
-        })
+        await createTransparentProject(page)
+        await copyColorSquareToClipboard(page, 'red')
 
         // Create a SQUARE selection: 150x150 at (200, 200)
         const selectionSize = 150
@@ -129,29 +130,8 @@ test.describe('Paste to selection', () => {
 
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
-
-        // Create a transparent project
-        await page.waitForSelector('.open-dialog-backdrop.visible')
-        await page.click('.media-option[data-type="transparent"]')
-        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
-        await page.click('.canvas-size-dialog .action-btn.primary')
-        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
-        await page.waitForTimeout(1000)
-
-        // Create a 50x50 red square image and copy to clipboard
-        await page.evaluate(async () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = 50
-            canvas.height = 50
-            const ctx = canvas.getContext('2d')
-            ctx.fillStyle = 'red'
-            ctx.fillRect(0, 0, 50, 50)
-
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
-            await navigator.clipboard.write([
-                new ClipboardItem({ 'image/png': blob })
-            ])
-        })
+        await createTransparentProject(page)
+        await copyColorSquareToClipboard(page, 'red')
 
         // Create a selection at known coordinates: 200x100 at (100, 150)
         const selectionX = 100
@@ -315,28 +295,8 @@ test.describe('Paste to selection', () => {
 
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
-
-        await page.waitForSelector('.open-dialog-backdrop.visible')
-        await page.click('.media-option[data-type="transparent"]')
-        await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
-        await page.click('.canvas-size-dialog .action-btn.primary')
-        await page.waitForSelector('.open-dialog-backdrop.visible', { state: 'hidden', timeout: 5000 })
-        await page.waitForTimeout(1000)
-
-        // Create a 100x100 blue square and copy to clipboard
-        await page.evaluate(async () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = 100
-            canvas.height = 100
-            const ctx = canvas.getContext('2d')
-            ctx.fillStyle = 'blue'
-            ctx.fillRect(0, 0, 100, 100)
-
-            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
-            await navigator.clipboard.write([
-                new ClipboardItem({ 'image/png': blob })
-            ])
-        })
+        await createTransparentProject(page)
+        await copyColorSquareToClipboard(page, 'blue')
 
         // Verify no selection
         const hasSelection = await page.evaluate(() => {

@@ -159,12 +159,8 @@ class OpenDialog {
         chooseSection.classList.toggle('hidden', mode !== 'choose')
         mediaSection.classList.toggle('hidden', mode !== 'media')
 
-        const title = this._modal.querySelector('.dialog-header h2')
-        if (mode === 'choose') {
-            title.textContent = 'New Project'
-        } else if (mode === 'media') {
-            title.textContent = 'Choose Media'
-        }
+        const titles = { choose: 'New Project', media: 'Choose Media' }
+        this._modal.querySelector('.dialog-header h2').textContent = titles[mode] || 'New Project'
     }
 
     _setupEventListeners() {
@@ -238,8 +234,7 @@ class OpenDialog {
                 if (callback) {
                     callback(width, height)
                 }
-            },
-            onCancel: () => {}
+            }
         })
     }
 

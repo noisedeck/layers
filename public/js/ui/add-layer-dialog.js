@@ -135,8 +135,6 @@ class AddLayerDialog {
                 this._handleMediaSelect(mediaInput.files[0])
             }
         })
-
-        // Close on backdrop click
     }
 
     /**

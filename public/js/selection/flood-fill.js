@@ -17,14 +17,12 @@ function floodFill(imageData, startX, startY, tolerance) {
     const { width, height, data } = imageData
     const mask = new Uint8ClampedArray(width * height)
 
-    // Get target color at start point
     const startIdx = (startY * width + startX) * 4
     const targetR = data[startIdx]
     const targetG = data[startIdx + 1]
     const targetB = data[startIdx + 2]
     const targetA = data[startIdx + 3]
 
-    // Tolerance threshold (sum of 4 channels)
     const threshold = tolerance * 4
 
     /**
@@ -40,7 +38,6 @@ function floodFill(imageData, startX, startY, tolerance) {
         return diff <= threshold
     }
 
-    // Queue-based flood fill
     const queue = [[startX, startY]]
     const visited = new Set()
     visited.add(startY * width + startX)
@@ -52,10 +49,8 @@ function floodFill(imageData, startX, startY, tolerance) {
 
         if (!matches(dataIdx)) continue
 
-        // Mark as selected
         mask[pixelIdx] = 255
 
-        // Check 4-connected neighbors
         const neighbors = [
             [x - 1, y],
             [x + 1, y],
@@ -72,14 +67,14 @@ function floodFill(imageData, startX, startY, tolerance) {
         }
     }
 
-    // Convert to ImageData format (RGBA)
     const maskData = new Uint8ClampedArray(width * height * 4)
     for (let i = 0; i < mask.length; i++) {
         const idx = i * 4
-        maskData[idx] = mask[i]     // R
-        maskData[idx + 1] = mask[i] // G
-        maskData[idx + 2] = mask[i] // B
-        maskData[idx + 3] = mask[i] // A (255 = selected)
+        const val = mask[i]
+        maskData[idx] = val
+        maskData[idx + 1] = val
+        maskData[idx + 2] = val
+        maskData[idx + 3] = val
     }
 
     return new ImageData(maskData, width, height)

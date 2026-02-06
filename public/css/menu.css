@@ -151,15 +151,6 @@
     color: var(--accent4);
 }
 
-/* Logo color (noisedeck N) */
-#logoPath {
-    fill: var(--accent4);
-}
-
-.menu-title:hover #logoPath {
-    fill: var(--accent3);
-}
-
 /* Dropdown menu */
 .menu {
     position: relative;
@@ -182,10 +173,6 @@
     display: inline-flex;
     align-items: center;
     height: 100%;
-}
-
-.menu-title.current {
-    color: var(--accent4);
 }
 
 .menu-title:hover {
@@ -261,19 +248,6 @@
     box-shadow: 0 0 0 2px var(--color-accent);
 }
 
-.menu-item-with-shortcut {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 2em;
-}
-
-.menu-item-with-shortcut .shortcut {
-    font-size: 0.75rem;
-    opacity: 0.6;
-    font-family: system-ui, -apple-system, sans-serif;
-}
-
 .menu-shortcut {
     float: right;
     font-size: 0.75rem;
@@ -310,6 +284,7 @@
     margin-right: -0.5em;
     pointer-events: none;
 }
+
 /* Menu bar icon buttons (right side) */
 .menu-icon-btn {
     background: transparent;
@@ -341,18 +316,6 @@
 
 /* Responsive: full-width menu when layers panel moves below */
 @media (max-width: 910px) {
-    #menu {
-        width: 100%;
-        border-radius: 0;
-    }
-
-    #menuBackdrop {
-        border-radius: 0;
-    }
-}
-
-/* Mobile: ensure full-width menu */
-@media (max-width: 700px) {
     #menu {
         width: 100%;
         border-radius: 0;

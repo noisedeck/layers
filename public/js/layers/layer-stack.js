@@ -25,6 +25,10 @@ class LayerStack extends HTMLElement {
         this._setupEventListeners()
     }
 
+    _firstSelectedId() {
+        return this._selectedLayerIds.values().next().value ?? null
+    }
+
     /**
      * Set the layers array
      * @param {Array} layers - Array of layer objects (bottom to top order)
@@ -60,9 +64,7 @@ class LayerStack extends HTMLElement {
      * @returns {string|null} Selected layer ID
      */
     get selectedLayerId() {
-        return this._selectedLayerIds.size > 0
-            ? [...this._selectedLayerIds][0]
-            : null
+        return this._firstSelectedId()
     }
 
     /**
@@ -78,10 +80,7 @@ class LayerStack extends HTMLElement {
      * @param {string[]} ids - Array of layer IDs to select
      */
     set selectedLayerIds(ids) {
-        this._selectedLayerIds.clear()
-        for (const id of ids) {
-            this._selectedLayerIds.add(id)
-        }
+        this._selectedLayerIds = new Set(ids)
         if (ids.length > 0) {
             this._lastClickedLayerId = ids[ids.length - 1]
         }
@@ -224,9 +223,7 @@ class LayerStack extends HTMLElement {
 
         // If we removed the last clicked layer, update it
         if (this._lastClickedLayerId === layerId) {
-            this._lastClickedLayerId = this._selectedLayerIds.size > 0
-                ? [...this._selectedLayerIds][0]
-                : null
+            this._lastClickedLayerId = this._firstSelectedId()
         }
 
         // If no selection remains, select adjacent layer
@@ -246,8 +243,8 @@ class LayerStack extends HTMLElement {
      * @returns {object|null} Selected layer or null
      */
     getSelectedLayer() {
-        if (this._selectedLayerIds.size === 0) return null
-        const id = [...this._selectedLayerIds][0]
+        const id = this._firstSelectedId()
+        if (!id) return null
         return this._layers.find(l => l.id === id) || null
     }
 }

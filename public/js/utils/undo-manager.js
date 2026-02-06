@@ -18,12 +18,9 @@ export class UndoManager {
      * @param {object} snapshot - { layers, canvasWidth, canvasHeight }
      */
     pushState(snapshot) {
-        // Truncate redo branch
         this._stack.length = this._index + 1
-
         this._stack.push(snapshot)
 
-        // Trim oldest if over max
         if (this._stack.length > this._maxSize) {
             this._stack.shift()
         }

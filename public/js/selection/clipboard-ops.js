@@ -16,22 +16,18 @@
 async function copySelection({ selectionPath, layers, sourceCanvas }) {
     if (!selectionPath || layers.length === 0) return null
 
-    // Get bounds
     const bounds = getSelectionBounds(selectionPath)
     if (bounds.width <= 0 || bounds.height <= 0) return null
 
-    // Create offscreen canvas for the copied region
     const offscreen = new OffscreenCanvas(bounds.width, bounds.height)
     const ctx = offscreen.getContext('2d')
 
-    // Draw from source canvas (already composited)
     ctx.drawImage(
         sourceCanvas,
         bounds.x, bounds.y, bounds.width, bounds.height,
         0, 0, bounds.width, bounds.height
     )
 
-    // Apply selection mask for non-rectangular selections
     if (selectionPath.type === 'oval') {
         applyOvalMask(ctx, selectionPath, bounds)
     } else if (selectionPath.type === 'lasso' || selectionPath.type === 'polygon') {
@@ -41,7 +37,6 @@ async function copySelection({ selectionPath, layers, sourceCanvas }) {
         applyImageMask(ctx, mask, bounds)
     }
 
-    // Convert to blob and write to clipboard
     try {
         const blob = await offscreen.convertToBlob({ type: 'image/png' })
         await navigator.clipboard.write([
@@ -158,7 +153,6 @@ function getSelectionBounds(selectionPath) {
  * @param {{x: number, y: number, width: number, height: number}} bounds
  */
 function applyOvalMask(ctx, selectionPath, bounds) {
-    // Use destination-in composite to mask
     ctx.globalCompositeOperation = 'destination-in'
     ctx.beginPath()
     ctx.ellipse(
@@ -199,28 +193,20 @@ function applyPolygonMask(ctx, points, bounds) {
  * @param {{x: number, y: number, width: number, height: number}} bounds
  */
 function applyImageMask(ctx, mask, bounds) {
-    // Get current image data
     const imageData = ctx.getImageData(0, 0, bounds.width, bounds.height)
 
-    // Apply mask alpha
     for (let y = 0; y < bounds.height; y++) {
         for (let x = 0; x < bounds.width; x++) {
             const srcX = bounds.x + x
             const srcY = bounds.y + y
 
-            if (srcX < 0 || srcX >= mask.width || srcY < 0 || srcY >= mask.height) {
-                // Outside mask bounds - clear pixel
-                const idx = (y * bounds.width + x) * 4
-                imageData.data[idx + 3] = 0
-            } else {
-                const maskIdx = (srcY * mask.width + srcX) * 4 + 3
-                const maskAlpha = mask.data[maskIdx]
+            const outOfBounds = srcX < 0 || srcX >= mask.width || srcY < 0 || srcY >= mask.height
+            const maskAlpha = outOfBounds
+                ? 0
+                : mask.data[(srcY * mask.width + srcX) * 4 + 3]
 
-                if (maskAlpha <= 127) {
-                    // Not selected - clear pixel
-                    const idx = (y * bounds.width + x) * 4
-                    imageData.data[idx + 3] = 0
-                }
+            if (maskAlpha <= 127) {
+                imageData.data[(y * bounds.width + x) * 4 + 3] = 0
             }
         }
     }

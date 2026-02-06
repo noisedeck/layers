@@ -1,11 +1,25 @@
 import { test, expect } from 'playwright/test'
 
+async function addColorLayer(page, color, size = 100) {
+    await page.evaluate(async ({ color, size }) => {
+        const canvas = document.createElement('canvas')
+        canvas.width = size
+        canvas.height = size
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = color
+        ctx.fillRect(0, 0, size, size)
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/png'))
+        const file = new File([blob], `${color}.png`, { type: 'image/png' })
+        await window.layersApp._handleAddMediaLayer(file, 'image')
+    }, { color, size })
+    await page.waitForTimeout(500)
+}
+
 test.describe('Layer reorder FSM', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/', { waitUntil: 'networkidle' })
         await page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 10000 })
 
-        // Create a solid project
         await page.waitForSelector('.open-dialog-backdrop.visible')
         await page.click('.media-option[data-type="solid"]')
         await page.waitForSelector('.canvas-size-dialog', { timeout: 5000 })
@@ -15,34 +29,8 @@ test.describe('Layer reorder FSM', () => {
     })
 
     test('reordering layers updates render correctly', async ({ page }) => {
-        // Add two more layers
-        await page.evaluate(async () => {
-            // Add red layer
-            const canvas1 = document.createElement('canvas')
-            canvas1.width = 100
-            canvas1.height = 100
-            const ctx1 = canvas1.getContext('2d')
-            ctx1.fillStyle = 'red'
-            ctx1.fillRect(0, 0, 100, 100)
-            const blob1 = await new Promise(r => canvas1.toBlob(r, 'image/png'))
-            const file1 = new File([blob1], 'red.png', { type: 'image/png' })
-            await window.layersApp._handleAddMediaLayer(file1, 'image')
-        })
-        await page.waitForTimeout(500)
-
-        await page.evaluate(async () => {
-            // Add blue layer
-            const canvas2 = document.createElement('canvas')
-            canvas2.width = 100
-            canvas2.height = 100
-            const ctx2 = canvas2.getContext('2d')
-            ctx2.fillStyle = 'blue'
-            ctx2.fillRect(0, 0, 100, 100)
-            const blob2 = await new Promise(r => canvas2.toBlob(r, 'image/png'))
-            const file2 = new File([blob2], 'blue.png', { type: 'image/png' })
-            await window.layersApp._handleAddMediaLayer(file2, 'image')
-        })
-        await page.waitForTimeout(500)
+        await addColorLayer(page, 'red')
+        await addColorLayer(page, 'blue')
 
         // Verify we have 3 layers (base + red + blue)
         const layerCount = await page.evaluate(() => window.layersApp._layers.length)
@@ -82,19 +70,7 @@ test.describe('Layer reorder FSM', () => {
     })
 
     test('FSM cancels drag on ESC', async ({ page }) => {
-        // Add a layer to drag
-        await page.evaluate(async () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = 100
-            canvas.height = 100
-            const ctx = canvas.getContext('2d')
-            ctx.fillStyle = 'green'
-            ctx.fillRect(0, 0, 100, 100)
-            const blob = await new Promise(r => canvas.toBlob(r, 'image/png'))
-            const file = new File([blob], 'green.png', { type: 'image/png' })
-            await window.layersApp._handleAddMediaLayer(file, 'image')
-        })
-        await page.waitForTimeout(500)
+        await addColorLayer(page, 'green')
 
         // Start drag
         await page.evaluate(() => {

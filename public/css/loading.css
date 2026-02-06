@@ -125,16 +125,3 @@
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
-
-/* Scan line effect (subtle) */
-.loading-scanline {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-        transparent 50%,
-        rgba(0, 0, 0, 0.02) 50%
-    );
-    background-size: 100% 4px;
-    pointer-events: none;
-    opacity: 0.3;
-}

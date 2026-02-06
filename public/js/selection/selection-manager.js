@@ -237,11 +237,9 @@ class SelectionManager {
         const { width, height } = this._overlay
         const path = this._selectionPath
 
-        // Already a mask
         if (path.type === 'wand') return path.mask
         if (path.type === 'mask') return path.data
 
-        // Rasterize vector path
         const offscreen = new OffscreenCanvas(width, height)
         const ctx = offscreen.getContext('2d')
 
@@ -313,7 +311,6 @@ class SelectionManager {
             return
         }
 
-        // Need to combine - rasterize both
         this._selectionPath = this._previousSelection
         const oldMask = this._rasterizeSelection()
         this._selectionPath = newSelection
@@ -326,7 +323,6 @@ class SelectionManager {
 
         const combined = this._combineMasks(oldMask, newMask, this._selectionMode)
 
-        // Check if anything is selected
         let hasSelection = false
         for (let i = 3; i < combined.data.length; i += 4) {
             if (combined.data[i] > 127) {
@@ -378,7 +374,6 @@ class SelectionManager {
             this._selectionMode = this._getModeFromEvent(e)
             this._previousSelection = this._selectionPath
 
-            // Clear existing if replace mode
             if (this._selectionMode === 'replace' && this._selectionPath) {
                 this.clearSelection()
             }
@@ -390,21 +385,15 @@ class SelectionManager {
         const coords = this._getCanvasCoords(e)
         this._selectionMode = this._getModeFromEvent(e)
 
-        // If clicking outside existing selection, clear it
         if (this._selectionPath && !this._isPointInSelection(coords.x, coords.y)) {
             this.clearSelection()
         }
 
-        // Store previous selection for combining
         this._previousSelection = this._selectionPath
-
-        // Start drawing new selection
         this._isDrawing = true
         this._drawStart = coords
         this._selectionPath = null
         this._stopAnimation()
-
-        // Reset lasso points
         this._lassoPoints = []
         if (this._currentTool === 'lasso') {
             this._lassoPoints.push(coords)
@@ -430,7 +419,7 @@ class SelectionManager {
         const coords = this._getCanvasCoords(e)
         const constrain = e.shiftKey
 
-        if (this._currentTool === 'lasso' && this._isDrawing) {
+        if (this._currentTool === 'lasso') {
             this._lassoPoints.push(coords)
             this._selectionPath = {
                 type: 'lasso',
@@ -455,16 +444,16 @@ class SelectionManager {
 
         this._isDrawing = false
 
-        // Only finalize if we have a valid selection
         if (this._selectionPath) {
             const path = this._selectionPath
-            const hasSize = path.type === 'rect'
-                ? (path.width > 2 && path.height > 2)
-                : path.type === 'oval'
-                    ? (path.rx > 1 && path.ry > 1)
-                    : path.type === 'lasso' || path.type === 'polygon'
-                        ? path.points.length >= 3
-                        : true
+            let hasSize = true
+            if (path.type === 'rect') {
+                hasSize = path.width > 2 && path.height > 2
+            } else if (path.type === 'oval') {
+                hasSize = path.rx > 1 && path.ry > 1
+            } else if (path.type === 'lasso' || path.type === 'polygon') {
+                hasSize = path.points.length >= 3
+            }
 
             if (hasSize) {
                 if (this._selectionMode !== 'replace' && this._previousSelection) {
@@ -497,7 +486,6 @@ class SelectionManager {
             height = Math.sign(height) * size || size
         }
 
-        // Normalize to positive width/height
         const x = width < 0 ? start.x + width : start.x
         const y = height < 0 ? start.y + height : start.y
         const w = Math.abs(width)
@@ -581,7 +569,6 @@ class SelectionManager {
     _handlePolygonClick(coords, e) {
         const CLOSE_THRESHOLD = 10
 
-        // Check if clicking near start point to close
         if (this._polygonPoints.length >= 3) {
             const start = this._polygonPoints[0]
             const dist = Math.hypot(coords.x - start.x, coords.y - start.y)
@@ -591,7 +578,6 @@ class SelectionManager {
             }
         }
 
-        // Add point
         this._polygonPoints.push(coords)
         this._isPolygonDrawing = true
         this._updatePolygonPreview(coords)
@@ -624,41 +610,38 @@ class SelectionManager {
         this._clearOverlay()
         if (!this._ctx || this._polygonPoints.length === 0) return
 
-        this._ctx.setLineDash([5, 5])
-        this._ctx.strokeStyle = '#000'
-        this._ctx.lineWidth = 1
+        const ctx = this._ctx
+        const pts = this._polygonPoints
 
-        // Draw placed points
-        this._ctx.beginPath()
-        this._ctx.moveTo(this._polygonPoints[0].x, this._polygonPoints[0].y)
-        for (let i = 1; i < this._polygonPoints.length; i++) {
-            this._ctx.lineTo(this._polygonPoints[i].x, this._polygonPoints[i].y)
+        const tracePolygonPath = () => {
+            ctx.beginPath()
+            ctx.moveTo(pts[0].x, pts[0].y)
+            for (let i = 1; i < pts.length; i++) {
+                ctx.lineTo(pts[i].x, pts[i].y)
+            }
+            ctx.lineTo(cursor.x, cursor.y)
+            ctx.stroke()
         }
-        // Line to cursor
-        this._ctx.lineTo(cursor.x, cursor.y)
-        this._ctx.stroke()
 
-        // White offset stroke
-        this._ctx.strokeStyle = '#fff'
-        this._ctx.lineDashOffset = 5
-        this._ctx.beginPath()
-        this._ctx.moveTo(this._polygonPoints[0].x, this._polygonPoints[0].y)
-        for (let i = 1; i < this._polygonPoints.length; i++) {
-            this._ctx.lineTo(this._polygonPoints[i].x, this._polygonPoints[i].y)
-        }
-        this._ctx.lineTo(cursor.x, cursor.y)
-        this._ctx.stroke()
-        this._ctx.lineDashOffset = 0
+        ctx.setLineDash([5, 5])
+        ctx.lineWidth = 1
 
-        // Draw vertex dots
-        this._ctx.fillStyle = '#fff'
-        this._ctx.strokeStyle = '#000'
-        this._ctx.setLineDash([])
-        for (const pt of this._polygonPoints) {
-            this._ctx.beginPath()
-            this._ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2)
-            this._ctx.fill()
-            this._ctx.stroke()
+        ctx.strokeStyle = '#000'
+        tracePolygonPath()
+
+        ctx.strokeStyle = '#fff'
+        ctx.lineDashOffset = 5
+        tracePolygonPath()
+        ctx.lineDashOffset = 0
+
+        ctx.fillStyle = '#fff'
+        ctx.strokeStyle = '#000'
+        ctx.setLineDash([])
+        for (const pt of pts) {
+            ctx.beginPath()
+            ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.stroke()
         }
     }
 
@@ -700,7 +683,7 @@ class SelectionManager {
         const x = Math.round(coords.x)
         const y = Math.round(coords.y)
 
-        // Get image data from source canvas (may be WebGL, so use temp 2D canvas)
+        // Use temp 2D canvas since source may be WebGL
         const tempCanvas = document.createElement('canvas')
         tempCanvas.width = this._sourceCanvas.width
         tempCanvas.height = this._sourceCanvas.height
@@ -708,7 +691,6 @@ class SelectionManager {
         tempCtx.drawImage(this._sourceCanvas, 0, 0)
         const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height)
 
-        // Perform flood fill
         const mask = floodFill(imageData, x, y, this._wandTolerance)
 
         const newSelection = {
@@ -773,17 +755,15 @@ class SelectionManager {
                 this._ctx.closePath()
             }
         } else if (path.type === 'wand' || path.type === 'mask') {
-            // Draw edge segments for mask-based selections
             const mask = path.type === 'wand' ? path.mask : path.data
             const { width, height, data } = mask
 
-            // Helper to check if pixel is selected
             const isSelected = (x, y) => {
                 if (x < 0 || x >= width || y < 0 || y >= height) return false
                 return data[(y * width + x) * 4 + 3] > 127
             }
 
-            // Draw horizontal edge segments (between rows)
+            // Horizontal edge segments
             for (let y = 0; y <= height; y++) {
                 let inEdge = false
                 let startX = 0
@@ -807,7 +787,7 @@ class SelectionManager {
                 }
             }
 
-            // Draw vertical edge segments (between columns)
+            // Vertical edge segments
             for (let x = 0; x <= width; x++) {
                 let inEdge = false
                 let startY = 0
@@ -863,54 +843,25 @@ class SelectionManager {
     }
 
     /**
-     * Draw marching ants for mask selection (edge detection)
-     * @private
-     */
-    _drawMaskAnts() {
-        // Use same drawing as other selection types
-        this._clearOverlay()
-        if (!this._ctx) return
-
-        this._ctx.setLineDash([5, 5])
-        this._ctx.lineWidth = 1
-
-        // Black stroke
-        this._ctx.strokeStyle = '#000'
-        this._ctx.lineDashOffset = this._dashOffset
-        this._strokePath()
-
-        // White stroke offset
-        this._ctx.strokeStyle = '#fff'
-        this._ctx.lineDashOffset = this._dashOffset + 5
-        this._strokePath()
-    }
-
-    /**
      * Draw marching ants (animated selection border)
      * @private
      */
     _drawMarchingAnts() {
         if (!this._selectionPath) return
 
-        if (this._selectionPath.type === 'wand' || this._selectionPath.type === 'mask') {
-            this._drawMaskAnts()
-        } else {
-            this._clearOverlay()
-            if (!this._ctx) return
+        this._clearOverlay()
+        if (!this._ctx) return
 
-            this._ctx.setLineDash([5, 5])
-            this._ctx.lineWidth = 1
+        this._ctx.setLineDash([5, 5])
+        this._ctx.lineWidth = 1
 
-            // Black stroke
-            this._ctx.strokeStyle = '#000'
-            this._ctx.lineDashOffset = this._dashOffset
-            this._strokePath()
+        this._ctx.strokeStyle = '#000'
+        this._ctx.lineDashOffset = this._dashOffset
+        this._strokePath()
 
-            // White stroke offset
-            this._ctx.strokeStyle = '#fff'
-            this._ctx.lineDashOffset = this._dashOffset + 5
-            this._strokePath()
-        }
+        this._ctx.strokeStyle = '#fff'
+        this._ctx.lineDashOffset = this._dashOffset + 5
+        this._strokePath()
     }
 
     /**
@@ -923,7 +874,6 @@ class SelectionManager {
         this._overlay.width = width
         this._overlay.height = height
 
-        // Redraw if we have a selection
         if (this._selectionPath) {
             this._drawMarchingAnts()
         }

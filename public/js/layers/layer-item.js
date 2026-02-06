@@ -26,10 +26,6 @@ class LayerItem extends HTMLElement {
         this._setupEventListeners()
     }
 
-    disconnectedCallback() {
-        // Clean up event listeners
-    }
-
     /**
      * Set the layer data
      * @param {object} layer - Layer object
@@ -77,20 +73,16 @@ class LayerItem extends HTMLElement {
         const layer = this._layer
         const isVisible = layer.visible
         const isEffect = layer.sourceType === 'effect'
-        const isMedia = layer.sourceType === 'media'
-        const hasParams = isEffect || isMedia  // Both effect and media layers have params
+        const hasParams = isEffect || layer.sourceType === 'media'
         const isBase = this.hasAttribute('base')
 
-        // Build blend mode options
         const blendOptions = BLEND_MODES.map(mode =>
             `<option value="${mode.id}" ${layer.blendMode === mode.id ? 'selected' : ''}>${mode.name}</option>`
         ).join('')
 
-        // Determine icon based on layer type
-        const iconName = isEffect ? 'auto_awesome'
-            : layer.mediaType === 'video' ? 'videocam'
-            : 'image'
-        const thumbnailContent = `<span class="icon-material">${iconName}</span>`
+        let iconName = 'image'
+        if (isEffect) iconName = 'auto_awesome'
+        else if (layer.mediaType === 'video') iconName = 'videocam'
 
         this.className = `layer-item ${isEffect ? 'effect-layer' : 'media-layer'} ${isBase ? 'base-layer' : ''} ${layer.locked ? 'locked' : ''}`
         this.dataset.layerId = layer.id
@@ -105,11 +97,11 @@ class LayerItem extends HTMLElement {
                     <span class="icon-material">${isVisible ? 'visibility' : 'visibility_off'}</span>
                 </button>
                 <div class="layer-thumbnail">
-                    ${thumbnailContent}
+                    <span class="icon-material">${iconName}</span>
                 </div>
                 <div class="layer-info">
                     <div class="layer-name" contenteditable="false" spellcheck="false">${this._escapeHtml(layer.name)}</div>
-                    <div class="layer-type ${layer.sourceType}">${isEffect ? 'Effect' : (layer.mediaType ? layer.mediaType.charAt(0).toUpperCase() + layer.mediaType.slice(1) : 'Media')}</div>
+                    <div class="layer-type ${layer.sourceType}">${this._formatLayerType(layer)}</div>
                 </div>
                 <button class="layer-delete" title="Delete layer">
                     <span class="icon-material">close</span>
@@ -426,17 +418,11 @@ class LayerItem extends HTMLElement {
         e.preventDefault()
         e.dataTransfer.dropEffect = 'move'
 
-        // Calculate drop position based on mouse Y relative to element center
-        const rect = this.getBoundingClientRect()
-        const mouseY = e.clientY
-        const centerY = rect.top + rect.height / 2
-        const dropPosition = mouseY < centerY ? 'above' : 'below'
+        const dropPosition = this._getDropPosition(e)
 
-        // Update visual indicators
         this.classList.remove('drag-over', 'drag-over-above', 'drag-over-below')
         this.classList.add('drag-over', `drag-over-${dropPosition}`)
 
-        // Emit granular event for FSM
         this.dispatchEvent(new CustomEvent('layer-drag-over', {
             bubbles: true,
             detail: {
@@ -453,17 +439,11 @@ class LayerItem extends HTMLElement {
     _handleDrop(e) {
         e.preventDefault()
 
-        // Calculate final drop position
-        const rect = this.getBoundingClientRect()
-        const mouseY = e.clientY
-        const centerY = rect.top + rect.height / 2
-        const dropPosition = mouseY < centerY ? 'above' : 'below'
-
+        const dropPosition = this._getDropPosition(e)
         this.classList.remove('drag-over', 'drag-over-above', 'drag-over-below')
 
         const sourceId = e.dataTransfer.getData('text/plain')
         if (sourceId && sourceId !== this._layer.id) {
-            // Emit new granular drop event for FSM
             this.dispatchEvent(new CustomEvent('layer-drop', {
                 bubbles: true,
                 detail: {
@@ -473,6 +453,17 @@ class LayerItem extends HTMLElement {
                 }
             }))
         }
+    }
+
+    _getDropPosition(e) {
+        const rect = this.getBoundingClientRect()
+        return e.clientY < rect.top + rect.height / 2 ? 'above' : 'below'
+    }
+
+    _formatLayerType(layer) {
+        if (layer.sourceType === 'effect') return 'Effect'
+        if (layer.mediaType) return layer.mediaType.charAt(0).toUpperCase() + layer.mediaType.slice(1)
+        return 'Media'
     }
 
     /**
