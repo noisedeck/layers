@@ -21,6 +21,10 @@ class MoveTool {
         this._getActiveLayer = options.getActiveLayer
         this._getSelectedLayers = options.getSelectedLayers
         this._updateLayerPosition = options.updateLayerPosition
+        this._getLayerPosition = options.getLayerPosition || ((layer) => ({
+            x: layer?.offsetX || 0,
+            y: layer?.offsetY || 0
+        }))
         this._extractSelection = options.extractSelection
         this._showNoLayerDialog = options.showNoLayerDialog
         this._selectTopmostLayer = options.selectTopmostLayer
@@ -123,10 +127,6 @@ class MoveTool {
         this._startDrag(coords, layer)
     }
 
-    /**
-     * Run an async operation, then transition to dragging on success
-     * @private
-     */
     async _doAsyncThenDrag(asyncFn, startCoords, label) {
         try {
             const success = await asyncFn()
@@ -145,10 +145,7 @@ class MoveTool {
     _startDrag(coords, layer) {
         this._state = State.DRAGGING
         this._dragStart = coords
-        this._layerStartPos = {
-            x: layer?.offsetX || 0,
-            y: layer?.offsetY || 0
-        }
+        this._layerStartPos = this._getLayerPosition(layer)
     }
 
     _onMouseMove(e) {

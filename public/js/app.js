@@ -265,6 +265,16 @@ class LayersApp {
         this._selectionManager.setSourceCanvas(this._canvas)
         this._selectionManager.onSelectionChange = () => this._updateImageMenu()
 
+        const getLayerPosition = (layer) => {
+            if (layer?.effectId === 'filter/text') {
+                return {
+                    x: (layer.effectParams?.posX ?? 0.5) * this._canvas.width,
+                    y: (layer.effectParams?.posY ?? 0.5) * this._canvas.height
+                }
+            }
+            return { x: layer?.offsetX || 0, y: layer?.offsetY || 0 }
+        }
+
         // Initialize move tool (destructive - punches holes)
         this._moveTool = new MoveTool({
             overlay: this._selectionOverlay,
@@ -272,6 +282,7 @@ class LayersApp {
             getActiveLayer: () => this._getActiveLayer(),
             getSelectedLayers: () => this._layerStack?.selectedLayerIds || [],
             updateLayerPosition: (x, y) => this._updateActiveLayerPosition(x, y),
+            getLayerPosition,
             extractSelection: (destructive) => this._extractSelectionToLayer(destructive),
             showNoLayerDialog: () => this._showNoLayerSelectedDialog(),
             selectTopmostLayer: () => this._selectTopmostLayer(),
@@ -286,6 +297,7 @@ class LayersApp {
             getActiveLayer: () => this._getActiveLayer(),
             getSelectedLayers: () => this._layerStack?.selectedLayerIds || [],
             updateLayerPosition: (x, y) => this._updateActiveLayerPosition(x, y),
+            getLayerPosition,
             extractSelection: (destructive) => this._extractSelectionToLayer(destructive),
             showNoLayerDialog: () => this._showNoLayerSelectedDialog(),
             selectTopmostLayer: () => this._selectTopmostLayer(),
@@ -1834,19 +1846,28 @@ class LayersApp {
     }
 
     /**
-     * Update active layer's position offset
-     * @param {number} x
-     * @param {number} y
+     * Update active layer's position.
+     * Text layers use normalized 0-1 coords (posX/posY in effectParams).
+     * Media layers use pixel offsets (offsetX/offsetY).
+     * @param {number} x - position in canvas pixels
+     * @param {number} y - position in canvas pixels
      * @private
      */
     _updateActiveLayerPosition(x, y) {
         const layer = this._getActiveLayer()
         if (!layer) return
 
-        layer.offsetX = x
-        layer.offsetY = y
+        if (layer.effectId === 'filter/text') {
+            const posX = Math.max(0, Math.min(1, x / this._canvas.width))
+            const posY = Math.max(0, Math.min(1, y / this._canvas.height))
+            layer.effectParams = { ...layer.effectParams, posX, posY }
+            this._renderer.updateTextParams(layer.id, layer.effectParams)
+        } else {
+            layer.offsetX = x
+            layer.offsetY = y
+            this._renderer.updateLayerOffset(layer.id, x, y)
+        }
 
-        this._renderer.updateLayerOffset(layer.id, x, y)
         this._markDirty()
         this._pushUndoStateDebounced()
     }
