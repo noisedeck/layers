@@ -118,7 +118,7 @@ class LayerStack extends HTMLElement {
 
         for (let i = 0; i < reversedLayers.length; i++) {
             const layer = reversedLayers[i]
-            const isBase = i === reversedLayers.length - 1 // Last in reversed = first in original
+            const isBase = i === reversedLayers.length - 1
 
             const item = document.createElement('layer-item')
             item.layer = layer
@@ -130,6 +130,18 @@ class LayerStack extends HTMLElement {
             }
 
             this.appendChild(item)
+
+            // Render child effects (in order, below parent)
+            for (const child of (layer.children || [])) {
+                const childItem = document.createElement('layer-item')
+                childItem.layer = child
+                childItem.isChild = true
+                childItem.parentLayerId = layer.id
+                if (this._selectedLayerIds.has(child.id)) {
+                    childItem.selected = true
+                }
+                this.appendChild(childItem)
+            }
         }
     }
 

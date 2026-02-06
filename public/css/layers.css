@@ -50,6 +50,49 @@
     margin-bottom: 4px;
 }
 
+/* Child Effect Layers (indented below parent) */
+.layer-item.child-layer {
+    margin-left: 24px;
+    border-left: 2px solid var(--color-accent-muted);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.layer-item.child-layer .layer-drag-handle {
+    visibility: hidden;
+    width: 0;
+    padding: 0;
+}
+
+/* Add Child Button */
+.layer-add-child {
+    background: none;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    padding: 4px;
+    line-height: 1;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0;
+}
+
+.layer-item:hover .layer-add-child {
+    opacity: 1;
+}
+
+.layer-add-child:hover {
+    color: var(--color-accent);
+    background: var(--color-accent-muted);
+}
+
+.layer-add-child .icon-material {
+    font-size: 16px;
+}
+
 /* Layer Row (main info) */
 .layer-row {
     display: flex;

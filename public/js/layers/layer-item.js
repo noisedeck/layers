@@ -19,6 +19,8 @@ class LayerItem extends HTMLElement {
         this._selected = false
         this._paramsExpanded = false
         this._dragFromHandle = false
+        this._isChild = false
+        this._parentLayerId = null
     }
 
     connectedCallback() {
@@ -60,6 +62,18 @@ class LayerItem extends HTMLElement {
         return this._selected
     }
 
+    set isChild(val) {
+        this._isChild = val
+    }
+
+    get isChild() {
+        return this._isChild
+    }
+
+    set parentLayerId(val) {
+        this._parentLayerId = val
+    }
+
     /**
      * Render the component
      * @private
@@ -81,13 +95,15 @@ class LayerItem extends HTMLElement {
         ).join('')
 
         let iconName = 'image'
-        if (isEffect) iconName = 'auto_awesome'
+        if (this._isChild) iconName = 'tune'
+        else if (isEffect) iconName = 'auto_awesome'
         else if (layer.mediaType === 'video') iconName = 'videocam'
 
         const classes = [
             'layer-item',
             isEffect ? 'effect-layer' : 'media-layer',
             isBase && 'base-layer',
+            this._isChild && 'child-layer',
             layer.locked && 'locked',
             this._selected && 'selected'
         ].filter(Boolean).join(' ')
@@ -110,6 +126,9 @@ class LayerItem extends HTMLElement {
                     <div class="layer-name" contenteditable="false" spellcheck="false">${this._escapeHtml(layer.name)}</div>
                     <div class="layer-type ${layer.sourceType}">${this._formatLayerType(layer)}</div>
                 </div>
+                ${!this._isChild ? `<button class="layer-add-child" title="Add effect">
+                    <span class="icon-material">add</span>
+                </button>` : ''}
                 <button class="layer-delete" title="Delete layer">
                     <span class="icon-material">close</span>
                 </button>
@@ -118,13 +137,13 @@ class LayerItem extends HTMLElement {
                 ${hasParams ? `<button class="layer-params-toggle ${this._paramsExpanded ? 'expanded' : ''}" title="Toggle parameters">
                     <span class="icon-material">arrow_right</span>
                 </button>` : ''}
-                <select class="layer-blend-mode" title="Blend mode">
+                ${!this._isChild ? `<select class="layer-blend-mode" title="Blend mode">
                     ${blendOptions}
                 </select>
                 <div class="layer-opacity-container">
                     <input type="range" class="layer-opacity" min="0" max="100" value="${layer.opacity}" title="Opacity">
                     <span class="layer-opacity-value">${layer.opacity}%</span>
-                </div>
+                </div>` : ''}
             </div>
             ${hasParams ? '<effect-params class="layer-effect-params"></effect-params>' : ''}
         `
@@ -182,6 +201,16 @@ class LayerItem extends HTMLElement {
     _setupEventListeners() {
         // Visibility toggle
         this.addEventListener('click', (e) => {
+            const addChildBtn = e.target.closest('.layer-add-child')
+            if (addChildBtn) {
+                e.stopPropagation()
+                this.dispatchEvent(new CustomEvent('child-add', {
+                    bubbles: true,
+                    detail: { layerId: this._layer.id }
+                }))
+                return
+            }
+
             const visBtn = e.target.closest('.layer-visibility')
             if (visBtn) {
                 e.stopPropagation()
@@ -280,9 +309,13 @@ class LayerItem extends HTMLElement {
      * @private
      */
     _handleDelete() {
+        const detail = { layerId: this._layer.id }
+        if (this._parentLayerId) {
+            detail.parentLayerId = this._parentLayerId
+        }
         this.dispatchEvent(new CustomEvent('layer-delete', {
             bubbles: true,
-            detail: { layerId: this._layer.id }
+            detail
         }))
     }
 
@@ -360,14 +393,18 @@ class LayerItem extends HTMLElement {
      * @private
      */
     _emitChange(property, value) {
+        const detail = {
+            layerId: this._layer.id,
+            property,
+            value,
+            layer: this._layer
+        }
+        if (this._parentLayerId) {
+            detail.parentLayerId = this._parentLayerId
+        }
         this.dispatchEvent(new CustomEvent('layer-change', {
             bubbles: true,
-            detail: {
-                layerId: this._layer.id,
-                property,
-                value,
-                layer: this._layer
-            }
+            detail
         }))
     }
 
