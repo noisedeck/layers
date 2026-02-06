@@ -11,7 +11,7 @@
  * Large constant representing infinity for distance transform
  * @type {number}
  */
-const INF = 1e20
+const INF = 1e9
 
 /**
  * Invert a selection mask (flip alpha channel)
