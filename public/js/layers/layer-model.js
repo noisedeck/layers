@@ -44,7 +44,10 @@ export function createLayer(options = {}) {
 
         // Effect-specific
         effectId: options.effectId || null,
-        effectParams: options.effectParams || {}
+        effectParams: options.effectParams || {},
+
+        // Child effects (per-layer filter chain)
+        children: options.children || []
     }
 }
 
@@ -82,6 +85,24 @@ export function createEffectLayer(effectId, name, params = {}) {
 }
 
 /**
+ * Create a child effect object (lightweight, no blend/opacity/media fields)
+ * @param {string} effectId - Effect ID (namespace/name)
+ * @param {string} [name] - Display name
+ * @param {object} [params] - Effect parameters
+ * @returns {object} Child effect object
+ */
+export function createChildEffect(effectId, name, params = {}) {
+    const effectName = effectId.split('/').pop()
+    return {
+        id: `layer-${layerCounter++}`,
+        name: name || camelToHumanCase(effectName),
+        effectId,
+        effectParams: params,
+        visible: true
+    }
+}
+
+/**
  * Clone a layer with a new ID
  * @param {object} layer - Layer to clone
  * @returns {object} Cloned layer
@@ -90,7 +111,13 @@ export function cloneLayer(layer) {
     return {
         ...layer,
         id: `layer-${layerCounter++}`,
-        name: `${layer.name} copy`
+        name: `${layer.name} copy`,
+        effectParams: JSON.parse(JSON.stringify(layer.effectParams)),
+        children: (layer.children || []).map(child => ({
+            ...child,
+            id: `layer-${layerCounter++}`,
+            effectParams: JSON.parse(JSON.stringify(child.effectParams))
+        }))
     }
 }
 
