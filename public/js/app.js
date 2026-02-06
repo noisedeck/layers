@@ -83,7 +83,11 @@ class LayersApp {
     _cloneLayers(layers) {
         return layers.map(l => ({
             ...l,
-            effectParams: JSON.parse(JSON.stringify(l.effectParams))
+            effectParams: JSON.parse(JSON.stringify(l.effectParams)),
+            children: (l.children || []).map(c => ({
+                ...c,
+                effectParams: JSON.parse(JSON.stringify(c.effectParams))
+            }))
         }))
     }
 

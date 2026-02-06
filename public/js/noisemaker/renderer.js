@@ -269,6 +269,27 @@ export class LayersRenderer {
                     matchCount++
                 }
             }
+
+            // Map visible child effects
+            const visibleChildren = (layer.children || []).filter(c => c.visible)
+            for (const child of visibleChildren) {
+                const childEffectName = child.effectId?.split('/')[1]
+                if (!childEffectName) continue
+
+                const childSeenCount = effectTypeCounts[childEffectName] || 0
+                effectTypeCounts[childEffectName] = childSeenCount + 1
+
+                let childMatchCount = 0
+                for (const pass of passes) {
+                    if (pass.effectFunc === childEffectName || pass.effectKey === childEffectName) {
+                        if (childMatchCount === childSeenCount) {
+                            this._layerStepMap.set(child.id, pass.stepIndex)
+                            break
+                        }
+                        childMatchCount++
+                    }
+                }
+            }
         }
     }
 
@@ -608,6 +629,16 @@ export class LayersRenderer {
             }
         }
 
+        // Also collect namespaces from child effects
+        for (const layer of visibleLayers) {
+            for (const child of (layer.children || [])) {
+                if (child.visible && child.effectId) {
+                    const [namespace] = child.effectId.split('/')
+                    usedNamespaces.add(namespace)
+                }
+            }
+        }
+
         const lines = []
         lines.push(`search ${[...usedNamespaces].join(', ')}`)
         lines.push('')
@@ -633,6 +664,7 @@ export class LayersRenderer {
                     const toHex = (v) => Math.round(v * 255).toString(16).padStart(2, '0')
                     const hex = `#${toHex(color[0])}${toHex(color[1])}${toHex(color[2])}`
                     lines.push(`solid(color: ${hex}, alpha: ${effectAlpha.toFixed(4)}).write(o${currentOutput})`)
+                    currentOutput = this._buildChildChain(layer, currentOutput, lines)
                 } else {
                     // Media or effect base - blend over transparent background for opacity
                     const layerCall = layer.sourceType === 'media'
@@ -643,6 +675,7 @@ export class LayersRenderer {
                     lines.push(`${layerCall}.write(o${currentOutput + 1})`)
                     lines.push(`read(o${currentOutput}).blendMode(tex: read(o${currentOutput + 1}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${currentOutput + 2})`)
                     currentOutput += 2
+                    currentOutput = this._buildChildChain(layer, currentOutput, lines)
                 }
             } else {
                 // Non-base layers - blend with previous
@@ -662,6 +695,9 @@ export class LayersRenderer {
                         lines.push(`read(o${prevOutput}).${effectCall}.write(o${currentOutput})`)
                     }
                 }
+
+                // Apply child effects to this layer's output
+                currentOutput = this._buildChildChain(layer, currentOutput, lines)
 
                 const nextOutput = currentOutput + 1
                 lines.push(`read(o${prevOutput}).blendMode(tex: read(o${currentOutput}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${nextOutput})`)
@@ -690,6 +726,25 @@ export class LayersRenderer {
         return paramPairs.length > 0
             ? `${effectName}(${paramPairs.join(', ')})`
             : `${effectName}()`
+    }
+
+    /**
+     * Build DSL lines for a layer's visible child effects.
+     * @param {object} layer - Parent layer
+     * @param {number} currentOutput - Current output buffer index
+     * @param {string[]} lines - DSL lines array to append to
+     * @returns {number} Updated output buffer index
+     * @private
+     */
+    _buildChildChain(layer, currentOutput, lines) {
+        const visibleChildren = (layer.children || []).filter(c => c.visible)
+        for (const child of visibleChildren) {
+            const effectCall = this._buildEffectCall(child)
+            const nextOutput = currentOutput + 1
+            lines.push(`read(o${currentOutput}).${effectCall}.write(o${nextOutput})`)
+            currentOutput = nextOutput
+        }
+        return currentOutput
     }
 
     _buildMediaCall() {
