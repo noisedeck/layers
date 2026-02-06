@@ -6,7 +6,7 @@
  */
 
 import { LayersRenderer } from './noisemaker/renderer.js'
-import { createMediaLayer, createEffectLayer } from './layers/layer-model.js'
+import { createMediaLayer, createEffectLayer, createChildEffect } from './layers/layer-model.js'
 import './layers/layer-stack.js'
 import { EffectParams } from './layers/effect-params.js'
 import { openDialog } from './ui/open-dialog.js'
@@ -608,6 +608,35 @@ class LayersApp {
     }
 
     /**
+     * Add a child effect to a parent layer
+     * @param {string} parentLayerId - Parent layer ID
+     * @param {string} effectId - Effect ID to add
+     * @private
+     */
+    async _handleAddChildEffect(parentLayerId, effectId) {
+        const parent = this._layers.find(l => l.id === parentLayerId)
+        if (!parent) return
+
+        this._finalizePendingUndo()
+
+        const child = createChildEffect(effectId)
+        if (!parent.children) parent.children = []
+        parent.children.push(child)
+
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+
+        // Select the new child
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = child.id
+        }
+
+        toast.success(`Added effect: ${child.name}`)
+    }
+
+    /**
      * Reset all layers (for new project)
      * @private
      */
@@ -629,9 +658,32 @@ class LayersApp {
     /**
      * Handle deleting a layer
      * @param {string} layerId - Layer ID to delete
+     * @param {string} [parentLayerId] - Parent layer ID if deleting a child effect
      * @private
      */
-    async _handleDeleteLayer(layerId) {
+    async _handleDeleteLayer(layerId, parentLayerId) {
+        if (parentLayerId) {
+            // Deleting a child effect
+            const parent = this._layers.find(l => l.id === parentLayerId)
+            if (!parent || !parent.children) return
+
+            const childIndex = parent.children.findIndex(c => c.id === layerId)
+            if (childIndex < 0) return
+
+            this._finalizePendingUndo()
+            const child = parent.children[childIndex]
+            parent.children.splice(childIndex, 1)
+
+            this._updateLayerStack()
+            await this._rebuild()
+            this._markDirty()
+            this._pushUndoState()
+
+            toast.info(`Deleted effect: ${child.name}`)
+            return
+        }
+
+        // Existing top-level layer delete logic
         const index = this._layers.findIndex(l => l.id === layerId)
         if (index <= 0) return // Can't delete base layer
 
@@ -666,13 +718,40 @@ class LayersApp {
             this._finalizePendingUndo()
         }
 
-        // Update layer in our array
-        const layer = this._layers.find(l => l.id === detail.layerId)
+        // Find the target — either a child or a top-level layer
+        let layer
+        if (detail.parentLayerId) {
+            const parent = this._layers.find(l => l.id === detail.parentLayerId)
+            layer = parent?.children?.find(c => c.id === detail.layerId)
+        } else {
+            layer = this._layers.find(l => l.id === detail.layerId)
+        }
+
         if (layer) {
             layer[detail.property] = detail.value
         }
 
         this._markDirty()
+
+        // Handle child-specific property changes
+        if (detail.parentLayerId) {
+            switch (detail.property) {
+                case 'effectParams':
+                    this._renderer.updateLayerParams(detail.layerId, detail.value)
+                    this._renderer.syncDsl()
+                    this._pushUndoStateDebounced()
+                    break
+                case 'visibility':
+                case 'name':
+                    await this._rebuild()
+                    this._pushUndoState()
+                    break
+                default:
+                    await this._rebuild()
+                    this._pushUndoState()
+            }
+            return
+        }
 
         // Determine if this requires a full rebuild or just a parameter update
         switch (detail.property) {
@@ -1404,7 +1483,7 @@ class LayersApp {
         })
 
         this._layerStack.addEventListener('layer-delete', (e) => {
-            this._handleDeleteLayer(e.detail.layerId)
+            this._handleDeleteLayer(e.detail.layerId, e.detail.parentLayerId)
         })
 
         // Layer reorder FSM events
@@ -1430,6 +1509,10 @@ class LayersApp {
             if (this._currentTool === 'move' && this._getActiveLayer()?.mediaType === 'video') {
                 this._setToolMode('selection')
             }
+        })
+
+        this._layerStack.addEventListener('child-add', (e) => {
+            this._showAddChildEffectDialog(e.detail.layerId)
         })
     }
 
@@ -1746,6 +1829,20 @@ class LayersApp {
             },
             onAddEffect: async (effectId) => {
                 await this._handleAddEffectLayer(effectId)
+            }
+        })
+    }
+
+    /**
+     * Show effect picker for adding a child effect to a layer
+     * @param {string} parentLayerId - Parent layer ID
+     * @private
+     */
+    _showAddChildEffectDialog(parentLayerId) {
+        addLayerDialog.showEffectOnly({
+            effects: this._renderer.getLayerEffects(),
+            onAddEffect: async (effectId) => {
+                await this._handleAddChildEffect(parentLayerId, effectId)
             }
         })
     }

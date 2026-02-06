@@ -40,6 +40,22 @@ class AddLayerDialog {
     }
 
     /**
+     * Show dialog in effect-only mode (skip media/effect choice)
+     * @param {object} options
+     */
+    showEffectOnly(options) {
+        this._effects = options.effects || []
+        this._onAddEffect = options.onAddEffect || null
+
+        if (!this._dialog) {
+            this._createDialog()
+        }
+
+        this._dialog.showModal()
+        this._showEffectPicker()
+    }
+
+    /**
      * Hide the dialog
      */
     hide() {
