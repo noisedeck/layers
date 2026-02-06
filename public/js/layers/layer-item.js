@@ -87,7 +87,7 @@ class LayerItem extends HTMLElement {
         const layer = this._layer
         const isVisible = layer.visible
         const isEffect = layer.sourceType === 'effect'
-        const hasParams = isEffect || layer.sourceType === 'media'
+        const hasParams = isEffect || layer.sourceType === 'media' || this._isChild
         const isBase = this.hasAttribute('base')
 
         const blendOptions = BLEND_MODES.map(mode =>
@@ -162,8 +162,8 @@ class LayerItem extends HTMLElement {
         const paramsEl = this.querySelector('effect-params')
         if (!paramsEl || !this._layer) return
 
-        // Use effectId for effects, 'synth/media' for media layers
-        const effectId = this._layer.sourceType === 'effect'
+        // Use effectId for effects/children, 'synth/media' for media layers
+        const effectId = (this._layer.sourceType === 'effect' || this._isChild)
             ? this._layer.effectId
             : 'synth/media'
 
