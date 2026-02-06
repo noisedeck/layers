@@ -1207,6 +1207,36 @@ class LayersApp {
             this._showCanvasSizeDialog()
         })
 
+        // Image menu - Adjustments
+        document.getElementById('invertMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAddEffectLayer('filter/inv')
+        })
+        document.getElementById('brightnessContrastMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAddEffectLayer('filter/bc')
+        })
+        document.getElementById('hueSaturationMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAddEffectLayer('filter/hs')
+        })
+        document.getElementById('blurMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAddEffectLayer('filter/blur')
+        })
+        document.getElementById('gradientPaletteMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAddEffectLayer('filter/tetraColorArray')
+        })
+        document.getElementById('cosinePaletteMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAddEffectLayer('filter/tetraCosine')
+        })
+        document.getElementById('colorGradingMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAddEffectLayer('filter/grade')
+        })
+
         // Select menu - Select All
         document.getElementById('selectAllMenuItem')?.addEventListener('click', () => {
             const { width, height } = this._canvas
