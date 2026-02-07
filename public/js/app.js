@@ -2054,38 +2054,10 @@ class LayersApp {
      * @private
      */
     _onCloneComplete() {
-        const layer = this._getActiveLayer()
-        if (!layer) return
-
-        if (this._selectionManager.hasSelection()) {
-            // Clone-with-selection: move the selection to follow the dragged pixels
-            const dx = layer.offsetX || 0
-            const dy = layer.offsetY || 0
-            if (dx !== 0 || dy !== 0) {
-                const path = this._selectionManager._selectionPath
-                if (path.type === 'rect' || path.type === 'oval') {
-                    path.x = (path.x || 0) + dx
-                    path.y = (path.y || 0) + dy
-                    if (path.cx !== undefined) { path.cx += dx; path.cy += dy }
-                } else if (path.points) {
-                    for (const p of path.points) { p.x += dx; p.y += dy }
-                }
-            }
-        } else {
-            // Clone whole layer: create a rect selection around it
-            this._selectionManager._selectionPath = {
-                type: 'rect',
-                x: layer.offsetX || 0,
-                y: layer.offsetY || 0,
-                width: this._canvas.width,
-                height: this._canvas.height
-            }
-            this._selectionManager._startAnimation()
-        }
         this._updateImageMenu()
         this._updateSelectMenu()
 
-        // Switch to selection tool
+        // Switch to selection tool — leave the selection untouched
         this._setToolMode('selection')
     }
 
@@ -2445,6 +2417,7 @@ class LayersApp {
         }
 
         await this._rebuild()
+        this._renderer.render(0)
 
         const offscreen = new OffscreenCanvas(this._canvas.width, this._canvas.height)
         const ctx = offscreen.getContext('2d')
