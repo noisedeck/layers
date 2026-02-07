@@ -2079,9 +2079,9 @@ class LayersApp {
             layer.effectParams = { ...layer.effectParams, posX, posY }
             this._renderer.updateTextParams(layer.id, layer.effectParams)
         } else {
-            layer.offsetX = x
-            layer.offsetY = y
-            this._renderer.updateLayerOffset(layer.id, x, y)
+            layer.offsetX = Math.round(x)
+            layer.offsetY = Math.round(y)
+            this._renderer.updateLayerOffset(layer.id, layer.offsetX, layer.offsetY)
         }
 
         this._markDirty()
