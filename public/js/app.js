@@ -31,6 +31,7 @@ import { selectionParamDialog } from './ui/selection-param-dialog.js'
 import { Files } from './utils/files.js'
 import { ExportImageDialog } from './ui/export-image-dialog.js'
 import { ExportVideoDialog } from './ui/export-video-dialog.js'
+import { getFontaineLoader, BASE_FONTS } from './layers/fontaine-loader.js'
 
 /**
  * Main application class
@@ -1469,6 +1470,16 @@ class LayersApp {
         // Play/pause button
         document.getElementById('playPauseBtn')?.addEventListener('click', () => {
             this._togglePlayPause()
+        })
+
+        // Font install dialog trigger
+        document.addEventListener('font-install-request', () => {
+            this._showFontInstallDialog()
+        })
+
+        // Font bundle changed (e.g., uninstall)
+        document.addEventListener('font-bundle-changed', () => {
+            this._refreshFontSelects()
         })
     }
 
@@ -3050,6 +3061,89 @@ class LayersApp {
             onConfirm: async (width, height, anchor) => {
                 await this._changeCanvasSize(width, height, anchor)
             }
+        })
+    }
+
+    /**
+     * Show the font bundle install dialog
+     */
+    _showFontInstallDialog() {
+        const modal = document.getElementById('fontInstallModal')
+        const contentView = document.getElementById('fontInstallContentView')
+        const progressView = document.getElementById('fontInstallProgressView')
+        const progressBar = document.getElementById('fontInstallProgressBar')
+        const progressText = document.getElementById('fontInstallProgressText')
+        const beginBtn = document.getElementById('fontInstallBeginBtn')
+        const cancelBtn = document.getElementById('fontInstallCancelBtn')
+        const closeBtn = document.getElementById('fontInstallCloseBtn')
+
+        // Reset to content view
+        contentView.style.display = ''
+        progressView.style.display = 'none'
+
+        modal.showModal()
+
+        const close = () => modal.close()
+
+        closeBtn.onclick = close
+        modal.onclick = (e) => { if (e.target === modal) close() }
+        modal.addEventListener('cancel', (e) => { e.preventDefault(); close() }, { once: true })
+
+        beginBtn.onclick = async () => {
+            contentView.style.display = 'none'
+            progressView.style.display = ''
+
+            const loader = getFontaineLoader()
+
+            try {
+                await loader.install({
+                    onProgress: (percent, message) => {
+                        progressBar.style.width = `${Math.min(percent, 100)}%`
+                        progressText.textContent = message
+                    }
+                })
+
+                progressText.textContent = 'Done! Refreshing font list...'
+
+                // Refresh any open font-select elements
+                this._refreshFontSelects()
+
+                setTimeout(close, 1000)
+            } catch (err) {
+                progressText.textContent = `Error: ${err.message}`
+                console.error('[FontInstall] Failed:', err)
+            }
+        }
+
+        cancelBtn.onclick = close
+    }
+
+    /**
+     * Refresh all font-select elements with current font options
+     */
+    async _refreshFontSelects() {
+        const fontSelects = document.querySelectorAll('font-select')
+        if (fontSelects.length === 0) return
+
+        const loader = getFontaineLoader()
+        const installed = await loader.isInstalled()
+
+        let options = BASE_FONTS
+        if (installed) {
+            await loader.loadFromCache()
+            options = loader.getAllFonts().map(f => ({
+                value: f.name,
+                text: f.name,
+                category: f.category || 'other',
+                tags: f.tags || []
+            }))
+            loader.registerAllFonts()
+        }
+
+        fontSelects.forEach(fs => {
+            const currentValue = fs.value
+            fs.setOptions(options)
+            fs.value = currentValue
         })
     }
 

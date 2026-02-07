@@ -1,3 +1,5 @@
+import { getFontaineLoader } from '../layers/fontaine-loader.js'
+
 /**
  * About Dialog
  *
@@ -30,6 +32,8 @@ class AboutDialog {
         if (!this._metadataFetched) {
             await this._fetchDeploymentMetadata()
         }
+
+        await this._updateFontBundleInfo()
     }
 
     /**
@@ -163,6 +167,34 @@ class AboutDialog {
     }
 
     /**
+     * Update font bundle info in the dialog
+     * @private
+     */
+    async _updateFontBundleInfo() {
+        const loader = getFontaineLoader()
+        const installed = await loader.isInstalled()
+        const row = this._dialog?.querySelector('.font-bundle-row')
+        if (!row) return
+
+        if (installed) {
+            await loader.loadFromCache()
+            const info = loader.getVersionInfo()
+            row.style.display = ''
+            row.querySelector('.font-bundle-info').textContent = `${info.totalFonts} fonts (v${info.installed})`
+
+            row.querySelector('.font-bundle-uninstall').onclick = async () => {
+                if (confirm('Uninstall the font bundle? You can reinstall it from the text effect font picker.')) {
+                    await loader.clearCache()
+                    row.style.display = 'none'
+                    document.dispatchEvent(new CustomEvent('font-bundle-changed'))
+                }
+            }
+        } else {
+            row.style.display = 'none'
+        }
+    }
+
+    /**
      * Create the dialog element
      * @private
      */
@@ -188,6 +220,10 @@ class AboutDialog {
                     <div class="about-modal-copyright">&copy; 2026 <a href="https://noisefactor.io/" class="about-modal-link" target="_blank" rel="noopener">Noise Factor LLC.</a></div>
                     <div class="about-modal-build">build: local / deployed: n/a</div>
                     <div class="about-modal-build noisemaker-version"></div>
+                    <div class="about-modal-build font-bundle-row" style="display: none;">
+                        fontaine: <span class="font-bundle-info"></span>
+                        <button class="font-bundle-uninstall">uninstall</button>
+                    </div>
                 </div>
             </div>
         `

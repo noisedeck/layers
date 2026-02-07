@@ -604,8 +604,33 @@ export class LayersRenderer {
     updateTextParams(layerId, params) {
         const layer = this._layers.find(l => l.id === layerId)
         if (!layer || !this._isTextEffect(layer.effectId)) return
-        if (this._textCanvases.has(layerId)) {
-            this._renderTextCanvas(layerId, params)
+        if (!this._textCanvases.has(layerId)) return
+
+        this._renderTextCanvas(layerId, params)
+        this._registerFontaineFont(layerId, params)
+    }
+
+    /**
+     * Register a fontaine font on-demand if not a base font.
+     * Re-renders the text canvas once the font is available.
+     * @private
+     */
+    async _registerFontaineFont(layerId, params) {
+        const font = params.font || 'Nunito'
+
+        try {
+            const { BASE_FONT_NAMES, getFontaineLoader } = await import('../layers/fontaine-loader.js')
+            if (BASE_FONT_NAMES.has(font)) return
+
+            const loader = getFontaineLoader()
+            if (!loader.fontsLoaded) return
+
+            const registered = await loader.registerFontByName(font)
+            if (registered) {
+                this._renderTextCanvas(layerId, params)
+            }
+        } catch {
+            // Fall back silently -- browser will use fallback font
         }
     }
 

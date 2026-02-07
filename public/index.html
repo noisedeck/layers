@@ -377,6 +377,32 @@
         </div>
     </dialog>
 
+    <!-- Font Bundle Install Dialog -->
+    <dialog id="fontInstallModal" aria-labelledby="fontInstallModalTitle">
+        <div class="export-modal-title">
+            <span class="material-symbols-outlined" style="font-size: 18px;">font_download</span>
+            <span id="fontInstallModalTitle">Install Font Bundle</span>
+            <button class="export-modal-close" id="fontInstallCloseBtn">&#10005;</button>
+        </div>
+        <div id="fontInstallContentView" class="export-modal-content">
+            <p class="font-install-description">
+                Download the Fontaine font collection — 100+ curated web fonts for use in text layers. The download is approximately 140 MB and fonts are cached locally for offline use.
+            </p>
+            <div class="export-button-row">
+                <button class="export-btn export-btn--primary" id="fontInstallBeginBtn">Download</button>
+            </div>
+        </div>
+        <div id="fontInstallProgressView" class="export-modal-content" style="display: none;">
+            <div class="export-progress-container">
+                <div class="export-progress-bar-container">
+                    <div class="export-progress-bar" id="fontInstallProgressBar"></div>
+                </div>
+                <div class="export-progress-text" id="fontInstallProgressText">Preparing...</div>
+                <button class="export-progress-cancel" id="fontInstallCancelBtn">Cancel</button>
+            </div>
+        </div>
+    </dialog>
+
     <!-- Toast Container -->
     <div id="toast-container"></div>
 

@@ -1349,3 +1349,36 @@ dialog[open] {
     background: color-mix(in srgb, var(--red, #e74c3c) 40%, transparent 60%);
     border-color: var(--red, #e74c3c);
 }
+
+/* =========================================================================
+   Font Install Dialog
+   ========================================================================= */
+
+#fontInstallModal {
+    min-width: 380px;
+    max-width: 460px;
+}
+
+.font-install-description {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+    margin: 0 0 0.75rem 0;
+}
+
+.font-bundle-uninstall {
+    margin-left: 0.5em;
+    font-size: 0.7rem;
+    background: none;
+    border: 1px solid var(--color-text-muted);
+    color: var(--color-text-muted);
+    border-radius: 3px;
+    padding: 0.1em 0.4em;
+    cursor: pointer;
+    transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.font-bundle-uninstall:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-text-primary);
+}

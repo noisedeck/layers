@@ -6,6 +6,8 @@
  */
 
 import { getEffect } from '../noisemaker/bundle.js'
+import './font-select.js'
+import { getFontaineLoader, BASE_FONTS } from './fontaine-loader.js'
 
 // Static effect loader function (set by app after renderer init)
 let effectLoader = null
@@ -198,6 +200,11 @@ class EffectParams extends HTMLElement {
      * @private
      */
     _createControl(paramName, spec, currentValue) {
+        // Special case: font parameter gets the font-select component
+        if (paramName === 'font' && spec.choices) {
+            return this._createFontSelect(paramName, spec, currentValue)
+        }
+
         const controlType = spec.ui?.control || this._inferControlType(spec)
 
         switch (controlType) {
@@ -300,6 +307,57 @@ class EffectParams extends HTMLElement {
             getValue: () => spec.type === 'int' ? parseInt(select.value, 10) : select.value,
             setValue: (v) => { select.value = v }
         }
+    }
+
+    /**
+     * Create a font-select control for the font parameter
+     * @private
+     */
+    _createFontSelect(paramName, spec, currentValue) {
+        const fontSelect = document.createElement('font-select')
+        fontSelect.value = currentValue || spec.default || 'Nunito'
+
+        // Build options: base fonts + fontaine fonts
+        this._loadFontOptions(fontSelect)
+
+        fontSelect.addEventListener('change', async () => {
+            // Register the font if it's a fontaine font (not a base font)
+            const loader = getFontaineLoader()
+            if (loader.fontsLoaded) {
+                await loader.registerFontByName(fontSelect.value)
+            }
+            this._handleValueChange(paramName, fontSelect.value, spec)
+        })
+
+        return {
+            element: fontSelect,
+            getValue: () => fontSelect.value,
+            setValue: (v) => { fontSelect.value = v }
+        }
+    }
+
+    /**
+     * Load font options into a font-select element
+     * @private
+     */
+    async _loadFontOptions(fontSelect) {
+        const loader = getFontaineLoader()
+        const installed = await loader.isInstalled()
+
+        if (!installed) {
+            fontSelect.setOptions(BASE_FONTS)
+            return
+        }
+
+        await loader.loadFromCache()
+        const bundleFonts = loader.getAllFonts().map(f => ({
+            value: f.name,
+            text: f.name,
+            category: f.category || 'other',
+            tags: f.tags || []
+        }))
+        fontSelect.setOptions(bundleFonts)
+        loader.registerAllFonts()
     }
 
     /**
