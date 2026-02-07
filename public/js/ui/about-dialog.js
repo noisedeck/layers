@@ -143,15 +143,22 @@ class AboutDialog {
      */
     _updateBuildInfo() {
         if (!this._dialog) return
-        const buildInfoEl = this._dialog.querySelector('.about-modal-build')
+        const buildInfoEl = this._dialog.querySelector('.about-modal-build:not(.noisemaker-version)')
         if (buildInfoEl && this._metadata) {
-            buildInfoEl.textContent = `build: ${this._metadata.gitHash} / deployed: ${this._metadata.deployed}`
+            const hash = this._metadata.gitHash
+            if (hash && hash !== 'LOCAL') {
+                buildInfoEl.innerHTML = `build: <a href="https://github.com/noisedeck/layers/tree/${hash}" class="about-modal-link" target="_blank" rel="noopener">${hash}</a> / deployed: ${this._metadata.deployed}`
+            } else {
+                buildInfoEl.textContent = `build: ${hash} / deployed: ${this._metadata.deployed}`
+            }
         }
         const nmVersionEl = this._dialog.querySelector('.about-modal-build.noisemaker-version')
         if (nmVersionEl) {
-            nmVersionEl.textContent = this._noisemakerVersion
-                ? `noisemaker version: ${this._noisemakerVersion}`
-                : ''
+            if (this._noisemakerVersion) {
+                nmVersionEl.innerHTML = `noisemaker: <a href="https://github.com/noisedeck/noisemaker/tree/${this._noisemakerVersion}" class="about-modal-link" target="_blank" rel="noopener">${this._noisemakerVersion}</a>`
+            } else {
+                nmVersionEl.textContent = ''
+            }
         }
     }
 
@@ -178,7 +185,7 @@ class AboutDialog {
                 <div class="about-modal-details" tabindex="-1">
                     <div class="about-modal-title">Layers</div>
                     <div class="about-modal-subtitle">Development Preview</div>
-                    <div class="about-modal-copyright">&copy; 2026 <a href="https://noisefactor.io/" class="about-modal-link" target="_blank" rel="noopener">Noise Factor LLC.</a> / (<a href="https://github.com/noisedeck/layers" class="about-modal-link" target="_blank" rel="noopener">source</a>)</div>
+                    <div class="about-modal-copyright">&copy; 2026 <a href="https://noisefactor.io/" class="about-modal-link" target="_blank" rel="noopener">Noise Factor LLC.</a></div>
                     <div class="about-modal-build">build: local / deployed: n/a</div>
                     <div class="about-modal-build noisemaker-version"></div>
                 </div>
