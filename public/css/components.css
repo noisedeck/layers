@@ -1223,7 +1223,6 @@ dialog[open] {
 .export-settings-grid .control-label {
     font-size: 0.6875rem;
     color: var(--color-text-muted);
-    text-transform: lowercase;
 }
 
 .export-settings-grid input,

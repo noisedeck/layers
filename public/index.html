@@ -248,21 +248,21 @@
     <dialog id="exportModal" aria-labelledby="exportModalTitle">
         <div class="export-modal-title">
             <span class="material-symbols-outlined" style="font-size: 18px;">movie</span>
-            <span id="exportModalTitle">export video</span>
+            <span id="exportModalTitle">Export Video</span>
             <button class="export-modal-close" id="exportCancelBtn">&#10005;</button>
         </div>
         <div id="exportDialogView" class="export-modal-content">
             <div class="export-settings-grid">
                 <div class="control-group">
-                    <label for="exportWidth" class="control-label">width</label>
+                    <label for="exportWidth" class="control-label">Width</label>
                     <input type="number" id="exportWidth" value="1024" min="64" max="4096" step="1">
                 </div>
                 <div class="control-group">
-                    <label for="exportHeight" class="control-label">height</label>
+                    <label for="exportHeight" class="control-label">Height</label>
                     <input type="number" id="exportHeight" value="1024" min="64" max="4096" step="1">
                 </div>
                 <div class="control-group">
-                    <label for="exportFramerate" class="control-label">framerate</label>
+                    <label for="exportFramerate" class="control-label">Framerate</label>
                     <select id="exportFramerate">
                         <option value="24">24 fps</option>
                         <option value="30" selected>30 fps</option>
@@ -270,47 +270,47 @@
                     </select>
                 </div>
                 <div class="control-group">
-                    <label for="exportDuration" class="control-label">duration (sec)</label>
+                    <label for="exportDuration" class="control-label">Duration (sec)</label>
                     <input type="number" id="exportDuration" value="15" min="1" max="300" step="0.5">
                 </div>
                 <div class="control-group">
-                    <label for="exportLoopCount" class="control-label">loop count</label>
+                    <label for="exportLoopCount" class="control-label">Loop Count</label>
                     <input type="number" id="exportLoopCount" value="1" min="1" max="10" step="1">
                 </div>
                 <div class="control-group">
-                    <label for="exportFormat" class="control-label">format</label>
+                    <label for="exportFormat" class="control-label">Format</label>
                     <select id="exportFormat">
                         <option value="mp4" selected>MP4</option>
                         <option value="zip">ZIP (frames)</option>
                     </select>
                 </div>
                 <div class="control-group full-width">
-                    <label for="exportQuality" class="control-label">video quality</label>
+                    <label for="exportQuality" class="control-label">Video Quality</label>
                     <select id="exportQuality">
-                        <option value="low">low</option>
-                        <option value="medium">medium</option>
-                        <option value="high">high</option>
-                        <option value="very high" selected>very high</option>
-                        <option value="ultra">ultra</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="very high" selected>Very High</option>
+                        <option value="ultra">Ultra</option>
                     </select>
                 </div>
                 <div class="control-group full-width">
-                    <label for="exportPlayFrom" class="control-label">play from</label>
+                    <label for="exportPlayFrom" class="control-label">Play From</label>
                     <select id="exportPlayFrom">
-                        <option value="beginning" selected>beginning (reset state)</option>
-                        <option value="current">current position</option>
+                        <option value="beginning" selected>Beginning (reset state)</option>
+                        <option value="current">Current position</option>
                     </select>
                 </div>
             </div>
             <div class="export-info-row">
-                <div>total: <span id="exportTotalFrames">450 frames</span></div>
-                <div>est. size: <span id="exportEstimatedSize">~12 MB</span></div>
+                <div>Total: <span id="exportTotalFrames">450 frames</span></div>
+                <div>Est. size: <span id="exportEstimatedSize">~12 MB</span></div>
             </div>
             <div class="export-warning-row">
                 Video layers use best-effort frame seeking. Exported frames may vary slightly from live preview.
             </div>
             <div class="export-button-row">
-                <button class="export-btn export-btn--primary" id="exportBeginBtn">begin export</button>
+                <button class="export-btn export-btn--primary" id="exportBeginBtn">Begin Export</button>
             </div>
         </div>
         <div id="exportProgressView" class="export-modal-content" style="display: none;">
@@ -320,10 +320,10 @@
                 </div>
                 <div class="export-progress-text" id="exportProgressText">Frame 0 of 450</div>
                 <div class="export-progress-time">
-                    <div>elapsed: <span id="exportProgressElapsed">0:00</span></div>
-                    <div>remaining: <span id="exportProgressRemaining">--:--</span></div>
+                    <div>Elapsed: <span id="exportProgressElapsed">0:00</span></div>
+                    <div>Remaining: <span id="exportProgressRemaining">--:--</span></div>
                 </div>
-                <button class="export-progress-cancel" id="exportProgressCancelBtn">cancel export</button>
+                <button class="export-progress-cancel" id="exportProgressCancelBtn">Cancel Export</button>
             </div>
         </div>
     </dialog>
@@ -332,21 +332,21 @@
     <dialog id="exportImageModal" aria-labelledby="exportImageModalTitle">
         <div class="export-modal-title">
             <span class="material-symbols-outlined" style="font-size: 18px;">image</span>
-            <span id="exportImageModalTitle">export image</span>
+            <span id="exportImageModalTitle">Export Image</span>
             <button class="export-modal-close" id="exportImageCancelBtn">&#10005;</button>
         </div>
         <div class="export-modal-content">
             <div class="export-settings-grid">
                 <div class="control-group">
-                    <label for="exportImageWidth" class="control-label">width</label>
+                    <label for="exportImageWidth" class="control-label">Width</label>
                     <input type="number" id="exportImageWidth" value="1024" min="64" max="8192" step="1">
                 </div>
                 <div class="control-group">
-                    <label for="exportImageHeight" class="control-label">height</label>
+                    <label for="exportImageHeight" class="control-label">Height</label>
                     <input type="number" id="exportImageHeight" value="1024" min="64" max="8192" step="1">
                 </div>
                 <div class="control-group">
-                    <label for="exportImageFormat" class="control-label">format</label>
+                    <label for="exportImageFormat" class="control-label">Format</label>
                     <select id="exportImageFormat">
                         <option value="png" selected>PNG</option>
                         <option value="jpg">JPEG</option>
@@ -354,18 +354,18 @@
                     </select>
                 </div>
                 <div class="control-group" id="exportImageQualityGroup">
-                    <label for="exportImageQuality" class="control-label">quality</label>
+                    <label for="exportImageQuality" class="control-label">Quality</label>
                     <select id="exportImageQuality">
-                        <option value="low">low</option>
-                        <option value="medium">medium</option>
-                        <option value="high" selected>high</option>
-                        <option value="very high">very high</option>
-                        <option value="maximum">maximum</option>
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high" selected>High</option>
+                        <option value="very high">Very High</option>
+                        <option value="maximum">Maximum</option>
                     </select>
                 </div>
             </div>
             <div class="export-button-row">
-                <button class="export-btn export-btn--primary" id="exportImageBeginBtn">export</button>
+                <button class="export-btn export-btn--primary" id="exportImageBeginBtn">Export</button>
             </div>
         </div>
     </dialog>
