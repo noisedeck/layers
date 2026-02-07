@@ -119,11 +119,10 @@ export class ExportVideoDialog {
         this._elements.progressView.style.display = 'block'
         this._updateProgress()
 
-        const currentRes = this.getResolution()
-        this.originalResolution = { width: currentRes.width, height: currentRes.height }
+        this.originalResolution = this.getResolution()
 
         try {
-            if (settings.width !== currentRes.width || settings.height !== currentRes.height) {
+            if (settings.width !== this.originalResolution.width || settings.height !== this.originalResolution.height) {
                 this.setResolution(settings.width, settings.height)
                 await this._waitFrame()
             }
@@ -183,7 +182,7 @@ export class ExportVideoDialog {
             const normalizedTime = (baseNormalizedTime + timeOffset) % 1
 
             await this._seekAllVideos(targetTimeSec)
-            this._uploadVideoTextures()
+            this.renderer._updateVideoTextures()
 
             this.renderer.render(normalizedTime)
             await this._waitFrame()
@@ -239,13 +238,7 @@ export class ExportVideoDialog {
             }
         }
 
-        if (promises.length > 0) {
-            await Promise.all(promises)
-        }
-    }
-
-    _uploadVideoTextures() {
-        this.renderer._updateVideoTextures()
+        await Promise.all(promises)
     }
 
     async _finalizeExport(settings) {
@@ -267,19 +260,19 @@ export class ExportVideoDialog {
             return
         }
 
-        if (this.state === 'preparing' || this.state === 'exporting') {
-            this.abortController?.abort()
+        if (this.state !== 'preparing' && this.state !== 'exporting') return
 
-            const settings = this._gatherSettings()
-            if (settings.format === 'mp4') {
-                await this.files.cancelMP4()
-            } else {
-                this.files.cancelZIP()
-            }
+        this.abortController?.abort()
 
-            this.close()
-            this.onCancel()
+        const settings = this._gatherSettings()
+        if (settings.format === 'mp4') {
+            await this.files.cancelMP4()
+        } else {
+            this.files.cancelZIP()
         }
+
+        this.close()
+        this.onCancel()
     }
 
     _ensureEven(value) {

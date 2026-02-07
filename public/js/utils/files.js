@@ -12,6 +12,14 @@ export class Files {
         this.ready = false
         this.currentFrame = 0
 
+        this._initZipWorker()
+        this._resetMP4State()
+
+        this.videoPacketsAdded = 0
+        this.videoPacketsAddFailed = 0
+    }
+
+    _initZipWorker() {
         this.zipWorker = new Worker('./js/lib/zipWorker.js')
         this.zipWorker.onmessage = (msg) => {
             if (msg.data.ready) {
@@ -22,7 +30,9 @@ export class Files {
                 this.downloadFile(msg.data.url, 'zip')
             }
         }
+    }
 
+    _resetMP4State() {
         this.output = null
         this.videoSource = null
         this.mp4Target = null
@@ -32,8 +42,7 @@ export class Files {
         this.recording = false
         this.lastKeyFrame = null
         this.framesGenerated = 0
-        this.videoPacketsAdded = 0
-        this.videoPacketsAddFailed = 0
+        this.ready = false
     }
 
     saveImage(canvas, type, quality = 1) {
@@ -110,7 +119,7 @@ export class Files {
     encodeVideoFrame(canvas, settings) {
         const frameIndex = this.framesGenerated
         const timestampUs = Math.round(frameIndex * (1e6 / settings.framerate))
-        let frame = new VideoFrame(canvas, {
+        const frame = new VideoFrame(canvas, {
             timestamp: timestampUs,
             duration: Math.round(1e6 / settings.framerate)
         })
@@ -147,33 +156,18 @@ export class Files {
             console.error('Unable to retrieve MP4 buffer from Mediabunny target')
         }
 
-        this.videoEncoder = null
-        this.output = null
-        this.videoSource = null
-        this.mp4Target = null
-        this.pendingVideoPacketPromise = Promise.resolve()
-        this.startTime = null
-        this.ready = false
+        this._resetMP4State()
     }
 
     async cancelMP4() {
-        this.recording = false
-
         try {
             this.videoEncoder?.close()
         } catch (error) {
             console.error('Error closing video encoder', error)
         }
 
-        this.videoEncoder = null
-        this.output = null
-        this.videoSource = null
-        this.mp4Target = null
-        this.pendingVideoPacketPromise = Promise.resolve()
-        this.startTime = null
-        this.ready = false
+        this._resetMP4State()
         this.currentFrame = 0
-        this.framesGenerated = 0
     }
 
     saveZip(settings) {
@@ -191,16 +185,7 @@ export class Files {
     cancelZIP() {
         if (this.zipWorker) {
             this.zipWorker.terminate()
-            this.zipWorker = new Worker('./js/lib/zipWorker.js')
-            this.zipWorker.onmessage = (msg) => {
-                if (msg.data.ready) {
-                    this.ready = true
-                } else if (msg.data.doneRecording) {
-                    this.createZip()
-                } else if (msg.data.done) {
-                    this.downloadFile(msg.data.url, 'zip')
-                }
-            }
+            this._initZipWorker()
         }
         this.currentFrame = 0
         this.ready = false

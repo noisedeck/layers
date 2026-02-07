@@ -146,14 +146,10 @@ export class ExportImageDialog {
             this.files.saveImage(this.canvas, settings.format, qualityValue)
 
             this.close()
-
-            if (needsResize) {
-                this.setResolution(this.originalResolution.width, this.originalResolution.height)
-            }
-
             this.onComplete(settings.format)
         } catch (err) {
             console.error('Export image failed:', err)
+        } finally {
             if (needsResize) {
                 this.setResolution(this.originalResolution.width, this.originalResolution.height)
             }
