@@ -225,9 +225,74 @@
     display: none;
 }
 
-#menuRight .menu-items {
-    left: auto;
-    right: 0;
+/* Toolbar */
+#toolbar {
+    position: fixed;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25em;
+    padding: 0.5em 0.35em;
+    font-family: Nunito, sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--color7);
+    border-radius: 0 var(--ui-corner-radius) var(--ui-corner-radius) 0;
+}
+
+#toolbarBackdrop {
+    position: absolute;
+    inset: 0;
+    --ui-titlebar-base: color-mix(in srgb,
+            var(--color2) 65%,
+            transparent 35%);
+    --ui-titlebar-gradient: linear-gradient(180deg,
+            var(--ui-gradient-top) 0%,
+            var(--ui-gradient-bottom) 100%);
+    background-color: var(--ui-titlebar-base);
+    background-image: var(--ui-titlebar-gradient);
+    backdrop-filter: var(--glass-blur-strength);
+    -webkit-backdrop-filter: var(--glass-blur-strength);
+    pointer-events: none;
+    z-index: -1;
+    border-radius: 0 var(--ui-corner-radius) var(--ui-corner-radius) 0;
+}
+
+.toolbar-separator {
+    width: 100%;
+    height: 1px;
+    background: color-mix(in srgb, var(--accent3) 18%, transparent 82%);
+    margin: 0.1em 0;
+}
+
+#toolbar .menu-icon-btn {
+    margin: 0;
+    padding: 0.3em;
+}
+
+#toolbar .menu {
+    height: auto;
+}
+
+#toolbar .menu-title {
+    top: auto;
+}
+
+#toolbar .menu-items {
+    top: 0;
+    left: 100%;
+    right: auto;
+    margin-left: 4px;
+}
+
+#toolbar .menu-title.menu-icon-btn {
+    position: static;
+    top: auto;
+    height: auto;
 }
 
 .menu-items div {
@@ -283,7 +348,7 @@
     pointer-events: none;
 }
 
-/* Menu bar icon buttons (right side) */
+/* Icon buttons */
 .menu-icon-btn {
     background: transparent;
     border: none;

@@ -1492,6 +1492,17 @@ class LayersApp {
             }
         })
 
+        document.getElementById('duplicateLayerMenuItem')?.addEventListener('click', () => {
+            this._duplicateActiveLayer()
+        })
+
+        document.getElementById('deleteLayerMenuItem')?.addEventListener('click', () => {
+            const selected = this._layerStack?.getSelectedLayer()
+            if (selected && this._layers.indexOf(selected) > 0) {
+                this._handleDeleteLayer(selected.id)
+            }
+        })
+
         document.getElementById('deselectAllLayersMenuItem')?.addEventListener('click', () => {
             this._deselectAllLayers()
         })
@@ -1551,6 +1562,20 @@ class LayersApp {
         if (!menuItem) return
 
         const selectedIds = this._layerStack?.selectedLayerIds || []
+
+        // Duplicate layer: enabled when exactly one layer selected
+        const dupItem = document.getElementById('duplicateLayerMenuItem')
+        if (dupItem) {
+            dupItem.classList.toggle('disabled', selectedIds.length !== 1)
+        }
+
+        // Delete layer: enabled when exactly one non-base layer selected
+        const delItem = document.getElementById('deleteLayerMenuItem')
+        if (delItem) {
+            const canDelete = selectedIds.length === 1 &&
+                this._layers.findIndex(l => l.id === selectedIds[0]) > 0
+            delItem.classList.toggle('disabled', !canDelete)
+        }
         const selectedLayers = selectedIds.map(id => this._layers.find(l => l.id === id)).filter(Boolean)
 
         if (selectedIds.length === 0) {
