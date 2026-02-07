@@ -2890,12 +2890,11 @@ class LayersApp {
         const bounds = getSelectionBounds(selectionPath)
         if (bounds.width <= 0 || bounds.height <= 0) return
 
-        // Crop each media layer
         for (const layer of this._layers) {
-            if (layer.sourceType === 'media') {
+            if (layer.sourceType === 'media' && layer.mediaType !== 'video') {
                 await this._cropMediaLayer(layer, bounds)
             } else {
-                // Effect layers: shift offsets
+                // Video and effect layers: shift offsets (video can't be rasterized)
                 layer.offsetX = (layer.offsetX || 0) - bounds.x
                 layer.offsetY = (layer.offsetY || 0) - bounds.y
             }
@@ -2903,11 +2902,7 @@ class LayersApp {
 
         // Stop renderer before resizing (resize invalidates WebGL state)
         this._renderer.stop()
-
-        // Resize canvas
         this._resizeCanvas(bounds.width, bounds.height)
-
-        // Clear selection
         this._selectionManager.clearSelection()
 
         // Recompile pipeline at new dimensions and restart
