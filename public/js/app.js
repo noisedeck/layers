@@ -301,7 +301,7 @@ class LayersApp {
             selectTopmostLayer: () => this._selectTopmostLayer(),
             isLayerBlocked: (layer) => {
                 if (layer?.mediaType === 'video') {
-                    toast.warning('Move tool not available for video layers')
+                    toast.warning('Move tool not available for video clip layers')
                     return true
                 }
                 return false

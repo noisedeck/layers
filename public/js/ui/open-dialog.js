@@ -138,7 +138,7 @@ class OpenDialog {
                         Back
                     </button>
                     <div class="form-field" style="margin-top: 16px;">
-                        <label for="open-file-input">Choose an image or video</label>
+                        <label for="open-file-input">Choose an image or video clip</label>
                         <input type="file" id="open-file-input" accept="image/*,video/*">
                     </div>
                 </div>

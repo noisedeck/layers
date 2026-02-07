@@ -88,7 +88,7 @@
                         <div id="saveJpgMenuItem">quick save as jpg</div>
                         <hr class="menu-seperator">
                         <div id="exportImageMenuItem">export image...</div>
-                        <div id="exportVideoMenuItem">export video...</div>
+                        <div id="exportVideoMenuItem">export video clip...</div>
                     </div>
                 </div>
 
@@ -255,7 +255,7 @@
     <dialog id="exportModal" aria-labelledby="exportModalTitle">
         <div class="export-modal-title">
             <span class="material-symbols-outlined" style="font-size: 18px;">movie</span>
-            <span id="exportModalTitle">Export Video</span>
+            <span id="exportModalTitle">Export Video Clip</span>
             <button class="export-modal-close" id="exportCancelBtn">&#10005;</button>
         </div>
         <div id="exportDialogView" class="export-modal-content">
@@ -314,7 +314,7 @@
                 <div>Est. size: <span id="exportEstimatedSize">~12 MB</span></div>
             </div>
             <div class="export-warning-row">
-                Video layers use best-effort frame seeking. Exported frames may vary slightly from live preview.
+                Video clip layers use best-effort frame seeking. Exported frames may vary slightly from live preview.
             </div>
             <div class="export-button-row">
                 <button class="export-btn export-btn--primary" id="exportBeginBtn">Begin Export</button>

@@ -107,7 +107,7 @@ class AddLayerDialog {
                         Back
                     </button>
                     <div class="form-field" style="margin-top: 16px;">
-                        <label for="add-media-input">Choose an image or video</label>
+                        <label for="add-media-input">Choose an image or video clip</label>
                         <input type="file" id="add-media-input" accept="image/*,video/*">
                     </div>
                 </div>
