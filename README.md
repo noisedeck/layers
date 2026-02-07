@@ -49,6 +49,14 @@ End-to-end tests use Playwright:
 npm test
 ```
 
+## Third-Party Libraries
+
+- [Noisemaker](https://github.com/noisedeck/noisemaker) — WebGL shader pipeline (MIT License)
+- [Mediabunny](https://github.com/Vanilagy/mediabunny) by Vanilagy — MP4 video encoding via WebCodecs (MPL-2.0 License)
+- [JSZip](http://stuartk.com/jszip) — ZIP file generation (MIT License or GPLv3)
+- Cormorant Upright, Nunito, Noto Sans Mono — typefaces (OFL-1.1)
+- Material Symbols Outlined — icon font by Google (Apache 2.0 License)
+
 ## License
 
 Layers is released under the [MIT License](LICENSE). Use of name in derivative products is subject to the [Trademark Policy](TRADEMARK.md).
