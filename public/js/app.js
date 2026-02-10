@@ -1338,10 +1338,6 @@ class LayersApp {
             if (this._layers.length === 0) return
             this._handleAddEffectLayer('filter/tetraColorArray')
         })
-        document.getElementById('cosinePaletteMenuItem')?.addEventListener('click', () => {
-            if (this._layers.length === 0) return
-            this._handleAddEffectLayer('filter/tetraCosine')
-        })
         document.getElementById('colorGradingMenuItem')?.addEventListener('click', () => {
             if (this._layers.length === 0) return
             this._handleAddEffectLayer('filter/grade')
