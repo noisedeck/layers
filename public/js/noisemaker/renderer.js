@@ -176,6 +176,7 @@ export class LayersRenderer {
             console.debug('[LayersRenderer] Built DSL:', dsl)
 
             await this._loadAndCompile(dsl)
+            this._normalizeColorUniforms()
 
             this._buildLayerStepMap()
             this._uploadMediaTextures()
@@ -201,6 +202,7 @@ export class LayersRenderer {
 
         try {
             await this._loadAndCompile(dsl)
+            this._normalizeColorUniforms()
             return { success: true }
         } catch (err) {
             console.error('[LayersRenderer] tryCompile failed:', err)
@@ -547,8 +549,8 @@ export class LayersRenderer {
         const posY = params.posY ?? 0.5
         const rotation = params.rotation ?? 0
         const color = params.color || '#ffffff'
-        const bgColor = params.bgColor || '#000000'
-        const bgOpacity = params.bgOpacity ?? 0
+        const bgColor = params.matteColor || params.bgColor || '#000000'
+        const bgOpacity = params.matteOpacity ?? params.bgOpacity ?? 0
         const justify = params.justify || 'center'
 
         ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -599,6 +601,26 @@ export class LayersRenderer {
         return result
             ? [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255]
             : [1, 1, 1]
+    }
+
+    /**
+     * Normalize color uniforms after compilation.
+     * The DSL parser stores color defaults as hex strings (e.g. "#000000"),
+     * but the WebGL uniform setter expects arrays. Convert in-place.
+     * @private
+     */
+    _normalizeColorUniforms() {
+        const passes = this._renderer.pipeline?.graph?.passes
+        if (!passes) return
+
+        for (const pass of passes) {
+            if (!pass.uniforms) continue
+            for (const [name, value] of Object.entries(pass.uniforms)) {
+                if (typeof value === 'string' && /^#[a-f0-9]{6}$/i.test(value)) {
+                    pass.uniforms[name] = this._hexToRgb(value)
+                }
+            }
+        }
     }
 
     updateTextParams(layerId, params) {
@@ -731,8 +753,33 @@ export class LayersRenderer {
 
         const effectName = layer.effectId.split('/').pop()
         const params = layer.effectParams || {}
+
+        // Look up effect definition to determine param types
+        const effectDef = getAllEffects().get(layer.effectId) || null
+        const globals = effectDef?.globals || {}
+        // Build alias → canonical name map
+        const aliases = effectDef?.paramAliases || {}
+
         const paramPairs = Object.entries(params)
             .map(([key, value]) => {
+                // Resolve canonical name to check type
+                const canonicalKey = aliases[key] || key
+                const spec = globals[canonicalKey] || globals[key]
+                const isColor = spec?.type === 'color'
+
+                if (isColor) {
+                    // Emit as unquoted DSL color literal (#rrggbb)
+                    if (Array.isArray(value)) {
+                        const hex = '#' + value.slice(0, 3).map(c =>
+                            Math.round((c || 0) * 255).toString(16).padStart(2, '0')
+                        ).join('')
+                        return `${key}: ${hex}`
+                    }
+                    if (typeof value === 'string' && value.startsWith('#')) {
+                        return `${key}: ${value}` // Already a hex string, emit unquoted
+                    }
+                }
+
                 if (typeof value === 'string') return `${key}: "${value}"`
                 if (Array.isArray(value)) return `${key}: vec${value.length}(${value.join(', ')})`
                 return `${key}: ${value}`
