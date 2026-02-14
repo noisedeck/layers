@@ -38,4 +38,4 @@ jobs:
         run: |
           rsync -avz --delete \
             public/ \
-            deploy@${{ secrets.SCAFFOLD_SERVER_IP }}:~/sites/layers.noisedeck.app/content/
+            deploy@${{ secrets.SCAFFOLD_SERVER_IP }}:~/sites/layers.noisefactor.io/content/
