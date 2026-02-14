@@ -29,17 +29,16 @@ jobs:
           DEPLOY_DATE=$(date -u +"%s")
           printf '{\n  "git_hash": "%s",\n  "date": %s\n}\n' "$GIT_HASH" "$DEPLOY_DATE" > "$GITHUB_WORKSPACE/public/deployment-meta.json"
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Sync to S3
+      - name: Set up SSH
         run: |
-          aws s3 sync public/ s3://${{ secrets.AWS_S3_BUCKET }} --delete
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.SCAFFOLD_SSH_KEY }}" | base64 -d > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan ${{ secrets.SCAFFOLD_SERVER_IP }} >> ~/.ssh/known_hosts 2>/dev/null
 
-      - name: Invalidate CloudFront
+      - name: Deploy to scaffold
         run: |
-          aws cloudfront create-invalidation --distribution-id ${{ secrets.DISTRIBUTION }} --paths "/*"
+          rsync -avz --delete \
+            public/ \
+            deploy@${{ secrets.SCAFFOLD_SERVER_IP }}:~/sites/layers.noisedeck.app/content/
