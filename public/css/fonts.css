@@ -9,7 +9,7 @@
     font-weight: 400;
     font-style: normal;
     font-display: swap;
-    src: url('https://fonts.noisedeck.app/fonts/noto-sans-mono/NotoSansMono[wdth,wght].woff2') format('woff2'),
+    src: url('https://fonts.noisefactor.io/fonts/noto-sans-mono/NotoSansMono[wdth,wght].woff2') format('woff2'),
         url('/fonts/NotoSansMono.woff2') format('woff2');
 }
 
@@ -20,7 +20,7 @@
     font-style: normal;
     font-display: swap;
     src: url('/fonts/Nunito.woff2') format('woff2'),
-        url('https://fonts.noisedeck.app/fonts/nunito/Nunito[wght].woff2') format('woff2');
+        url('https://fonts.noisefactor.io/fonts/nunito/Nunito[wght].woff2') format('woff2');
 }
 
 /* Material Symbols Outlined - Icon font */

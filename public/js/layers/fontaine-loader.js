@@ -2,13 +2,13 @@
  * Fontaine Font Loader Module
  *
  * Integrates the fontaine font bundle (100 curated web fonts) with Noisedeck.
- * Downloads fonts from https://fonts.noisedeck.app/bundle with progress tracking
+ * Downloads fonts from https://fonts.noisefactor.io/bundle with progress tracking
  * and caches them in IndexedDB for offline use.
  *
  * @module ui/fontaineLoader
  */
 
-const FONTAINE_BUNDLE_URL = 'https://fonts.noisedeck.app/bundle'
+const FONTAINE_BUNDLE_URL = 'https://fonts.noisefactor.io/bundle'
 const FONTAINE_BUNDLE_SIZE_MB = 140
 const DB_NAME = 'fontaine'
 const DB_VERSION = 1
