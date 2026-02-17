@@ -17,9 +17,6 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Run pull-noisemaker
-        run: python3 pull-noisemaker
-
       - name: Generate deployment metadata
         run: |
           GIT_HASH=$(git rev-parse HEAD)

@@ -21,10 +21,10 @@ export class LayersRenderer {
             canvasContainer: canvas?.parentElement || null,
             width: this.width,
             height: this.height,
-            basePath: '/js/noisemaker/vendor',
+            basePath: 'https://shaders.noisedeck.app/0.8.0',
             preferWebGPU: false,
             useBundles: true,
-            bundlePath: '/js/noisemaker/vendor/effects',
+            bundlePath: 'https://shaders.noisedeck.app/0.8.0/effects',
             alpha: true,
             onFPS: options.onFPS,
             onError: options.onError

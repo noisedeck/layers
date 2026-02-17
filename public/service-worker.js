@@ -3,11 +3,9 @@
  * Network-first strategy - always serves fresh code
  */
 
-const CACHE_NAME = 'layers-v7'
+const CACHE_NAME = 'layers-v8'
 
 const CACHE_ASSETS = [
-    '/fonts/Nunito.woff2',
-    '/fonts/CormorantUpright-SemiBold.woff2',
     '/img/icon-192.svg',
     '/img/icon-512.svg'
 ]
