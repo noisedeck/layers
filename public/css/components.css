@@ -510,6 +510,22 @@ dialog[open] {
     color: var(--color-accent-hover);
 }
 
+.about-modal-ecosystem {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: 0.75rem;
+    line-height: 1.4;
+}
+
+.about-modal-ecosystem a {
+    color: var(--color-accent);
+    text-decoration: none;
+}
+
+.about-modal-ecosystem a:hover {
+    color: var(--color-accent-hover);
+}
+
 @media (max-width: 720px) {
     .about-modal {
         width: min(540px, 94vw);
