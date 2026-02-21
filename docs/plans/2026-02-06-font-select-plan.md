@@ -18,7 +18,7 @@
 **Step 1: Create the fontaine-loader module**
 
 Port from `/Users/aayars/source/noisedeck/app/js/ui/components/fontaineLoader.js` with these adaptations:
-- Keep the same `FONTAINE_BUNDLE_URL` (`https://fonts.noisedeck.app/bundle`)
+- Keep the same `FONTAINE_BUNDLE_URL` (`https://fonts.noisefactor.io/bundle`)
 - Keep all IndexedDB logic (meta/fonts/files stores)
 - Keep `install()`, `loadFromCache()`, `isInstalled()`, `clearCache()`
 - Keep `registerFont()` and `registerFontByName()` (for on-demand @font-face registration)
