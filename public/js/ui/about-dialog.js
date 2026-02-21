@@ -89,7 +89,7 @@ class AboutDialog {
      */
     async _fetchNoisemakerVersion() {
         try {
-            const response = await fetch('https://shaders.noisedeck.app/0.8.0/noisemaker-shaders-core.esm.js', { cache: 'no-store' })
+            const response = await fetch('https://shaders.noisedeck.app/0.8.5/noisemaker-shaders-core.esm.js', { cache: 'no-store' })
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}`)
             }

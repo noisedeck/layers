@@ -7,7 +7,7 @@
  */
 
 const BUNDLE_VERSION = '1.0.0'
-const SHADER_CDN = 'https://shaders.noisedeck.app/0.8.0'
+const SHADER_CDN = 'https://shaders.noisedeck.app/0.8.5'
 
 const isLocalDev = typeof window !== 'undefined' && (
     window.location.hostname === 'localhost' ||
