@@ -8,6 +8,8 @@ import { getFontaineLoader } from '../layers/fontaine-loader.js'
  * @module ui/about-dialog
  */
 
+const APP_VERSION = '0.8.5-SNAPSHOT'
+
 /**
  * AboutDialog class
  */
@@ -217,6 +219,7 @@ class AboutDialog {
                 <div class="about-modal-details" tabindex="-1">
                     <div class="about-modal-title">Layers</div>
                     <div class="about-modal-subtitle">Development Preview</div>
+                    <div class="about-modal-version">version ${APP_VERSION.replace(/-.*$/, '')}</div>
                     <div class="about-modal-copyright">&copy; 2026 <a href="https://noisefactor.io/" class="about-modal-link" target="_blank" rel="noopener">Noise Factor LLC.</a></div>
                     <div class="about-modal-build">build: local / deployed: n/a</div>
                     <div class="about-modal-build noisemaker-version"></div>
