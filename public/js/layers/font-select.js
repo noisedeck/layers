@@ -19,7 +19,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
         font-select {
             display: block;
             position: relative;
-            font-family: Nunito, system-ui, sans-serif;
+            font-family: Nunito, 'Nunito Block';
             width: 100%;
             box-sizing: border-box;
         }
@@ -41,7 +41,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             border: none;
             border-radius: var(--radius-sm, 4px);
             color: var(--color-text-primary, #ccc);
-            font-family: Nunito, sans-serif;
+            font-family: Nunito, 'Nunito Block';
             font-size: 0.6875rem;
             font-weight: 560;
             cursor: pointer;
@@ -266,7 +266,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             opacity: 0.65;
             cursor: pointer;
             transition: opacity 0.15s ease, background 0.15s ease;
-            font-family: Nunito, system-ui, sans-serif;
+            font-family: Nunito, 'Nunito Block';
         }
 
         font-select .option-tag:hover {
@@ -319,7 +319,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             border: 1px solid color-mix(in srgb, var(--color-accent, #6b8aff) 40%, transparent 60%);
             border-radius: var(--radius-sm, 4px);
             color: var(--color-text-primary, #ccc);
-            font-family: Nunito, system-ui, sans-serif;
+            font-family: Nunito, 'Nunito Block';
             font-size: 0.75rem;
             font-weight: 600;
             cursor: pointer;
