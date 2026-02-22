@@ -66,9 +66,9 @@
 
 /* Font family definitions */
 :root {
-    --font-body: 'Nunito', 'Nunito Block', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --font-mono: 'Noto Sans Mono', 'Noto Sans Mono Block', 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
-    --font-accent: 'Cormorant Upright', 'Cormorant Upright Block', 'Times New Roman', serif;
+    --font-body: 'Nunito', 'Nunito Block';
+    --font-mono: 'Noto Sans Mono', 'Noto Sans Mono Block';
+    --font-accent: 'Cormorant Upright', 'Cormorant Upright Block';
 }
 
 /* Material Symbols base style */
