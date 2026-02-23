@@ -9,7 +9,7 @@
     src: url('https://fonts.noisefactor.io/fonts/nunito/Nunito-Block.woff2') format('woff2');
     font-weight: 100 900;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 @font-face {
@@ -17,7 +17,7 @@
     src: url('https://fonts.noisefactor.io/fonts/noto-sans-mono/NotoSansMono-Block.woff2') format('woff2');
     font-weight: 100 900;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 @font-face {
@@ -25,7 +25,7 @@
     src: url('https://fonts.noisefactor.io/fonts/cormorant-upright/CormorantUpright-Block.woff2') format('woff2');
     font-weight: 600;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 /* Noto Sans Mono - Code editor font */
@@ -34,7 +34,7 @@
     font-weight: 400;
     font-style: normal;
     font-display: swap;
-    src: url('https://fonts.noisefactor.io/fonts/noto-sans-mono/NotoSansMono[wdth,wght].woff2') format('woff2');
+    src: url('https://fonts.noisefactor.io/fonts/noto-sans-mono/NotoSansMono%5Bwdth%2Cwght%5D.woff2') format('woff2');
 }
 
 /* Nunito - Body text font */
@@ -43,7 +43,7 @@
     font-weight: 500;
     font-style: normal;
     font-display: swap;
-    src: url('https://fonts.noisefactor.io/fonts/nunito/Nunito[wght].woff2') format('woff2');
+    src: url('https://fonts.noisefactor.io/fonts/nunito/Nunito%5Bwght%5D.woff2') format('woff2');
 }
 
 /* Material Symbols Outlined - Icon font */
@@ -89,4 +89,8 @@
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
     font-feature-settings: 'liga';
+    font-variation-settings: 'FILL' 0;
+    width: 1em;
+    overflow: hidden;
+    text-align: center;
 }
