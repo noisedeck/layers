@@ -22,3 +22,8 @@
 #selectionOverlay.clone-tool {
     cursor: copy;
 }
+
+/* Transform tool cursor */
+#selectionOverlay.transform-tool {
+    cursor: default;
+}
