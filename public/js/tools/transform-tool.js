@@ -125,7 +125,8 @@ class TransformTool {
 
     /**
      * Returns the handle at the given canvas coords, or Handle.NONE.
-     * Tests rotation zones first (outside corners), then scale handles, then interior (move).
+     * Outside bounding box: rotation zones first, then edge handles.
+     * Inside bounding box: scale handles first, then move.
      */
     _hitTest(coords) {
         const layer = this._getActiveLayer()
@@ -146,7 +147,25 @@ class TransformTool {
         const hs = HANDLE_SIZE
         const rm = ROTATE_MARGIN
 
-        // Check scale handles first (corners take priority over rotation zones)
+        const outsideBox = lx < 0 || lx > width || ly < 0 || ly > height
+
+        if (outsideBox) {
+            // Outside bounding box: rotation zones take priority near corners
+            if (lx >= -rm - hs && lx <= hs && ly >= -rm - hs && ly <= hs) return Handle.ROTATE_TOP_LEFT
+            if (lx >= width - hs && lx <= width + rm + hs && ly >= -rm - hs && ly <= hs) return Handle.ROTATE_TOP_RIGHT
+            if (lx >= -rm - hs && lx <= hs && ly >= height - hs && ly <= height + rm + hs) return Handle.ROTATE_BOTTOM_LEFT
+            if (lx >= width - hs && lx <= width + rm + hs && ly >= height - hs && ly <= height + rm + hs) return Handle.ROTATE_BOTTOM_RIGHT
+
+            // Edge midpoint handles extend slightly outside the box
+            if (this._inHandle(lx, ly, width / 2, 0)) return Handle.TOP
+            if (this._inHandle(lx, ly, width / 2, height)) return Handle.BOTTOM
+            if (this._inHandle(lx, ly, 0, height / 2)) return Handle.LEFT
+            if (this._inHandle(lx, ly, width, height / 2)) return Handle.RIGHT
+
+            return Handle.NONE
+        }
+
+        // Inside bounding box: scale handles take priority
         if (this._inHandle(lx, ly, 0, 0)) return Handle.TOP_LEFT
         if (this._inHandle(lx, ly, width, 0)) return Handle.TOP_RIGHT
         if (this._inHandle(lx, ly, 0, height)) return Handle.BOTTOM_LEFT
@@ -156,16 +175,7 @@ class TransformTool {
         if (this._inHandle(lx, ly, 0, height / 2)) return Handle.LEFT
         if (this._inHandle(lx, ly, width, height / 2)) return Handle.RIGHT
 
-        // Check rotation zones (outside corners, within ROTATE_MARGIN)
-        if (lx >= -rm - hs && lx <= hs && ly >= -rm - hs && ly <= hs) return Handle.ROTATE_TOP_LEFT
-        if (lx >= width - hs && lx <= width + rm + hs && ly >= -rm - hs && ly <= hs) return Handle.ROTATE_TOP_RIGHT
-        if (lx >= -rm - hs && lx <= hs && ly >= height - hs && ly <= height + rm + hs) return Handle.ROTATE_BOTTOM_LEFT
-        if (lx >= width - hs && lx <= width + rm + hs && ly >= height - hs && ly <= height + rm + hs) return Handle.ROTATE_BOTTOM_RIGHT
-
-        // Check interior (move)
-        if (lx >= 0 && lx <= width && ly >= 0 && ly <= height) return Handle.MOVE
-
-        return Handle.NONE
+        return Handle.MOVE
     }
 
     _inHandle(lx, ly, hx, hy) {

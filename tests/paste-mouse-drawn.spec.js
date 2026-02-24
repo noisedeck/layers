@@ -22,55 +22,6 @@ async function copyColorSquareToClipboard(page, color) {
     }, color)
 }
 
-function getPastedPixelBounds() {
-    const layers = window.layersApp._layers
-    const pastedLayer = layers[layers.length - 1]
-    const mediaFile = pastedLayer.mediaFile
-
-    return new Promise((resolve) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-            const img = new Image()
-            img.onload = () => {
-                const testCanvas = document.createElement('canvas')
-                testCanvas.width = img.width
-                testCanvas.height = img.height
-                const ctx = testCanvas.getContext('2d')
-                ctx.drawImage(img, 0, 0)
-                const imageData = ctx.getImageData(0, 0, testCanvas.width, testCanvas.height)
-
-                let minX = testCanvas.width, maxX = 0
-                let minY = testCanvas.height, maxY = 0
-
-                for (let y = 0; y < testCanvas.height; y++) {
-                    for (let x = 0; x < testCanvas.width; x++) {
-                        const idx = (y * testCanvas.width + x) * 4
-                        if (imageData.data[idx + 3] > 0) {
-                            minX = Math.min(minX, x)
-                            maxX = Math.max(maxX, x)
-                            minY = Math.min(minY, y)
-                            maxY = Math.max(maxY, y)
-                        }
-                    }
-                }
-
-                const w = maxX - minX + 1
-                const h = maxY - minY + 1
-
-                resolve({
-                    width: w,
-                    height: h,
-                    aspectRatio: w / h,
-                    x: minX,
-                    y: minY
-                })
-            }
-            img.src = reader.result
-        }
-        reader.readAsDataURL(mediaFile)
-    })
-}
-
 async function drawMouseSelection(page, overlayBox, startOffset, endOffset) {
     await page.mouse.move(overlayBox.x + startOffset.x, overlayBox.y + startOffset.y)
     await page.mouse.down()
@@ -106,18 +57,6 @@ test.describe('Paste with real mouse-drawn selection', () => {
         const overlayBox = await overlay.boundingBox()
         if (!overlayBox) throw new Error('Could not get overlay bounding box')
 
-        const overlayInfo = await page.evaluate(() => {
-            const el = document.getElementById('selectionOverlay')
-            const rect = el.getBoundingClientRect()
-            return {
-                internal: { width: el.width, height: el.height },
-                displayed: { width: rect.width, height: rect.height },
-                scaleX: el.width / rect.width,
-                scaleY: el.height / rect.height
-            }
-        })
-        console.log('Overlay info:', overlayInfo)
-
         await drawMouseSelection(page, overlayBox, { x: 100, y: 100 }, { x: 250, y: 250 })
 
         const selectionInfo = await page.evaluate(getSelectionInfo)
@@ -131,12 +70,41 @@ test.describe('Paste with real mouse-drawn selection', () => {
         await page.evaluate(async () => { await window.layersApp._handlePaste() })
         await page.waitForTimeout(1000)
 
-        const pastedInfo = await page.evaluate(getPastedPixelBounds)
+        // Verify pasted layer is selection-sized with offset
+        const pastedInfo = await page.evaluate(() => {
+            const layers = window.layersApp._layers
+            const pastedLayer = layers[layers.length - 1]
+            const mediaFile = pastedLayer.mediaFile
+
+            return new Promise((resolve) => {
+                const reader = new FileReader()
+                reader.onload = () => {
+                    const img = new Image()
+                    img.onload = () => {
+                        resolve({
+                            width: img.width,
+                            height: img.height,
+                            aspectRatio: img.width / img.height,
+                            offsetX: pastedLayer.offsetX,
+                            offsetY: pastedLayer.offsetY
+                        })
+                    }
+                    img.src = reader.result
+                }
+                reader.readAsDataURL(mediaFile)
+            })
+        })
         console.log('Pasted image:', pastedInfo)
 
+        // Image dimensions should match selection dimensions
         expect(Math.abs(pastedInfo.width - selectionInfo.width)).toBeLessThan(3)
         expect(Math.abs(pastedInfo.height - selectionInfo.height)).toBeLessThan(3)
         expect(Math.abs(pastedInfo.aspectRatio - selectionInfo.aspectRatio)).toBeLessThan(0.1)
+        // Offset is center-relative: (selX + selW/2) - canvasW/2
+        const expectedOffsetX = Math.round(selectionInfo.x + selectionInfo.width / 2 - 1024 / 2)
+        const expectedOffsetY = Math.round(selectionInfo.y + selectionInfo.height / 2 - 1024 / 2)
+        expect(Math.abs(pastedInfo.offsetX - expectedOffsetX)).toBeLessThan(3)
+        expect(Math.abs(pastedInfo.offsetY - expectedOffsetY)).toBeLessThan(3)
     })
 
     test('non-square mouse selection pastes correct aspect ratio', async ({ page, context }) => {
@@ -164,7 +132,29 @@ test.describe('Paste with real mouse-drawn selection', () => {
         await page.evaluate(async () => { await window.layersApp._handlePaste() })
         await page.waitForTimeout(1000)
 
-        const pastedInfo = await page.evaluate(getPastedPixelBounds)
+        const pastedInfo = await page.evaluate(() => {
+            const layers = window.layersApp._layers
+            const pastedLayer = layers[layers.length - 1]
+            const mediaFile = pastedLayer.mediaFile
+
+            return new Promise((resolve) => {
+                const reader = new FileReader()
+                reader.onload = () => {
+                    const img = new Image()
+                    img.onload = () => {
+                        resolve({
+                            width: img.width,
+                            height: img.height,
+                            aspectRatio: img.width / img.height,
+                            offsetX: pastedLayer.offsetX,
+                            offsetY: pastedLayer.offsetY
+                        })
+                    }
+                    img.src = reader.result
+                }
+                reader.readAsDataURL(mediaFile)
+            })
+        })
         console.log('Pasted wide image:', pastedInfo)
 
         expect(Math.abs(pastedInfo.aspectRatio - selectionInfo.aspectRatio)).toBeLessThan(0.2)

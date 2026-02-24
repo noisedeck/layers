@@ -2151,13 +2151,14 @@ class LayersApp {
         const offsetX = layer.offsetX || 0
         const offsetY = layer.offsetY || 0
 
-        return {
-            x: offsetX,
-            y: offsetY,
-            width: sourceWidth * Math.abs(scaleX),
-            height: sourceHeight * Math.abs(scaleY),
-            rotation
-        }
+        const w = sourceWidth * Math.abs(scaleX)
+        const h = sourceHeight * Math.abs(scaleY)
+
+        // Offset is center-relative: (0,0) = centered on canvas
+        const x = this._canvas.width / 2 + offsetX - w / 2
+        const y = this._canvas.height / 2 + offsetY - h / 2
+
+        return { x, y, width: w, height: h, rotation }
     }
 
     /**
@@ -2753,37 +2754,54 @@ class LayersApp {
 
         const canvasWidth = this._canvas.width
         const canvasHeight = this._canvas.height
-        const offscreen = new OffscreenCanvas(canvasWidth, canvasHeight)
-        const ctx = offscreen.getContext('2d')
-        ctx.clearRect(0, 0, canvasWidth, canvasHeight)
+        let file, offsetX = 0, offsetY = 0
 
-        // If there's an active selection, scale and position image to fit within it
+        // If there's an active selection, scale image to fit selection bounds
         if (this._selectionManager?.hasSelection()) {
             const bounds = getSelectionBounds(this._selectionManager.selectionPath)
             if (bounds.width > 0 && bounds.height > 0) {
-                // Draw scaled to fit selection bounds
-                ctx.drawImage(img, bounds.x, bounds.y, bounds.width, bounds.height)
-                // Clear selection after paste
+                const offscreen = new OffscreenCanvas(bounds.width, bounds.height)
+                const ctx = offscreen.getContext('2d')
+                ctx.drawImage(img, 0, 0, bounds.width, bounds.height)
+                const scaledBlob = await offscreen.convertToBlob({ type: 'image/png' })
+                file = new File([scaledBlob], 'pasted-image.png', { type: 'image/png' })
+                // Offset is center-relative: image center minus canvas center
+                offsetX = Math.round(bounds.x + bounds.width / 2 - canvasWidth / 2)
+                offsetY = Math.round(bounds.y + bounds.height / 2 - canvasHeight / 2)
                 this._selectionManager.clearSelection()
             }
-        } else {
-            // No selection: use copy origin or center
-            let x, y
-            if (this._copyOrigin) {
-                x = this._copyOrigin.x
-                y = this._copyOrigin.y
-            } else {
-                x = Math.round((canvasWidth - img.width) / 2)
-                y = Math.round((canvasHeight - img.height) / 2)
-            }
-            ctx.drawImage(img, x, y)
         }
 
-        // Convert to file and add as layer
-        const positionedBlob = await offscreen.convertToBlob({ type: 'image/png' })
-        const file = new File([positionedBlob], 'pasted-image.png', { type: 'image/png' })
+        if (!file) {
+            // No selection: use clipboard image directly, position via offset
+            file = new File([blob], 'pasted-image.png', { type: 'image/png' })
+            if (this._copyOrigin) {
+                // Offset is center-relative: image center minus canvas center
+                offsetX = Math.round(this._copyOrigin.x + img.width / 2 - canvasWidth / 2)
+                offsetY = Math.round(this._copyOrigin.y + img.height / 2 - canvasHeight / 2)
+            }
+            // else offsetX=0, offsetY=0 (centered)
+        }
 
-        await this._handleAddMediaLayer(file, 'image')
+        // Create properly-sized layer with offset positioning
+        this._finalizePendingUndo()
+        const layer = createMediaLayer(file, 'image')
+        layer.offsetX = offsetX
+        layer.offsetY = offsetY
+        this._layers.push(layer)
+
+        await this._renderer.loadMedia(layer.id, file, 'image')
+
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = layer.id
+        }
+
+        toast.success(`Added layer: ${layer.name}`)
     }
 
     /**

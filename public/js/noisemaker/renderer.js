@@ -320,10 +320,10 @@ export class LayersRenderer {
     }
 
     /**
-     * Update layer transform using CPU-side offscreen canvas rendering.
-     * For identity transforms, falls back to updateLayerOffset with original texture.
-     * For non-identity transforms, pre-transforms the source image via OffscreenCanvas
-     * (bicubic interpolation) and uploads the result as the layer texture.
+     * Update layer transform.
+     * Scale and flip are applied CPU-side via OffscreenCanvas.
+     * Rotation uses the shader's built-in rotation uniform to avoid
+     * bounding-box inflation that would make the image appear scaled.
      * @param {string} layerId
      * @param {{scaleX: number, scaleY: number, rotation: number, flipH: boolean, flipV: boolean}} transform
      * @param {number} offsetX
@@ -337,16 +337,19 @@ export class LayersRenderer {
         if (!media) return
 
         const { scaleX = 1, scaleY = 1, rotation = 0, flipH = false, flipV = false } = transform
-        const isIdentity = scaleX === 1 && scaleY === 1 && rotation === 0 && !flipH && !flipV
+        const needsCpuTransform = scaleX !== 1 || scaleY !== 1 || flipH || flipV
 
-        if (isIdentity) {
-            // Restore original texture and use simple offset
-            const textureId = `imageTex_step_${stepIndex}`
+        const textureId = `imageTex_step_${stepIndex}`
+        const srcW = media.width
+        const srcH = media.height
+
+        if (!needsCpuTransform && rotation === 0) {
+            // Full identity: restore original texture
             try {
                 this._renderer.updateTextureFromSource?.(textureId, media.element, { flipY: false })
-                if (media.width > 0 && media.height > 0) {
+                if (srcW > 0 && srcH > 0) {
                     this._renderer.applyStepParameterValues?.({
-                        [`step_${stepIndex}`]: { imageSize: [media.width, media.height] }
+                        [`step_${stepIndex}`]: { imageSize: [srcW, srcH], rotation: 0 }
                     })
                 }
             } catch (err) {
@@ -356,43 +359,44 @@ export class LayersRenderer {
             return
         }
 
-        // Compute bounding box for rotated+scaled image
-        const srcW = media.width
-        const srcH = media.height
-        const rad = rotation * Math.PI / 180
-        const cos = Math.abs(Math.cos(rad))
-        const sin = Math.abs(Math.sin(rad))
-        const scaledW = srcW * Math.abs(scaleX)
-        const scaledH = srcH * Math.abs(scaleY)
-        const boundW = Math.ceil(scaledW * cos + scaledH * sin)
-        const boundH = Math.ceil(scaledW * sin + scaledH * cos)
+        if (needsCpuTransform) {
+            // CPU-side scale and flip (no rotation — shader handles that)
+            const destW = Math.ceil(srcW * Math.abs(scaleX))
+            const destH = Math.ceil(srcH * Math.abs(scaleY))
 
-        // Reuse or create OffscreenCanvas
-        if (!this._transformCanvas || this._transformCanvas.width !== boundW || this._transformCanvas.height !== boundH) {
-            this._transformCanvas = new OffscreenCanvas(boundW, boundH)
-        }
-        const canvas = this._transformCanvas
-        canvas.width = boundW
-        canvas.height = boundH
-        const ctx = canvas.getContext('2d')
+            if (!this._transformCanvas || this._transformCanvas.width !== destW || this._transformCanvas.height !== destH) {
+                this._transformCanvas = new OffscreenCanvas(destW, destH)
+            }
+            const canvas = this._transformCanvas
+            canvas.width = destW
+            canvas.height = destH
+            const ctx = canvas.getContext('2d')
 
-        ctx.clearRect(0, 0, boundW, boundH)
-        ctx.imageSmoothingEnabled = true
-        ctx.imageSmoothingQuality = 'high'
-        ctx.translate(boundW / 2, boundH / 2)
-        ctx.rotate(rad)
-        ctx.scale(flipH ? -scaleX : scaleX, flipV ? -scaleY : scaleY)
-        ctx.drawImage(media.element, -srcW / 2, -srcH / 2, srcW, srcH)
+            ctx.clearRect(0, 0, destW, destH)
+            ctx.imageSmoothingEnabled = true
+            ctx.imageSmoothingQuality = 'high'
+            ctx.translate(destW / 2, destH / 2)
+            ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1)
+            ctx.drawImage(media.element, -destW / 2, -destH / 2, destW, destH)
 
-        // Upload transformed canvas as texture
-        const textureId = `imageTex_step_${stepIndex}`
-        try {
-            this._renderer.updateTextureFromSource?.(textureId, canvas, { flipY: false })
-            this._renderer.applyStepParameterValues?.({
-                [`step_${stepIndex}`]: { imageSize: [boundW, boundH] }
-            })
-        } catch (err) {
-            console.warn(`[LayersRenderer] Failed to upload transformed texture for layer ${layerId}:`, err)
+            try {
+                this._renderer.updateTextureFromSource?.(textureId, canvas, { flipY: false })
+                this._renderer.applyStepParameterValues?.({
+                    [`step_${stepIndex}`]: { imageSize: [destW, destH], rotation }
+                })
+            } catch (err) {
+                console.warn(`[LayersRenderer] Failed to upload transformed texture for layer ${layerId}:`, err)
+            }
+        } else {
+            // Rotation only — use original texture, shader handles rotation
+            try {
+                this._renderer.updateTextureFromSource?.(textureId, media.element, { flipY: false })
+                this._renderer.applyStepParameterValues?.({
+                    [`step_${stepIndex}`]: { imageSize: [srcW, srcH], rotation }
+                })
+            } catch (err) {
+                console.warn(`[LayersRenderer] Failed to restore texture for layer ${layerId}:`, err)
+            }
         }
 
         this.updateLayerOffset(layerId, offsetX, offsetY)

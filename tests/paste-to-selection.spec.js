@@ -64,7 +64,7 @@ test.describe('Paste to selection', () => {
         })
         await page.waitForTimeout(1000)
 
-        // Verify pasted image is also square
+        // Verify pasted layer is selection-sized with correct offset
         const pastedInfo = await page.evaluate(() => {
             const layers = window.layersApp._layers
             const pastedLayer = layers[layers.length - 1]
@@ -75,38 +75,12 @@ test.describe('Paste to selection', () => {
                 reader.onload = () => {
                     const img = new Image()
                     img.onload = () => {
-                        const testCanvas = document.createElement('canvas')
-                        testCanvas.width = img.width
-                        testCanvas.height = img.height
-                        const ctx = testCanvas.getContext('2d')
-                        ctx.drawImage(img, 0, 0)
-
-                        const imageData = ctx.getImageData(0, 0, testCanvas.width, testCanvas.height)
-
-                        let minX = testCanvas.width, maxX = 0
-                        let minY = testCanvas.height, maxY = 0
-
-                        for (let y = 0; y < testCanvas.height; y++) {
-                            for (let x = 0; x < testCanvas.width; x++) {
-                                const idx = (y * testCanvas.width + x) * 4
-                                if (imageData.data[idx + 3] > 0) {
-                                    minX = Math.min(minX, x)
-                                    maxX = Math.max(maxX, x)
-                                    minY = Math.min(minY, y)
-                                    maxY = Math.max(maxY, y)
-                                }
-                            }
-                        }
-
-                        const pastedWidth = maxX - minX + 1
-                        const pastedHeight = maxY - minY + 1
-
                         resolve({
-                            width: pastedWidth,
-                            height: pastedHeight,
-                            isSquare: pastedWidth === pastedHeight,
-                            x: minX,
-                            y: minY
+                            imageWidth: img.width,
+                            imageHeight: img.height,
+                            isSquare: img.width === img.height,
+                            offsetX: pastedLayer.offsetX,
+                            offsetY: pastedLayer.offsetY
                         })
                     }
                     img.src = reader.result
@@ -117,12 +91,13 @@ test.describe('Paste to selection', () => {
 
         console.log('Pasted image info:', pastedInfo)
 
-        // CRITICAL: Pasted image must be square if selection was square
+        // Pasted layer should be selection-sized, not full canvas
         expect(pastedInfo.isSquare).toBe(true)
-        expect(pastedInfo.width).toBe(selectionSize)
-        expect(pastedInfo.height).toBe(selectionSize)
-        expect(pastedInfo.x).toBe(200)
-        expect(pastedInfo.y).toBe(200)
+        expect(pastedInfo.imageWidth).toBe(selectionSize)
+        expect(pastedInfo.imageHeight).toBe(selectionSize)
+        // Offset is center-relative: (200 + 150/2) - 1024/2 = -237
+        expect(pastedInfo.offsetX).toBe(Math.round(200 + selectionSize / 2 - 1024 / 2))
+        expect(pastedInfo.offsetY).toBe(Math.round(200 + selectionSize / 2 - 1024 / 2))
     })
 
     test('pasted image scales to fit marquee selection bounds', async ({ page, context }) => {
@@ -147,38 +122,15 @@ test.describe('Paste to selection', () => {
 
         await page.waitForTimeout(500)
 
-        // Debug: Check state before paste
-        const beforePaste = await page.evaluate(() => {
-            const app = window.layersApp
-            const sm = app._selectionManager
-            return {
-                hasSelectionManager: !!sm,
-                hasSelection: sm?.hasSelection() || false,
-                selectionPath: sm?.selectionPath || null,
-                layerCount: app._layers?.length || 0
-            }
-        })
-        console.log('Before paste:', beforePaste)
+        expect(await page.evaluate(() => window.layersApp._selectionManager?.hasSelection())).toBe(true)
 
-        expect(beforePaste.hasSelectionManager).toBe(true)
-        expect(beforePaste.hasSelection).toBe(true)
-        expect(beforePaste.selectionPath).toEqual({
-            type: 'rect',
-            x: selectionX,
-            y: selectionY,
-            width: selectionW,
-            height: selectionH
-        })
-
-        // Call paste and check what happens inside
+        // Paste
         const pasteResult = await page.evaluate(async () => {
             const app = window.layersApp
             const sm = app._selectionManager
 
-            // Manually trace what happens
             const result = {
                 beforePasteHasSelection: sm.hasSelection(),
-                beforePasteSelectionPath: sm.selectionPath ? { ...sm.selectionPath } : null
             }
 
             await app._handlePaste()
@@ -190,38 +142,25 @@ test.describe('Paste to selection', () => {
         })
 
         console.log('Paste result:', pasteResult)
-
-        // Selection should be cleared after paste
         expect(pasteResult.beforePasteHasSelection).toBe(true)
         expect(pasteResult.afterPasteHasSelection).toBe(false)
         expect(pasteResult.afterPasteLayerCount).toBe(2)
 
-        // Wait for render to complete
         await page.waitForTimeout(500)
 
-        // Verify the pasted image is at the correct position by reading pixels from the main canvas
+        // Verify the pasted layer is selection-sized with correct offset
         const pixelCheck = await page.evaluate(({ selX, selY, selW, selH }) => {
-            const canvas = document.querySelector('#canvas')
-            // Force a render by getting the WebGL context and reading pixels
-            // The pasted layer should have red pixels at the selection bounds
-
-            // We need to read from the 2D context of the rendered output
-            // Let's check the renderer's media textures to verify the image was created correctly
             const app = window.layersApp
             const layers = app._layers
             const pastedLayer = layers[layers.length - 1]
-
-            // Get the media file and read it
             const mediaFile = pastedLayer.mediaFile
             if (!mediaFile) return { error: 'No media file on pasted layer' }
 
-            // Create a FileReader to read the blob
             return new Promise((resolve) => {
                 const reader = new FileReader()
                 reader.onload = async () => {
                     const img = new Image()
                     img.onload = () => {
-                        // Draw to canvas and check pixel bounds
                         const testCanvas = document.createElement('canvas')
                         testCanvas.width = img.width
                         testCanvas.height = img.height
@@ -230,43 +169,20 @@ test.describe('Paste to selection', () => {
 
                         const imageData = ctx.getImageData(0, 0, testCanvas.width, testCanvas.height)
 
-                        // Find bounds of non-transparent pixels
-                        let minX = testCanvas.width, maxX = 0
-                        let minY = testCanvas.height, maxY = 0
-                        let hasPixels = false
                         let redPixelCount = 0
-
                         for (let y = 0; y < testCanvas.height; y++) {
                             for (let x = 0; x < testCanvas.width; x++) {
                                 const idx = (y * testCanvas.width + x) * 4
-                                const alpha = imageData.data[idx + 3]
-                                if (alpha > 0) {
-                                    hasPixels = true
-                                    minX = Math.min(minX, x)
-                                    maxX = Math.max(maxX, x)
-                                    minY = Math.min(minY, y)
-                                    maxY = Math.max(maxY, y)
-                                    // Check if it's a red pixel
-                                    if (imageData.data[idx] > 200 && imageData.data[idx + 1] < 50) {
-                                        redPixelCount++
-                                    }
+                                if (imageData.data[idx] > 200 && imageData.data[idx + 1] < 50) {
+                                    redPixelCount++
                                 }
                             }
                         }
 
-                        if (!hasPixels) {
-                            resolve({ error: 'No visible pixels in pasted image' })
-                            return
-                        }
-
                         resolve({
                             imageSize: { width: testCanvas.width, height: testCanvas.height },
-                            pixelBounds: {
-                                x: minX,
-                                y: minY,
-                                width: maxX - minX + 1,
-                                height: maxY - minY + 1
-                            },
+                            offsetX: pastedLayer.offsetX,
+                            offsetY: pastedLayer.offsetY,
                             expectedBounds: { x: selX, y: selY, width: selW, height: selH },
                             redPixelCount
                         })
@@ -282,11 +198,12 @@ test.describe('Paste to selection', () => {
         console.log('Pixel check:', pixelCheck)
 
         expect(pixelCheck.error).toBeUndefined()
-        // The pasted image should be positioned at selection bounds
-        expect(pixelCheck.pixelBounds.x).toBe(selectionX)
-        expect(pixelCheck.pixelBounds.y).toBe(selectionY)
-        expect(pixelCheck.pixelBounds.width).toBe(selectionW)
-        expect(pixelCheck.pixelBounds.height).toBe(selectionH)
+        // Layer file should be selection-sized
+        expect(pixelCheck.imageSize.width).toBe(selectionW)
+        expect(pixelCheck.imageSize.height).toBe(selectionH)
+        // Offset is center-relative: (selX + selW/2) - 1024/2
+        expect(pixelCheck.offsetX).toBe(Math.round(selectionX + selectionW / 2 - 1024 / 2))
+        expect(pixelCheck.offsetY).toBe(Math.round(selectionY + selectionH / 2 - 1024 / 2))
         expect(pixelCheck.redPixelCount).toBeGreaterThan(0)
     })
 
@@ -310,10 +227,19 @@ test.describe('Paste to selection', () => {
         })
         await page.waitForTimeout(1000)
 
-        // Check layer was added
-        const layerCount = await page.evaluate(() => {
-            return window.layersApp._layers.length
+        // Check layer was added with centered offset
+        const result = await page.evaluate(() => {
+            const app = window.layersApp
+            const layer = app._layers[app._layers.length - 1]
+            return {
+                layerCount: app._layers.length,
+                offsetX: layer.offsetX,
+                offsetY: layer.offsetY
+            }
         })
-        expect(layerCount).toBe(2)
+        expect(result.layerCount).toBe(2)
+        // Centered image: offset = 0 (center-relative)
+        expect(result.offsetX).toBe(0)
+        expect(result.offsetY).toBe(0)
     })
 })
