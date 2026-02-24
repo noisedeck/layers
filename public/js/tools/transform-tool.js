@@ -146,23 +146,21 @@ class TransformTool {
         const hs = HANDLE_SIZE
         const rm = ROTATE_MARGIN
 
+        // Check scale handles first (corners take priority over rotation zones)
+        if (this._inHandle(lx, ly, 0, 0)) return Handle.TOP_LEFT
+        if (this._inHandle(lx, ly, width, 0)) return Handle.TOP_RIGHT
+        if (this._inHandle(lx, ly, 0, height)) return Handle.BOTTOM_LEFT
+        if (this._inHandle(lx, ly, width, height)) return Handle.BOTTOM_RIGHT
+        if (this._inHandle(lx, ly, width / 2, 0)) return Handle.TOP
+        if (this._inHandle(lx, ly, width / 2, height)) return Handle.BOTTOM
+        if (this._inHandle(lx, ly, 0, height / 2)) return Handle.LEFT
+        if (this._inHandle(lx, ly, width, height / 2)) return Handle.RIGHT
+
         // Check rotation zones (outside corners, within ROTATE_MARGIN)
         if (lx >= -rm - hs && lx <= hs && ly >= -rm - hs && ly <= hs) return Handle.ROTATE_TOP_LEFT
         if (lx >= width - hs && lx <= width + rm + hs && ly >= -rm - hs && ly <= hs) return Handle.ROTATE_TOP_RIGHT
         if (lx >= -rm - hs && lx <= hs && ly >= height - hs && ly <= height + rm + hs) return Handle.ROTATE_BOTTOM_LEFT
         if (lx >= width - hs && lx <= width + rm + hs && ly >= height - hs && ly <= height + rm + hs) return Handle.ROTATE_BOTTOM_RIGHT
-
-        // Check corner scale handles
-        if (this._inHandle(lx, ly, 0, 0)) return Handle.TOP_LEFT
-        if (this._inHandle(lx, ly, width, 0)) return Handle.TOP_RIGHT
-        if (this._inHandle(lx, ly, 0, height)) return Handle.BOTTOM_LEFT
-        if (this._inHandle(lx, ly, width, height)) return Handle.BOTTOM_RIGHT
-
-        // Check edge scale handles
-        if (this._inHandle(lx, ly, width / 2, 0)) return Handle.TOP
-        if (this._inHandle(lx, ly, width / 2, height)) return Handle.BOTTOM
-        if (this._inHandle(lx, ly, 0, height / 2)) return Handle.LEFT
-        if (this._inHandle(lx, ly, width, height / 2)) return Handle.RIGHT
 
         // Check interior (move)
         if (lx >= 0 && lx <= width && ly >= 0 && ly <= height) return Handle.MOVE
