@@ -1586,6 +1586,7 @@ class LayersApp {
         this._layerStack.addEventListener('selection-change', () => {
             this._updateLayerMenu()
             this._updateToolButtons()
+            this._transformTool?.redraw()
             // Switch off move tool if video layer selected
             if (this._currentTool === 'move' && this._getActiveLayer()?.mediaType === 'video') {
                 this._setToolMode('selection')
