@@ -36,6 +36,11 @@ export function createLayer(options = {}) {
         locked: options.locked || false,
         offsetX: options.offsetX || 0,
         offsetY: options.offsetY || 0,
+        scaleX: options.scaleX ?? 1,
+        scaleY: options.scaleY ?? 1,
+        rotation: options.rotation ?? 0,
+        flipH: options.flipH || false,
+        flipV: options.flipV || false,
         sourceType: options.sourceType || 'media', // 'media' | 'effect'
 
         // Media-specific
