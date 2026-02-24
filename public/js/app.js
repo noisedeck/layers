@@ -25,6 +25,7 @@ import { registerServiceWorker } from './sw-register.js'
 import { SelectionManager } from './selection/selection-manager.js'
 import { copySelection, pasteFromClipboard, getSelectionBounds } from './selection/clipboard-ops.js'
 import { MoveTool } from './tools/move-tool.js'
+import { TransformTool } from './tools/transform-tool.js'
 import { UndoManager } from './utils/undo-manager.js'
 import { invertMask, expandMask, contractMask, borderMask, featherMask, smoothMask, colorRange } from './selection/selection-modify.js'
 import { selectionParamDialog } from './ui/selection-param-dialog.js'
@@ -325,6 +326,29 @@ class LayersApp {
             onComplete: () => this._onCloneComplete(),
             destructive: false,
             toolClass: 'clone-tool'
+        })
+
+        // Initialize transform tool
+        this._transformTool = new TransformTool({
+            overlay: this._selectionOverlay,
+            getActiveLayer: () => this._getActiveLayer(),
+            getLayerBounds: (layer) => this._getLayerBounds(layer),
+            applyTransform: (values) => this._applyLayerTransform(values),
+            commitTransform: () => this._commitTransform(),
+            cancelTransform: () => this._cancelTransform(),
+            showNoLayerDialog: () => this._showNoLayerSelectedDialog(),
+            selectTopmostLayer: () => this._selectTopmostLayer(),
+            isLayerBlocked: (layer) => {
+                if (layer?.mediaType === 'video') {
+                    toast.warning('Transform tool not available for video clip layers')
+                    return true
+                }
+                if (layer?.sourceType === 'effect') {
+                    toast.warning('Transform tool not available for effect layers')
+                    return true
+                }
+                return false
+            }
         })
 
         if (!this._canvas) {
@@ -1463,6 +1487,11 @@ class LayersApp {
             this._setToolMode('move')
         })
 
+        // Transform tool button
+        document.getElementById('transformToolBtn')?.addEventListener('click', () => {
+            this._setToolMode('transform')
+        })
+
         // Play/pause button
         document.getElementById('playPauseBtn')?.addEventListener('click', () => {
             this._togglePlayPause()
@@ -1843,6 +1872,11 @@ class LayersApp {
                 this._togglePlayPause()
             }
 
+            // T - transform tool
+            if (e.key === 't' || e.key === 'T') {
+                this._setToolMode('transform')
+            }
+
             // V - toggle visibility of selected layer
             if (e.key === 'v' || e.key === 'V') {
                 const selected = this._layerStack?.getSelectedLayer()
@@ -2082,6 +2116,80 @@ class LayersApp {
 
         this._markDirty()
         this._pushUndoStateDebounced()
+    }
+
+    /**
+     * Get bounding box for a layer in canvas coordinates
+     * @param {object} layer - Layer object
+     * @returns {{x: number, y: number, width: number, height: number, rotation: number}|null}
+     * @private
+     */
+    _getLayerBounds(layer) {
+        if (!layer) return null
+
+        const mediaInfo = this._renderer?.getMediaInfo(layer.id)
+        const sourceWidth = mediaInfo?.width || this._canvas.width
+        const sourceHeight = mediaInfo?.height || this._canvas.height
+
+        const scaleX = layer.scaleX ?? 1
+        const scaleY = layer.scaleY ?? 1
+        const rotation = layer.rotation ?? 0
+        const offsetX = layer.offsetX || 0
+        const offsetY = layer.offsetY || 0
+
+        return {
+            x: offsetX,
+            y: offsetY,
+            width: sourceWidth * Math.abs(scaleX),
+            height: sourceHeight * Math.abs(scaleY),
+            rotation
+        }
+    }
+
+    /**
+     * Apply transform values to the active layer during drag (debounced undo)
+     * @param {object} values - Transform values to apply
+     * @private
+     */
+    _applyLayerTransform(values) {
+        const layer = this._getActiveLayer()
+        if (!layer) return
+
+        if (values.offsetX !== undefined) layer.offsetX = Math.round(values.offsetX)
+        if (values.offsetY !== undefined) layer.offsetY = Math.round(values.offsetY)
+        if (values.scaleX !== undefined) layer.scaleX = values.scaleX
+        if (values.scaleY !== undefined) layer.scaleY = values.scaleY
+        if (values.rotation !== undefined) layer.rotation = values.rotation
+
+        this._updateTransformRender(layer)
+        this._markDirty()
+        this._pushUndoStateDebounced()
+    }
+
+    /**
+     * Commit current transform and switch to selection tool
+     * @private
+     */
+    _commitTransform() {
+        this._finalizePendingUndo()
+        this._setToolMode('selection')
+    }
+
+    /**
+     * Cancel transform and switch to selection tool
+     * @private
+     */
+    _cancelTransform() {
+        this._setToolMode('selection')
+    }
+
+    /**
+     * Update renderer for transform changes (stub — calls updateLayerOffset for now)
+     * @param {object} layer
+     * @private
+     */
+    _updateTransformRender(layer) {
+        this._renderer?.updateLayerOffset(layer.id, layer.offsetX || 0, layer.offsetY || 0)
     }
 
     /**
@@ -2495,7 +2603,7 @@ class LayersApp {
 
     /**
      * Set current tool mode
-     * @param {'selection' | 'move' | 'clone'} tool
+     * @param {'selection' | 'move' | 'clone' | 'transform'} tool
      * @private
      */
     _setToolMode(tool) {
@@ -2504,11 +2612,13 @@ class LayersApp {
         // Deactivate all tools
         this._moveTool?.deactivate()
         this._cloneTool?.deactivate()
+        this._transformTool?.deactivate()
 
         // Update button states
         document.getElementById('moveToolBtn')?.classList.toggle('active', tool === 'move')
         document.getElementById('cloneToolBtn')?.classList.toggle('active', tool === 'clone')
         document.getElementById('selectionToolBtn')?.classList.toggle('active', tool === 'selection')
+        document.getElementById('transformToolBtn')?.classList.toggle('active', tool === 'transform')
 
         // Clear selection tool checkmarks when not in selection mode
         if (tool !== 'selection') {
@@ -2522,10 +2632,12 @@ class LayersApp {
         // Activate selected tool
         if (tool === 'move') this._moveTool?.activate()
         else if (tool === 'clone') this._cloneTool?.activate()
+        else if (tool === 'transform') this._transformTool?.activate()
 
         this._selectionManager.enabled = (tool === 'selection')
         this._selectionOverlay?.classList.toggle('move-tool', tool === 'move')
         this._selectionOverlay?.classList.toggle('clone-tool', tool === 'clone')
+        this._selectionOverlay?.classList.toggle('transform-tool', tool === 'transform')
     }
 
     _updateToolButtons() {
