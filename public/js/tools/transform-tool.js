@@ -362,34 +362,31 @@ class TransformTool {
             newScaleY = avgScale * Math.sign(newScaleY || 1)
         }
 
-        // Alt = scale from center (no offset adjustment needed since we use center-based scaling)
+        // Alt = scale from center (no offset adjustment needed since offset is center-relative)
         if (!e.altKey) {
-            // Anchor the opposite edge: adjust offset to keep opposite corner fixed
-            const oldW = bounds.width
-            const oldH = bounds.height
+            // Anchor the opposite edge: adjust center-relative offset so opposite edge stays fixed
             const newW = baseWidth * Math.abs(newScaleX)
             const newH = baseHeight * Math.abs(newScaleY)
+            const dw = newW - bounds.width
+            const dh = newH - bounds.height
 
-            const dw = newW - oldW
-            const dh = newH - oldH
-
-            // Offset adjustments depend on which handle is dragged
             const cos = Math.cos(bounds.rotation * Math.PI / 180)
             const sin = Math.sin(bounds.rotation * Math.PI / 180)
 
+            // Center-relative offset: shifting by dw/2 keeps the opposite edge anchored
             let anchorDx = 0
             let anchorDy = 0
 
             if (handle === Handle.RIGHT || handle === Handle.TOP_RIGHT || handle === Handle.BOTTOM_RIGHT) {
-                // left edge anchored — no x shift needed (offset is top-left)
+                anchorDx = dw / 2
             } else if (handle === Handle.LEFT || handle === Handle.TOP_LEFT || handle === Handle.BOTTOM_LEFT) {
-                anchorDx = -dw
+                anchorDx = -dw / 2
             }
 
             if (handle === Handle.BOTTOM || handle === Handle.BOTTOM_LEFT || handle === Handle.BOTTOM_RIGHT) {
-                // top edge anchored
+                anchorDy = dh / 2
             } else if (handle === Handle.TOP || handle === Handle.TOP_LEFT || handle === Handle.TOP_RIGHT) {
-                anchorDy = -dh
+                anchorDy = -dh / 2
             }
 
             // Rotate the anchor delta by the layer rotation
