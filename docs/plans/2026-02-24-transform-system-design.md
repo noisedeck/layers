@@ -26,21 +26,18 @@ Add on-canvas transform controls (scale, rotate, flip) to media and text layers,
 
 ## Data Model
 
-Per-layer transform state replaces the current `layer.x` / `layer.y` offset fields:
+Transform fields are stored as flat properties on the layer object (not nested):
 
 ```js
-layer.transform = {
-  x: 0,        // position offset (pixels)
-  y: 0,
-  scaleX: 1.0,
-  scaleY: 1.0,
-  rotation: 0,  // degrees
-  flipH: false,
-  flipV: false
-}
+layer.scaleX = 1    // scale factor
+layer.scaleY = 1
+layer.rotation = 0  // degrees
+layer.flipH = false
+layer.flipV = false
+// Position continues using existing offsetX/offsetY fields
 ```
 
-Default is identity — backward compatible with existing projects. Old projects without `.transform` get identity on load.
+Default is identity — backward compatible with existing projects. Old projects without transform fields use `??` defaults.
 
 ## Interaction Model
 
@@ -82,23 +79,29 @@ Default is identity — backward compatible with existing projects. Old projects
 
 ## Architecture
 
-### GPU-Side Transform (Recommended Approach)
+### CPU-Side Transform via OffscreenCanvas (Implemented)
 
-Pass a transform matrix as uniforms to the Noisemaker pipeline. The shader samples the source texture with the inverse matrix applied to UV coordinates. Bicubic interpolation via a 4x4 sample kernel in the shader.
+The design originally proposed GPU-side transforms, but the Noisemaker `media()` shader is loaded from a CDN and doesn't expose scale/rotation uniforms. Instead, transforms are applied CPU-side:
 
-**Why GPU-side over CPU-side:**
-- Truly non-destructive — source pixels untouched
-- Resolution-independent — no quality loss on repeated transforms
-- Fast — GPU-accelerated
-- Fits existing architecture — layers already pass per-step uniforms
+- An `OffscreenCanvas` pre-transforms the source image before texture upload
+- `imageSmoothingQuality: 'high'` provides bicubic-quality interpolation
+- Source pixels are preserved — the transform is recomputed on every change
+- The canvas is cached (`this._transformCanvas`) and reused across calls
+- Identity transforms skip the offscreen canvas entirely and use the original texture
+
+**Trade-offs vs GPU-side:**
+- Quality is excellent for single transforms but slightly degrades on repeated re-transforms (re-rasterization)
+- Performance is good — canvas 2D is hardware-accelerated on modern browsers
+- Simpler implementation with no shader pipeline changes needed
 
 ### Overlay Rendering
 
-Transform handles are a separate HTML/CSS overlay positioned over the canvas:
-- Handle positions calculated from layer bounds x current zoom/pan
-- Hit testing via distance-to-handle checks
-- Updates on zoom/scroll/resize via existing viewport events
-- Clean separation from WebGL render pipeline — always crisp
+Transform handles are drawn on the existing selection overlay canvas:
+- 8 scale handles (4 corners + 4 edges) drawn as filled white squares with blue outlines
+- Rotation zones detected outside corner handles with visual arc indicators
+- Hit testing in local (unrotated) coordinate space
+- Scale handles take priority over rotation zones in hit testing
+- Handles redraw on layer selection change and after drag operations
 
 ### Undo Integration
 - Each committed transform is a single undo step
@@ -136,4 +139,22 @@ Transform handles are a separate HTML/CSS overlay positioned over the canvas:
 
 ## Interpolation
 
-Bicubic interpolation for all scale operations. Implemented as a 4x4 texel sample kernel in the shader, providing smooth results without nearest-neighbor artifacts or bilinear blurriness.
+Bicubic-quality interpolation via `OffscreenCanvas` with `imageSmoothingQuality: 'high'`. Browser implementations typically use Lanczos or Mitchell-Netravali filtering, providing smooth results without nearest-neighbor artifacts.
+
+## Implementation Notes (2026-02-24)
+
+**Files created:**
+- `public/js/tools/transform-tool.js` — TransformTool class (~515 lines)
+- `tests/transform-tool.spec.js` — 6 E2E tests
+
+**Files modified:**
+- `public/js/layers/layer-model.js` — added scaleX, scaleY, rotation, flipH, flipV
+- `public/js/noisemaker/renderer.js` — added `updateLayerTransform()`, updated `_applyAllLayerParams()`
+- `public/js/app.js` — tool wiring, flip menu, transform callbacks, T shortcut
+- `public/index.html` — transform toolbar button, flip menu items
+- `public/css/selection.css` — transform tool cursor
+
+**Not yet implemented (future work):**
+- Numeric input fields in layer panel
+- Text layer transform support (currently media-only)
+- Video layer transform support (currently blocked)
