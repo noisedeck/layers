@@ -1542,6 +1542,14 @@ class LayersApp {
         document.getElementById('deselectAllLayersMenuItem')?.addEventListener('click', () => {
             this._deselectAllLayers()
         })
+
+        document.getElementById('flipHMenuItem')?.addEventListener('click', () => {
+            this._flipActiveLayer('horizontal')
+        })
+
+        document.getElementById('flipVMenuItem')?.addEventListener('click', () => {
+            this._flipActiveLayer('vertical')
+        })
     }
 
     /**
@@ -1612,7 +1620,12 @@ class LayersApp {
                 this._layers.findIndex(l => l.id === selectedIds[0]) > 0
             delItem.classList.toggle('disabled', !canDelete)
         }
+
+        // Flip items: enabled when exactly one media layer selected
         const selectedLayers = selectedIds.map(id => this._layers.find(l => l.id === id)).filter(Boolean)
+        const canFlip = selectedIds.length === 1 && selectedLayers[0]?.sourceType === 'media'
+        document.getElementById('flipHMenuItem')?.classList.toggle('disabled', !canFlip)
+        document.getElementById('flipVMenuItem')?.classList.toggle('disabled', !canFlip)
 
         if (selectedIds.length === 0) {
             // No selection: flatten image
@@ -2198,6 +2211,31 @@ class LayersApp {
             flipV: layer.flipV || false
         }
         this._renderer?.updateLayerTransform(layer.id, transform, layer.offsetX || 0, layer.offsetY || 0)
+    }
+
+    /**
+     * Flip the active layer horizontally or vertically
+     * @param {'horizontal'|'vertical'} direction
+     * @private
+     */
+    _flipActiveLayer(direction) {
+        const layer = this._getActiveLayer()
+        if (!layer || layer.sourceType !== 'media') {
+            toast.warning('Select a media layer to flip')
+            return
+        }
+
+        this._finalizePendingUndo()
+
+        if (direction === 'horizontal') {
+            layer.flipH = !layer.flipH
+        } else {
+            layer.flipV = !layer.flipV
+        }
+
+        this._updateTransformRender(layer)
+        this._markDirty()
+        this._pushUndoState()
     }
 
     /**
