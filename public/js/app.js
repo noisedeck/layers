@@ -2274,6 +2274,11 @@ class LayersApp {
         newLayer.blendMode = layer.blendMode
         newLayer.offsetX = 0
         newLayer.offsetY = 0
+        newLayer.scaleX = 1
+        newLayer.scaleY = 1
+        newLayer.rotation = 0
+        newLayer.flipH = false
+        newLayer.flipV = false
 
         await this._renderer.loadMedia(newLayer.id, file, 'image')
         this._layers[layerIndex] = newLayer
