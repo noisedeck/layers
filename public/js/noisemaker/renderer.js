@@ -320,6 +320,85 @@ export class LayersRenderer {
     }
 
     /**
+     * Update layer transform using CPU-side offscreen canvas rendering.
+     * For identity transforms, falls back to updateLayerOffset with original texture.
+     * For non-identity transforms, pre-transforms the source image via OffscreenCanvas
+     * (bicubic interpolation) and uploads the result as the layer texture.
+     * @param {string} layerId
+     * @param {{scaleX: number, scaleY: number, rotation: number, flipH: boolean, flipV: boolean}} transform
+     * @param {number} offsetX
+     * @param {number} offsetY
+     */
+    updateLayerTransform(layerId, transform, offsetX, offsetY) {
+        const stepIndex = this._layerStepMap.get(layerId)
+        if (stepIndex === undefined) return
+
+        const media = this._mediaTextures.get(layerId)
+        if (!media) return
+
+        const { scaleX = 1, scaleY = 1, rotation = 0, flipH = false, flipV = false } = transform
+        const isIdentity = scaleX === 1 && scaleY === 1 && rotation === 0 && !flipH && !flipV
+
+        if (isIdentity) {
+            // Restore original texture and use simple offset
+            const textureId = `imageTex_step_${stepIndex}`
+            try {
+                this._renderer.updateTextureFromSource?.(textureId, media.element, { flipY: false })
+                if (media.width > 0 && media.height > 0) {
+                    this._renderer.applyStepParameterValues?.({
+                        [`step_${stepIndex}`]: { imageSize: [media.width, media.height] }
+                    })
+                }
+            } catch (err) {
+                console.warn(`[LayersRenderer] Failed to restore texture for layer ${layerId}:`, err)
+            }
+            this.updateLayerOffset(layerId, offsetX, offsetY)
+            return
+        }
+
+        // Compute bounding box for rotated+scaled image
+        const srcW = media.width
+        const srcH = media.height
+        const rad = rotation * Math.PI / 180
+        const cos = Math.abs(Math.cos(rad))
+        const sin = Math.abs(Math.sin(rad))
+        const scaledW = srcW * Math.abs(scaleX)
+        const scaledH = srcH * Math.abs(scaleY)
+        const boundW = Math.ceil(scaledW * cos + scaledH * sin)
+        const boundH = Math.ceil(scaledW * sin + scaledH * cos)
+
+        // Reuse or create OffscreenCanvas
+        if (!this._transformCanvas || this._transformCanvas.width !== boundW || this._transformCanvas.height !== boundH) {
+            this._transformCanvas = new OffscreenCanvas(boundW, boundH)
+        }
+        const canvas = this._transformCanvas
+        canvas.width = boundW
+        canvas.height = boundH
+        const ctx = canvas.getContext('2d')
+
+        ctx.clearRect(0, 0, boundW, boundH)
+        ctx.imageSmoothingEnabled = true
+        ctx.imageSmoothingQuality = 'high'
+        ctx.translate(boundW / 2, boundH / 2)
+        ctx.rotate(rad)
+        ctx.scale(flipH ? -scaleX : scaleX, flipV ? -scaleY : scaleY)
+        ctx.drawImage(media.element, -srcW / 2, -srcH / 2, srcW, srcH)
+
+        // Upload transformed canvas as texture
+        const textureId = `imageTex_step_${stepIndex}`
+        try {
+            this._renderer.updateTextureFromSource?.(textureId, canvas, { flipY: false })
+            this._renderer.applyStepParameterValues?.({
+                [`step_${stepIndex}`]: { imageSize: [boundW, boundH] }
+            })
+        } catch (err) {
+            console.warn(`[LayersRenderer] Failed to upload transformed texture for layer ${layerId}:`, err)
+        }
+
+        this.updateLayerOffset(layerId, offsetX, offsetY)
+    }
+
+    /**
      * Update the DSL string from current layers without recompiling.
      * Call this after parameter-only changes to keep DSL in sync and
      * prevent spurious rebuilds on subsequent structural changes.
@@ -380,7 +459,19 @@ export class LayersRenderer {
             }
 
             if (layer.sourceType === 'media') {
-                this.updateLayerOffset(layer.id, layer.offsetX || 0, layer.offsetY || 0)
+                const sx = layer.scaleX ?? 1
+                const sy = layer.scaleY ?? 1
+                const rot = layer.rotation ?? 0
+                const fh = layer.flipH || false
+                const fv = layer.flipV || false
+                const hasTransform = sx !== 1 || sy !== 1 || rot !== 0 || fh || fv
+                if (hasTransform) {
+                    this.updateLayerTransform(layer.id,
+                        { scaleX: sx, scaleY: sy, rotation: rot, flipH: fh, flipV: fv },
+                        layer.offsetX || 0, layer.offsetY || 0)
+                } else {
+                    this.updateLayerOffset(layer.id, layer.offsetX || 0, layer.offsetY || 0)
+                }
             }
         }
     }

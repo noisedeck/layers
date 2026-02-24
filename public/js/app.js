@@ -2184,12 +2184,20 @@ class LayersApp {
     }
 
     /**
-     * Update renderer for transform changes (stub — calls updateLayerOffset for now)
+     * Update renderer for transform changes via CPU-side offscreen canvas
      * @param {object} layer
      * @private
      */
     _updateTransformRender(layer) {
-        this._renderer?.updateLayerOffset(layer.id, layer.offsetX || 0, layer.offsetY || 0)
+        if (layer.sourceType !== 'media') return
+        const transform = {
+            scaleX: layer.scaleX ?? 1,
+            scaleY: layer.scaleY ?? 1,
+            rotation: layer.rotation ?? 0,
+            flipH: layer.flipH || false,
+            flipV: layer.flipV || false
+        }
+        this._renderer?.updateLayerTransform(layer.id, transform, layer.offsetX || 0, layer.offsetY || 0)
     }
 
     /**
