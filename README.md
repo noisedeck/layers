@@ -27,19 +27,9 @@ npm run dev
 
 This starts a local server on port 3002.
 
-### Updating Noisemaker
+### Noisemaker
 
-The shader pipeline is vendored from the [Noisemaker](https://github.com/noisedeck/noisemaker) repository. To pull the latest build:
-
-```
-./pull-noisemaker
-```
-
-To pin a specific commit:
-
-```
-NOISEMAKER_SHA=abc123 ./pull-noisemaker
-```
+The shader pipeline is loaded at runtime from the [Noisemaker](https://github.com/noisedeck/noisemaker) CDN at `shaders.noisedeck.app`.
 
 ## Testing
 
