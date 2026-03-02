@@ -4,7 +4,7 @@
  */
 
 :root {
-    --ui-titlebar-height: 2.25em;
+    --ui-titlebar-height: 2.25rem;
     --ui-corner-radius: 0.5rem;
     --ui-corner-radius-small: 0.375rem;
     --glass-blur-strength: blur(20px);

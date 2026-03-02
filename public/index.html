@@ -203,7 +203,7 @@
             </div>
 
             <div id="menuRight">
-                <button id="playPauseBtn" class="menu-icon-btn icon-material" title="Play/Pause (Space)">pause</button>
+                <button id="playPauseBtn" class="menu-icon-btn" title="Play/Pause (Space)"><span class="icon-material">pause</span></button>
             </div>
         </div>
 
@@ -276,13 +276,14 @@
 
         <!-- Drawing Options Bar -->
         <div id="drawingOptionsBar" class="drawing-options-bar hidden">
+            <div class="drawing-options-bar-backdrop"></div>
             <label>
                 Size
-                <input type="number" id="drawingSizeInput" min="1" max="100" value="5" style="width: 50px">
+                <input type="number" id="drawingSizeInput" min="1" max="100" value="5">
             </label>
             <label>
                 Opacity
-                <input type="range" id="drawingOpacityInput" min="0" max="100" value="100" style="width: 80px">
+                <input type="range" id="drawingOpacityInput" min="0" max="100" value="100">
                 <span id="drawingOpacityValue">100%</span>
             </label>
             <label id="drawingFilledLabel" class="hidden">
@@ -291,8 +292,9 @@
             </label>
             <label id="drawingToleranceLabel" class="hidden">
                 Tolerance
-                <input type="range" id="drawingToleranceInput" min="0" max="255" value="32" style="width: 80px">
+                <input type="range" id="drawingToleranceInput" min="0" max="255" value="32">
             </label>
+            <button id="drawingOptionsClose" class="drawing-options-close" title="Close">&times;</button>
         </div>
 
         <!-- Canvas Panel -->

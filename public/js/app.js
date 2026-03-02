@@ -1691,6 +1691,11 @@ class LayersApp {
             if (this._fillTool) this._fillTool.tolerance = parseInt(e.target.value, 10)
         })
 
+        // Drawing options bar close button
+        document.getElementById('drawingOptionsClose')?.addEventListener('click', () => {
+            this._setToolMode('selection')
+        })
+
         // Play/pause button
         document.getElementById('playPauseBtn')?.addEventListener('click', () => {
             this._togglePlayPause()
@@ -2192,13 +2197,13 @@ class LayersApp {
      * @private
      */
     _togglePlayPause() {
-        const btn = document.getElementById('playPauseBtn')
+        const icon = document.querySelector('#playPauseBtn .icon-material')
         if (this._renderer.isRunning) {
             this._renderer.stop()
-            if (btn) btn.textContent = 'play_arrow'
+            if (icon) icon.textContent = 'play_arrow'
         } else {
             this._renderer.start()
-            if (btn) btn.textContent = 'pause'
+            if (icon) icon.textContent = 'pause'
         }
     }
 
@@ -2949,10 +2954,12 @@ class LayersApp {
 
         // Show/hide drawing options bar
         const drawingTools = ['brush', 'eraser', 'shape', 'fill']
+        const showOptions = drawingTools.includes(tool)
         const optionsBar = document.getElementById('drawingOptionsBar')
         if (optionsBar) {
-            optionsBar.classList.toggle('hidden', !drawingTools.includes(tool))
+            optionsBar.classList.toggle('hidden', !showOptions)
         }
+        document.getElementById('menu')?.classList.toggle('has-options-bar', showOptions)
         document.getElementById('drawingFilledLabel')?.classList.toggle('hidden', tool !== 'shape')
         document.getElementById('drawingToleranceLabel')?.classList.toggle('hidden', tool !== 'fill')
 

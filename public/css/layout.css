@@ -31,26 +31,93 @@ html, body {
     overflow: hidden;
 }
 
-/* Drawing Options Bar */
+/* Drawing Options Bar — extension of the menu bar */
 .drawing-options-bar {
+    position: fixed;
+    top: var(--ui-titlebar-height);
+    left: 0;
+    width: calc(590px - 0.5em);
+    z-index: 2000;
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 4px 12px;
-    background: var(--bg-secondary, #2a2a2a);
-    border-bottom: 1px solid var(--border-color, #444);
+    padding: 2px 12px;
     font-size: 12px;
+    font-family: Nunito, 'Nunito Block';
+    border-radius: 0 0 var(--ui-corner-radius) 0;
+}
+
+.drawing-options-bar-backdrop {
+    position: absolute;
+    inset: 0;
+    background-color: color-mix(in srgb, var(--color2) 65%, transparent 35%);
+    background-image: linear-gradient(180deg, var(--ui-gradient-top) 0%, var(--ui-gradient-bottom) 100%);
+    backdrop-filter: var(--glass-blur-strength);
+    -webkit-backdrop-filter: var(--glass-blur-strength);
+    pointer-events: none;
+    z-index: -1;
+    border-radius: 0 0 var(--ui-corner-radius) 0;
 }
 
 .drawing-options-bar.hidden {
     display: none;
 }
 
+/* When options bar is open, square off the menu's bottom-right corner */
+#menu.has-options-bar {
+    border-radius: 0;
+}
+
+#menu.has-options-bar #menuBackdrop {
+    border-radius: 0;
+}
+
 .drawing-options-bar label {
     display: flex;
     align-items: center;
     gap: 4px;
-    color: var(--text-secondary, #aaa);
+    color: var(--accent3);
+}
+
+.drawing-options-bar input[type="number"] {
+    width: 50px;
+}
+
+.drawing-options-bar input[type="range"] {
+    width: 80px;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: var(--accent3);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.drawing-options-bar input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 10px;
+    height: 10px;
+    background: var(--accent4);
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.drawing-options-close {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--accent3);
+    cursor: pointer;
+    padding: 2px 4px;
+    font-size: 14px;
+    line-height: 1;
+    border-radius: 3px;
+    transition: color 0.15s ease;
+}
+
+.drawing-options-close:hover {
+    color: var(--accent4);
 }
 
 /* Canvas Panel */
@@ -212,6 +279,15 @@ html, body {
     #layers-panel {
         grid-row: 2;
         margin: 0;
+        border-radius: 0;
+    }
+
+    .drawing-options-bar {
+        width: 100%;
+        border-radius: 0;
+    }
+
+    .drawing-options-bar-backdrop {
         border-radius: 0;
     }
 }
