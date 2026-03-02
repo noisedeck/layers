@@ -27,3 +27,28 @@
 #selectionOverlay.transform-tool {
     cursor: default;
 }
+
+/* Brush tool cursor */
+#selectionOverlay.brush-tool {
+    cursor: crosshair;
+}
+
+/* Eraser tool cursor */
+#selectionOverlay.eraser-tool {
+    cursor: pointer;
+}
+
+/* Shape tool cursor */
+#selectionOverlay.shape-tool {
+    cursor: crosshair;
+}
+
+/* Fill tool cursor */
+#selectionOverlay.fill-tool {
+    cursor: crosshair;
+}
+
+/* Eyedropper tool cursor */
+#selectionOverlay.eyedropper-tool {
+    cursor: crosshair;
+}

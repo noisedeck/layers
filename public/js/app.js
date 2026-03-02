@@ -6,7 +6,7 @@
  */
 
 import { LayersRenderer } from './noisemaker/renderer.js'
-import { createMediaLayer, createEffectLayer, createChildEffect } from './layers/layer-model.js'
+import { createMediaLayer, createEffectLayer, createChildEffect, createDrawingLayer } from './layers/layer-model.js'
 import './layers/layer-stack.js'
 import { EffectParams } from './layers/effect-params.js'
 import { openDialog } from './ui/open-dialog.js'
@@ -26,6 +26,11 @@ import { SelectionManager } from './selection/selection-manager.js'
 import { copySelection, pasteFromClipboard, getSelectionBounds } from './selection/clipboard-ops.js'
 import { MoveTool } from './tools/move-tool.js'
 import { TransformTool } from './tools/transform-tool.js'
+import { BrushTool } from './tools/brush-tool.js'
+import { EraserTool } from './tools/eraser-tool.js'
+import { ShapeTool } from './tools/shape-tool.js'
+import { FillTool } from './tools/fill-tool.js'
+import { EyedropperTool } from './tools/eyedropper-tool.js'
 import { UndoManager } from './utils/undo-manager.js'
 import { invertMask, expandMask, contractMask, borderMask, featherMask, smoothMask, colorRange } from './selection/selection-modify.js'
 import { selectionParamDialog } from './ui/selection-param-dialog.js'
@@ -33,6 +38,8 @@ import { Files } from './utils/files.js'
 import { ExportImageDialog } from './ui/export-image-dialog.js'
 import { ExportVideoDialog } from './ui/export-video-dialog.js'
 import { getFontaineLoader, BASE_FONTS } from './layers/fontaine-loader.js'
+import * as strokeModel from './drawing/stroke-model.js'
+import { StrokeRenderer } from './drawing/stroke-renderer.js'
 
 /**
  * Main application class
@@ -51,6 +58,13 @@ class LayersApp {
         this._copyOrigin = null
         this._moveTool = null
         this._currentTool = 'selection' // 'selection' | 'move'
+        this._previousTool = 'selection'
+
+        // Global foreground color
+        this._foregroundColor = '#000000'
+
+        // Drawing layer counter
+        this._drawingLayerCounter = 0
 
         // Layer reorder FSM state
         this._reorderState = 'IDLE'  // IDLE | DRAGGING | PROCESSING | ROLLING_BACK
@@ -86,14 +100,21 @@ class LayersApp {
      * @private
      */
     _cloneLayers(layers) {
-        return layers.map(l => ({
-            ...l,
-            effectParams: JSON.parse(JSON.stringify(l.effectParams)),
-            children: (l.children || []).map(c => ({
-                ...c,
-                effectParams: JSON.parse(JSON.stringify(c.effectParams))
-            }))
-        }))
+        return layers.map(l => {
+            const clone = {
+                ...l,
+                effectParams: JSON.parse(JSON.stringify(l.effectParams)),
+                children: (l.children || []).map(c => ({
+                    ...c,
+                    effectParams: JSON.parse(JSON.stringify(c.effectParams))
+                }))
+            }
+            if (l.sourceType === 'drawing') {
+                clone.strokes = JSON.parse(JSON.stringify(l.strokes || []))
+                clone.drawingCanvas = null
+            }
+            return clone
+        })
     }
 
     /**
@@ -173,6 +194,13 @@ class LayersApp {
         for (const layer of this._layers) {
             if (layer.sourceType === 'media' && layer.mediaFile) {
                 await this._renderer.loadMedia(layer.id, layer.mediaFile, layer.mediaType)
+            }
+        }
+
+        // Re-rasterize drawing layers after undo restore
+        for (const layer of this._layers) {
+            if (layer.sourceType === 'drawing' && layer.strokes?.length > 0) {
+                await this._rasterizeDrawingLayer(layer)
             }
         }
 
@@ -351,6 +379,57 @@ class LayersApp {
             }
         })
 
+        // Initialize brush tool
+        this._brushTool = new BrushTool({
+            overlay: this._selectionOverlay,
+            ensureDrawingLayer: () => this._ensureDrawingLayer(),
+            rasterizeDrawingLayer: (layer) => this._rasterizeDrawingLayer(layer),
+            rebuild: (opts) => this._rebuild(opts),
+            pushUndoState: () => this._pushUndoState(),
+            finalizePendingUndo: () => this._finalizePendingUndo(),
+            markDirty: () => this._markDirty()
+        })
+
+        // Initialize eraser tool
+        this._eraserTool = new EraserTool({
+            overlay: this._selectionOverlay,
+            getActiveLayer: () => this._getActiveLayer(),
+            rasterizeDrawingLayer: (layer) => this._rasterizeDrawingLayer(layer),
+            rebuild: (opts) => this._rebuild(opts),
+            pushUndoState: () => this._pushUndoState(),
+            finalizePendingUndo: () => this._finalizePendingUndo(),
+            markDirty: () => this._markDirty()
+        })
+
+        // Initialize shape tool
+        this._shapeTool = new ShapeTool({
+            overlay: this._selectionOverlay,
+            ensureDrawingLayer: () => this._ensureDrawingLayer(),
+            rasterizeDrawingLayer: (layer) => this._rasterizeDrawingLayer(layer),
+            rebuild: (opts) => this._rebuild(opts),
+            pushUndoState: () => this._pushUndoState(),
+            finalizePendingUndo: () => this._finalizePendingUndo(),
+            markDirty: () => this._markDirty()
+        })
+
+        // Initialize fill tool
+        this._fillTool = new FillTool({
+            overlay: this._selectionOverlay,
+            canvas: this._canvas,
+            addMediaLayerFromCanvas: (c, n) => this._addMediaLayerFromCanvas(c, n),
+            pushUndoState: () => this._pushUndoState(),
+            finalizePendingUndo: () => this._finalizePendingUndo(),
+            markDirty: () => this._markDirty()
+        })
+
+        // Initialize eyedropper tool
+        this._eyedropperTool = new EyedropperTool({
+            overlay: this._selectionOverlay,
+            canvas: this._canvas,
+            setForegroundColor: (c) => this._setForegroundColor(c),
+            restorePreviousTool: () => this._setToolMode(this._previousTool)
+        })
+
         if (!this._canvas) {
             console.error('[Layers] Canvas not found')
             return
@@ -425,6 +504,9 @@ class LayersApp {
         // Hide loading screen and show open dialog
         this._hideLoadingScreen()
         this._showOpenDialog()
+
+        // Expose drawing module for tests
+        window._drawingTestExports = { ...strokeModel, StrokeRenderer, createDrawingLayer }
 
         this._initialized = true
         console.debug('[Layers] Ready')
@@ -1099,6 +1181,72 @@ class LayersApp {
     }
 
     /**
+     * Rasterize a drawing layer's strokes to a canvas and register the texture.
+     * @param {object} layer - Drawing layer with strokes array
+     * @private
+     */
+    async _rasterizeDrawingLayer(layer) {
+        if (layer.sourceType !== 'drawing') return
+        if (!layer.strokes || layer.strokes.length === 0) {
+            layer.drawingCanvas = null
+            return
+        }
+        if (!this._strokeRenderer) {
+            const { StrokeRenderer } = await import('./drawing/stroke-renderer.js')
+            this._strokeRenderer = new StrokeRenderer()
+        }
+        const offscreen = this._strokeRenderer.rasterize(
+            layer.strokes, this._canvas.width, this._canvas.height
+        )
+
+        // Convert OffscreenCanvas to HTMLCanvasElement for WebGL texture compatibility
+        const w = this._canvas.width
+        const h = this._canvas.height
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(offscreen, 0, 0)
+
+        layer.drawingCanvas = canvas
+
+        // Register as texture in the renderer
+        this._renderer._mediaTextures.set(layer.id, {
+            type: 'image',
+            element: canvas,
+            width: w,
+            height: h
+        })
+    }
+
+    /**
+     * Create a media layer from an HTML canvas element.
+     * Used by fill tool and other tools that generate raster content.
+     * @param {HTMLCanvasElement} canvas - Source canvas with content
+     * @param {string} [name] - Layer name
+     * @private
+     */
+    async _addMediaLayerFromCanvas(canvas, name) {
+        const layer = createMediaLayer(null, 'image', name || 'Fill')
+        layer.mediaFile = null
+        this._layers.push(layer)
+
+        this._renderer._mediaTextures.set(layer.id, {
+            type: 'image',
+            element: canvas,
+            width: canvas.width,
+            height: canvas.height
+        })
+
+        this._updateLayerStack()
+        await this._rebuild({ force: true })
+
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = layer.id
+        }
+    }
+
+    /**
      * Resize canvas to match media dimensions
      * @param {number} width - New width
      * @param {number} height - New height
@@ -1446,25 +1594,17 @@ class LayersApp {
             this._showAddLayerDialog()
         })
 
-        // Selection tool menu
-        document.getElementById('selectRectMenuItem')?.addEventListener('click', () => {
-            this._setSelectionTool('rectangle')
+        // Selection tool split-button
+        document.getElementById('selectionToolBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation()
+            this._setToolMode('selection')
         })
 
-        document.getElementById('selectOvalMenuItem')?.addEventListener('click', () => {
-            this._setSelectionTool('oval')
-        })
-
-        document.getElementById('selectLassoMenuItem')?.addEventListener('click', () => {
-            this._setSelectionTool('lasso')
-        })
-
-        document.getElementById('selectPolygonMenuItem')?.addEventListener('click', () => {
-            this._setSelectionTool('polygon')
-        })
-
-        document.getElementById('selectWandMenuItem')?.addEventListener('click', () => {
-            this._setSelectionTool('wand')
+        document.querySelectorAll('#selectionMenu .tool-menu-item[data-shape]').forEach(item => {
+            item.addEventListener('click', () => {
+                const shape = item.dataset.shape
+                this._setSelectionTool(shape)
+            })
         })
 
         // Tolerance slider
@@ -1490,6 +1630,65 @@ class LayersApp {
         // Transform tool button
         document.getElementById('transformToolBtn')?.addEventListener('click', () => {
             this._setToolMode('transform')
+        })
+
+        // Drawing tool buttons
+        document.getElementById('brushToolBtn')?.addEventListener('click', () => this._setToolMode('brush'))
+        document.getElementById('eraserToolBtn')?.addEventListener('click', () => this._setToolMode('eraser'))
+        // Shape tool split-button
+        document.getElementById('shapeToolBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation()
+            this._setToolMode('shape')
+        })
+
+        document.querySelectorAll('#shapeMenu .tool-menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation()
+                const shape = item.dataset.shape
+                const filled = item.dataset.filled === 'true'
+                if (this._shapeTool) {
+                    this._shapeTool.shapeType = shape
+                    this._shapeTool.filled = filled
+                }
+                const btn = document.querySelector('#shapeToolBtn .icon-material')
+                if (btn) btn.textContent = item.querySelector('.icon-material')?.textContent || 'crop_square'
+                document.querySelectorAll('#shapeMenu .tool-menu-item').forEach(el => {
+                    el.classList.toggle('checked', el === item)
+                })
+                const filledCheckbox = document.getElementById('drawingFilledInput')
+                if (filledCheckbox) filledCheckbox.checked = filled
+                item.closest('.menu')?.querySelector('.menu-items')?.classList.add('hide')
+                this._setToolMode('shape')
+            })
+        })
+        document.getElementById('fillToolBtn')?.addEventListener('click', () => this._setToolMode('fill'))
+        document.getElementById('eyedropperToolBtn')?.addEventListener('click', () => this._setToolMode('eyedropper'))
+
+        // Color well input
+        document.getElementById('colorWellInput')?.addEventListener('input', (e) => {
+            this._setForegroundColor(e.target.value)
+        })
+
+        // Drawing options bar inputs
+        document.getElementById('drawingSizeInput')?.addEventListener('change', (e) => {
+            const size = parseInt(e.target.value, 10)
+            if (this._brushTool) this._brushTool.size = size
+            if (this._shapeTool) this._shapeTool.size = size
+        })
+
+        document.getElementById('drawingOpacityInput')?.addEventListener('input', (e) => {
+            const opacity = parseInt(e.target.value, 10) / 100
+            if (this._brushTool) this._brushTool.opacity = opacity
+            if (this._shapeTool) this._shapeTool.opacity = opacity
+            document.getElementById('drawingOpacityValue').textContent = `${e.target.value}%`
+        })
+
+        document.getElementById('drawingFilledInput')?.addEventListener('change', (e) => {
+            if (this._shapeTool) this._shapeTool.filled = e.target.checked
+        })
+
+        document.getElementById('drawingToleranceInput')?.addEventListener('input', (e) => {
+            if (this._fillTool) this._fillTool.tolerance = parseInt(e.target.value, 10)
         })
 
         // Play/pause button
@@ -1891,6 +2090,41 @@ class LayersApp {
                 this._setToolMode('transform')
             }
 
+            // Drawing tool shortcuts
+            if (e.key === 'b' || e.key === 'B') {
+                this._setToolMode('brush')
+            }
+            if (e.key === 'e' || e.key === 'E') {
+                this._setToolMode('eraser')
+            }
+            if (e.key === 'u' || e.key === 'U') {
+                this._setToolMode('shape')
+            }
+            if (e.key === 'g' || e.key === 'G') {
+                this._setToolMode('fill')
+            }
+            if (e.key === 'i' || e.key === 'I') {
+                this._setToolMode('eyedropper')
+            }
+
+            // Brush size shortcuts
+            if (e.key === '[') {
+                if (this._brushTool) {
+                    this._brushTool.size -= 5
+                    const input = document.getElementById('drawingSizeInput')
+                    if (input) input.value = this._brushTool.size
+                }
+                if (this._shapeTool) this._shapeTool.size -= 5
+            }
+            if (e.key === ']') {
+                if (this._brushTool) {
+                    this._brushTool.size += 5
+                    const input = document.getElementById('drawingSizeInput')
+                    if (input) input.value = this._brushTool.size
+                }
+                if (this._shapeTool) this._shapeTool.size += 5
+            }
+
             // V - toggle visibility of selected layer
             if (e.key === 'v' || e.key === 'V') {
                 const selected = this._layerStack?.getSelectedLayer()
@@ -1981,15 +2215,12 @@ class LayersApp {
 
         this._selectionManager.currentTool = tool
 
-        // Update menu checkmarks
-        const items = ['Rect', 'Oval', 'Lasso', 'Polygon', 'Wand']
-        const tools = ['rectangle', 'oval', 'lasso', 'polygon', 'wand']
-        items.forEach((item, i) => {
-            const el = document.getElementById(`select${item}MenuItem`)
-            if (el) el.classList.toggle('checked', tools[i] === tool)
+        // Update menu checkmarks via data-shape attributes
+        document.querySelectorAll('#selectionMenu .tool-menu-item[data-shape]').forEach(el => {
+            el.classList.toggle('checked', el.dataset.shape === tool)
         })
 
-        // Update icon - swap SVG content based on tool
+        // Update toolbar icon — swap SVG content based on tool
         const iconContainer = document.getElementById('selectionToolIcon')
         if (iconContainer) {
             const svgAttrs = 'class="selection-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="1 2" stroke-linecap="round"'
@@ -2000,9 +2231,8 @@ class LayersApp {
                 polygon: `<svg ${svgAttrs}><polygon points="10,2 18,8 15,18 5,18 2,8"/></svg>`,
                 wand: '<span class="icon-material">auto_fix_high</span>'
             }
-            iconContainer.outerHTML = icons[tool] ?
-                `${icons[tool].replace("<svg ", "<svg id=\"selectionToolIcon\" ")}` :
-                `${icons.rectangle.replace("<svg ", "<svg id=\"selectionToolIcon\" ")}`
+            const newIcon = icons[tool] || icons.rectangle
+            iconContainer.outerHTML = newIcon.replace(/^<(svg|span) /, `<$1 id="selectionToolIcon" `)
         }
 
         // Show/hide tolerance slider
@@ -2655,30 +2885,55 @@ class LayersApp {
     }
 
     /**
+     * Set the global foreground color and sync to all drawing tools
+     * @param {string} color - CSS hex color (e.g. '#ff0000')
+     * @private
+     */
+    _setForegroundColor(color) {
+        this._foregroundColor = color
+        if (this._brushTool) this._brushTool.color = color
+        if (this._shapeTool) this._shapeTool.color = color
+        if (this._fillTool) this._fillTool.color = color
+        const well = document.getElementById('colorWell')
+        if (well) well.style.backgroundColor = color
+        const input = document.getElementById('colorWellInput')
+        if (input) input.value = color
+    }
+
+    /**
      * Set current tool mode
      * @param {'selection' | 'move' | 'clone' | 'transform'} tool
      * @private
      */
     _setToolMode(tool) {
+        if (tool === 'eyedropper') this._previousTool = this._currentTool
         this._currentTool = tool
 
         // Deactivate all tools
         this._moveTool?.deactivate()
         this._cloneTool?.deactivate()
         this._transformTool?.deactivate()
+        this._brushTool?.deactivate()
+        this._eraserTool?.deactivate()
+        this._shapeTool?.deactivate()
+        this._fillTool?.deactivate()
+        this._eyedropperTool?.deactivate()
 
         // Update button states
         document.getElementById('moveToolBtn')?.classList.toggle('active', tool === 'move')
         document.getElementById('cloneToolBtn')?.classList.toggle('active', tool === 'clone')
         document.getElementById('selectionToolBtn')?.classList.toggle('active', tool === 'selection')
         document.getElementById('transformToolBtn')?.classList.toggle('active', tool === 'transform')
+        document.getElementById('brushToolBtn')?.classList.toggle('active', tool === 'brush')
+        document.getElementById('eraserToolBtn')?.classList.toggle('active', tool === 'eraser')
+        document.getElementById('shapeToolBtn')?.classList.toggle('active', tool === 'shape')
+        document.getElementById('fillToolBtn')?.classList.toggle('active', tool === 'fill')
+        document.getElementById('eyedropperToolBtn')?.classList.toggle('active', tool === 'eyedropper')
 
         // Clear selection tool checkmarks when not in selection mode
         if (tool !== 'selection') {
-            const items = ['Rect', 'Oval', 'Lasso', 'Polygon', 'Wand']
-            items.forEach(item => {
-                const el = document.getElementById(`select${item}MenuItem`)
-                if (el) el.classList.remove('checked')
+            document.querySelectorAll('#selectionMenu .tool-menu-item[data-shape]').forEach(el => {
+                el.classList.remove('checked')
             })
         }
 
@@ -2686,16 +2941,63 @@ class LayersApp {
         if (tool === 'move') this._moveTool?.activate()
         else if (tool === 'clone') this._cloneTool?.activate()
         else if (tool === 'transform') this._transformTool?.activate()
+        else if (tool === 'brush') this._brushTool?.activate()
+        else if (tool === 'eraser') this._eraserTool?.activate()
+        else if (tool === 'shape') this._shapeTool?.activate()
+        else if (tool === 'fill') this._fillTool?.activate()
+        else if (tool === 'eyedropper') this._eyedropperTool?.activate()
+
+        // Show/hide drawing options bar
+        const drawingTools = ['brush', 'eraser', 'shape', 'fill']
+        const optionsBar = document.getElementById('drawingOptionsBar')
+        if (optionsBar) {
+            optionsBar.classList.toggle('hidden', !drawingTools.includes(tool))
+        }
+        document.getElementById('drawingFilledLabel')?.classList.toggle('hidden', tool !== 'shape')
+        document.getElementById('drawingToleranceLabel')?.classList.toggle('hidden', tool !== 'fill')
 
         this._selectionManager.enabled = (tool === 'selection')
         this._selectionOverlay?.classList.toggle('move-tool', tool === 'move')
         this._selectionOverlay?.classList.toggle('clone-tool', tool === 'clone')
         this._selectionOverlay?.classList.toggle('transform-tool', tool === 'transform')
+        this._selectionOverlay?.classList.toggle('brush-tool', tool === 'brush')
+        this._selectionOverlay?.classList.toggle('eraser-tool', tool === 'eraser')
+        this._selectionOverlay?.classList.toggle('shape-tool', tool === 'shape')
+        this._selectionOverlay?.classList.toggle('fill-tool', tool === 'fill')
+        this._selectionOverlay?.classList.toggle('eyedropper-tool', tool === 'eyedropper')
     }
 
     _updateToolButtons() {
         const isVideo = this._getActiveLayer()?.mediaType === 'video'
         document.getElementById('moveToolBtn')?.classList.toggle('disabled', isVideo)
+    }
+
+    /**
+     * Ensure a drawing layer exists and is active. If the active layer is already
+     * a drawing layer, return it. Otherwise, create a new drawing layer above the
+     * current layer and select it.
+     * @returns {Object} The drawing layer
+     * @private
+     */
+    _ensureDrawingLayer() {
+        const active = this._getActiveLayer()
+        if (active?.sourceType === 'drawing') return active
+
+        this._finalizePendingUndo()
+        const layer = createDrawingLayer(`Drawing ${++this._drawingLayerCounter}`)
+
+        // Insert above current layer
+        const activeIdx = active ? this._layers.indexOf(active) : this._layers.length - 1
+        this._layers.splice(activeIdx + 1, 0, layer)
+
+        this._updateLayerStack()
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = layer.id
+        }
+
+        this._markDirty()
+        this._pushUndoState()
+        return layer
     }
 
     /**

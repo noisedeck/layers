@@ -96,6 +96,7 @@ class LayerItem extends HTMLElement {
         let iconName = 'image'
         if (this._isChild) iconName = 'tune'
         else if (isEffect) iconName = 'auto_awesome'
+        else if (layer.sourceType === 'drawing') iconName = 'draw'
         else if (layer.mediaType === 'video') iconName = 'videocam'
 
         const classes = [
@@ -149,7 +150,7 @@ class LayerItem extends HTMLElement {
 
         this._initEffectParams()
     }
-    
+
     /**
      * Initialize effect params component
      * @private
@@ -266,14 +267,14 @@ class LayerItem extends HTMLElement {
         this.addEventListener('dragover', (e) => this._handleDragOver(e))
         this.addEventListener('dragleave', () => this._handleDragLeave())
         this.addEventListener('drop', (e) => this._handleDrop(e))
-        
+
         // Effect parameter changes (from effect-params component)
         this.addEventListener('param-change', (e) => {
             e.stopPropagation()
             this._handleParamChange(e.detail)
         })
     }
-    
+
     /**
      * Handle effect parameter change
      * @param {object} detail - Event detail with paramName, value, params
@@ -281,10 +282,10 @@ class LayerItem extends HTMLElement {
      */
     _handleParamChange(detail) {
         if (!this._layer) return
-        
+
         // Update layer's effectParams
         this._layer.effectParams = { ...detail.params }
-        
+
         // Emit as a standard layer-change event
         this._emitChange('effectParams', this._layer.effectParams)
     }
@@ -502,6 +503,7 @@ class LayerItem extends HTMLElement {
 
     _formatLayerType(layer) {
         if (layer.sourceType === 'effect') return 'Effect'
+        if (layer.sourceType === 'drawing') return 'Drawing'
         if (layer.mediaType) return layer.mediaType.charAt(0).toUpperCase() + layer.mediaType.slice(1)
         return 'Media'
     }

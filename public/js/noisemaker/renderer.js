@@ -98,7 +98,7 @@ export class LayersRenderer {
         const stepIndices = this._getMediaStepIndices()
         if (!stepIndices) return
 
-        const visibleMediaLayers = this._layers.filter(l => l.visible && l.sourceType === 'media')
+        const visibleMediaLayers = this._layers.filter(l => l.visible && (l.sourceType === 'media' || l.sourceType === 'drawing'))
 
         for (let i = 0; i < visibleMediaLayers.length && i < stepIndices.length; i++) {
             const media = this._mediaTextures.get(visibleMediaLayers[i].id)
@@ -273,7 +273,7 @@ export class LayersRenderer {
         }
 
         for (const layer of visibleLayers) {
-            const effectName = layer.sourceType === 'media'
+            const effectName = (layer.sourceType === 'media' || layer.sourceType === 'drawing')
                 ? 'media'
                 : layer.effectId?.split('/')[1]
 
@@ -462,7 +462,7 @@ export class LayersRenderer {
                 this.updateLayerOpacity(layer.id, layer.opacity)
             }
 
-            if (layer.sourceType === 'media') {
+            if (layer.sourceType === 'media' || layer.sourceType === 'drawing') {
                 const sx = layer.scaleX ?? 1
                 const sy = layer.scaleY ?? 1
                 const rot = layer.rotation ?? 0
@@ -487,7 +487,7 @@ export class LayersRenderer {
             return
         }
 
-        const visibleMediaLayers = this._layers.filter(l => l.visible && l.sourceType === 'media')
+        const visibleMediaLayers = this._layers.filter(l => l.visible && (l.sourceType === 'media' || l.sourceType === 'drawing'))
         const stepParameterValues = {}
 
         for (let i = 0; i < visibleMediaLayers.length && i < stepIndices.length; i++) {
@@ -799,7 +799,7 @@ export class LayersRenderer {
                     currentOutput = this._buildChildChain(layer, currentOutput, lines)
                 } else {
                     // Media or effect base - blend over transparent background for opacity
-                    const layerCall = layer.sourceType === 'media'
+                    const layerCall = (layer.sourceType === 'media' || layer.sourceType === 'drawing')
                         ? this._buildMediaCall()
                         : this._buildEffectCall(layer)
                     const mixAmt = this._opacityToMixAmt(layer.opacity)
@@ -815,7 +815,7 @@ export class LayersRenderer {
                 currentOutput++
                 const mixAmt = this._opacityToMixAmt(layer.opacity)
 
-                if (layer.sourceType === 'media') {
+                if (layer.sourceType === 'media' || layer.sourceType === 'drawing') {
                     lines.push(`${this._buildMediaCall()}.write(o${currentOutput})`)
                 } else if (layer.sourceType === 'effect') {
                     const effectCall = this._buildEffectCall(layer)

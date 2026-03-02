@@ -41,7 +41,7 @@ export function createLayer(options = {}) {
         rotation: options.rotation ?? 0,
         flipH: options.flipH || false,
         flipV: options.flipV || false,
-        sourceType: options.sourceType || 'media', // 'media' | 'effect'
+        sourceType: options.sourceType || 'media', // 'media' | 'effect' | 'drawing'
 
         // Media-specific
         mediaFile: options.mediaFile || null,
@@ -50,6 +50,10 @@ export function createLayer(options = {}) {
         // Effect-specific
         effectId: options.effectId || null,
         effectParams: options.effectParams || {},
+
+        // Drawing-specific
+        strokes: options.strokes || (options.sourceType === 'drawing' ? [] : undefined),
+        drawingCanvas: null, // runtime only, never serialized
 
         // Child effects (per-layer filter chain)
         children: options.children || []
@@ -90,6 +94,18 @@ export function createEffectLayer(effectId, name, params = {}) {
 }
 
 /**
+ * Create a drawing layer
+ * @param {string} [name] - Layer name
+ * @returns {object} Layer object
+ */
+export function createDrawingLayer(name) {
+    return createLayer({
+        name: name || 'Drawing',
+        sourceType: 'drawing'
+    })
+}
+
+/**
  * Create a child effect object (lightweight, no blend/opacity/media fields)
  * @param {string} effectId - Effect ID (namespace/name)
  * @param {string} [name] - Display name
@@ -118,6 +134,8 @@ export function cloneLayer(layer) {
         id: `layer-${layerCounter++}`,
         name: `${layer.name} copy`,
         effectParams: JSON.parse(JSON.stringify(layer.effectParams)),
+        strokes: layer.strokes ? JSON.parse(JSON.stringify(layer.strokes)) : layer.strokes,
+        drawingCanvas: null,
         children: (layer.children || []).map(child => ({
             ...child,
             id: `layer-${layerCounter++}`,
@@ -132,10 +150,11 @@ export function cloneLayer(layer) {
  * @returns {string} JSON string
  */
 export function serializeLayers(layers) {
-    // Remove File objects (can't be serialized)
+    // Remove File objects and runtime-only fields (can't be serialized)
     const serializableLayers = layers.map(layer => ({
         ...layer,
-        mediaFile: null // File objects can't be serialized
+        mediaFile: null, // File objects can't be serialized
+        drawingCanvas: undefined // runtime only, never serialized
     }))
     return JSON.stringify(serializableLayers)
 }
