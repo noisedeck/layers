@@ -1497,6 +1497,19 @@ class LayersApp {
             this._handleAddEffectLayer(effectItem.dataset.effect)
         })
 
+        // Flip submenus that would overflow viewport
+        document.querySelectorAll('.has-submenu').forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                const submenu = item.querySelector('.submenu')
+                if (!submenu) return
+                submenu.classList.remove('flip-left')
+                const rect = submenu.getBoundingClientRect()
+                if (rect.right > window.innerWidth) {
+                    submenu.classList.add('flip-left')
+                }
+            })
+        })
+
         // Select menu - Select All
         document.getElementById('selectAllMenuItem')?.addEventListener('click', () => {
             const { width, height } = this._canvas
