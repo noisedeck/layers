@@ -40,6 +40,7 @@ import { ExportVideoDialog } from './ui/export-video-dialog.js'
 import { getFontaineLoader, BASE_FONTS } from './layers/fontaine-loader.js'
 import * as strokeModel from './drawing/stroke-model.js'
 import { StrokeRenderer } from './drawing/stroke-renderer.js'
+import { autoLevels, autoContrast, autoWhiteBalance } from './utils/auto-adjust.js'
 
 /**
  * Main application class
@@ -735,6 +736,29 @@ class LayersApp {
         }
 
         toast.success(`Added layer: ${layer.name}`)
+    }
+
+    async _handleAutoCorrection(correctionFn) {
+        const result = correctionFn(this._canvas)
+        if (!result) {
+            toast.info('No correction needed')
+            return
+        }
+        this._finalizePendingUndo()
+        const layer = createEffectLayer(result.effectId)
+        layer.name = result.name
+        Object.assign(layer.effectParams, result.effectParams)
+        this._layers.push(layer)
+
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+
+        if (this._layerStack) {
+            this._layerStack.selectedLayerId = layer.id
+        }
+        toast.success(`Applied: ${result.name}`)
     }
 
     /**
@@ -1495,6 +1519,20 @@ class LayersApp {
             if (!effectItem) return
             if (this._layers.length === 0) return
             this._handleAddEffectLayer(effectItem.dataset.effect)
+        })
+
+        // Auto correction handlers
+        document.getElementById('autoLevelsMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAutoCorrection(autoLevels)
+        })
+        document.getElementById('autoContrastMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAutoCorrection(autoContrast)
+        })
+        document.getElementById('autoWhiteBalanceMenuItem')?.addEventListener('click', () => {
+            if (this._layers.length === 0) return
+            this._handleAutoCorrection(autoWhiteBalance)
         })
 
         // Flip submenus that would overflow viewport
