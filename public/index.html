@@ -135,19 +135,51 @@
                 <div class="menu" id="imageMenu">
                     <div class="menu-title">image</div>
                     <div class="menu-items hide">
+                        <div class="menu-section-label">auto</div>
+                        <div id="autoLevelsMenuItem">auto levels</div>
+                        <div id="autoContrastMenuItem">auto contrast</div>
+                        <div id="autoWhiteBalanceMenuItem">auto white balance</div>
+                        <hr class="menu-seperator">
+                        <div class="has-submenu">tone
+                            <div class="submenu">
+                                <div data-effect="filter/bc">brightness/contrast</div>
+                                <div data-effect="filter/smoothstep">levels</div>
+                                <div data-effect="filter/posterize">posterize</div>
+                                <div data-effect="filter/thresh">threshold</div>
+                            </div>
+                        </div>
+                        <div class="has-submenu">color
+                            <div class="submenu">
+                                <div data-effect="filter/hs">hue/saturation</div>
+                                <div data-effect="filter/grade">color grading</div>
+                                <div data-effect="filter/tint">tint</div>
+                                <div data-effect="filter/inv">invert</div>
+                                <div data-effect="filter/tetraColorArray">gradient palette</div>
+                            </div>
+                        </div>
+                        <div class="has-submenu">blur &amp; sharpen
+                            <div class="submenu">
+                                <div data-effect="filter/blur">blur</div>
+                                <div data-effect="filter/motionBlur">motion blur</div>
+                                <div data-effect="filter/zoomBlur">zoom blur</div>
+                                <div data-effect="filter/sharpen">sharpen</div>
+                            </div>
+                        </div>
+                        <div class="has-submenu">stylize
+                            <div class="submenu">
+                                <div data-effect="filter/bloom">bloom</div>
+                                <div data-effect="filter/grain">grain</div>
+                                <div data-effect="filter/vignette">vignette</div>
+                                <div data-effect="filter/edge">edge detect</div>
+                                <div data-effect="filter/dither">dither</div>
+                                <div data-effect="filter/emboss">emboss</div>
+                            </div>
+                        </div>
+                        <hr class="menu-seperator">
                         <div id="cropToSelectionMenuItem" class="disabled">crop to selection</div>
                         <hr class="menu-seperator">
                         <div id="imageSizeMenuItem">image size...</div>
                         <div id="canvasSizeMenuItem">canvas size...</div>
-                        <hr class="menu-seperator">
-                        <div id="invertMenuItem">invert</div>
-                        <div id="brightnessContrastMenuItem">brightness/contrast</div>
-                        <div id="hueSaturationMenuItem">hue/saturation</div>
-                        <hr class="menu-seperator">
-                        <div id="gradientPaletteMenuItem">gradient palette</div>
-                        <div id="colorGradingMenuItem">color grading</div>
-                        <hr class="menu-seperator">
-                        <div id="blurMenuItem">blur</div>
                     </div>
                 </div>
 
