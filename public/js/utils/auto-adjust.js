@@ -6,7 +6,7 @@
 /**
  * Read current canvas pixels via WebGL
  * @param {HTMLCanvasElement} canvas
- * @returns {Uint8ClampedArray} RGBA pixel data (top-down)
+ * @returns {Uint8Array} RGBA pixel data (unordered — callers use aggregate stats only)
  */
 function readCanvasPixels(canvas) {
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
@@ -16,15 +16,7 @@ function readCanvasPixels(canvas) {
     const height = canvas.height
     const pixels = new Uint8Array(width * height * 4)
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
-
-    // WebGL readPixels is bottom-up, flip vertically
-    const flipped = new Uint8ClampedArray(width * height * 4)
-    for (let y = 0; y < height; y++) {
-        const srcRow = (height - 1 - y) * width * 4
-        const dstRow = y * width * 4
-        flipped.set(pixels.subarray(srcRow, srcRow + width * 4), dstRow)
-    }
-    return flipped
+    return pixels
 }
 
 /**
