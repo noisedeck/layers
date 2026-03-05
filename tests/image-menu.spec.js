@@ -23,8 +23,8 @@ test.describe('Image menu adjustments', () => {
         const toneItem = page.locator('#imageMenu .has-submenu', { hasText: 'tone' })
         await toneItem.hover()
 
-        // Submenu should be visible
-        const submenu = toneItem.locator('.submenu')
+        // Submenu should be visible (sibling of .menu-items, linked by data-submenu-id)
+        const submenu = page.locator('.submenu[data-submenu-id="tone"]')
         await expect(submenu).toBeVisible()
 
         // Should contain brightness/contrast

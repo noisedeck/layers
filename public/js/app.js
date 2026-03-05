@@ -1411,9 +1411,57 @@ class LayersApp {
             }
         })
 
+        // Submenu show/hide — submenus are siblings of .menu-items, positioned via JS
+        let activeSubmenu = null
+        const hideSubmenu = () => {
+            if (activeSubmenu) {
+                activeSubmenu.classList.add('hide')
+                activeSubmenu = null
+            }
+        }
+        document.querySelectorAll('.has-submenu[data-submenu]').forEach(trigger => {
+            const submenuId = trigger.dataset.submenu
+            const submenu = document.querySelector(`.submenu[data-submenu-id="${submenuId}"]`)
+            if (!submenu) return
+
+            trigger.addEventListener('mouseenter', () => {
+                hideSubmenu()
+                const menuEl = trigger.closest('.menu')
+                const menuRect = menuEl.getBoundingClientRect()
+                const triggerRect = trigger.getBoundingClientRect()
+                const menuItemsEl = trigger.closest('.menu-items')
+                const menuItemsRect = menuItemsEl.getBoundingClientRect()
+
+                // Position relative to .menu (position: relative)
+                submenu.style.top = (triggerRect.top - menuRect.top) + 'px'
+                submenu.style.left = (menuItemsRect.right - menuRect.left) + 'px'
+                submenu.classList.remove('hide')
+
+                // Flip left if it would overflow viewport
+                const submenuRect = submenu.getBoundingClientRect()
+                if (submenuRect.right > window.innerWidth) {
+                    submenu.style.left = (menuItemsRect.left - menuRect.left - submenuRect.width) + 'px'
+                }
+                activeSubmenu = submenu
+            })
+
+            trigger.addEventListener('mouseleave', (e) => {
+                if (e.relatedTarget && submenu.contains(e.relatedTarget)) return
+                hideSubmenu()
+            })
+
+            submenu.addEventListener('mouseleave', (e) => {
+                if (e.relatedTarget && trigger.contains(e.relatedTarget)) return
+                hideSubmenu()
+            })
+
+            submenu.addEventListener('click', () => hideSubmenu())
+        })
+
         // Close menus on outside click
         document.addEventListener('click', () => {
             document.querySelectorAll('.menu-items').forEach(m => m.classList.add('hide'))
+            hideSubmenu()
         })
 
         // Logo menu - About
@@ -1533,19 +1581,6 @@ class LayersApp {
         document.getElementById('autoWhiteBalanceMenuItem')?.addEventListener('click', () => {
             if (this._layers.length === 0) return
             this._handleAutoCorrection(autoWhiteBalance)
-        })
-
-        // Flip submenus that would overflow viewport
-        document.querySelectorAll('.has-submenu').forEach(item => {
-            item.addEventListener('mouseenter', () => {
-                const submenu = item.querySelector('.submenu')
-                if (!submenu) return
-                submenu.classList.remove('flip-left')
-                const rect = submenu.getBoundingClientRect()
-                if (rect.right > window.innerWidth) {
-                    submenu.classList.add('flip-left')
-                }
-            })
         })
 
         // Select menu - Select All
