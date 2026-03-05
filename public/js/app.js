@@ -1393,6 +1393,15 @@ class LayersApp {
      * @private
      */
     _setupMenuHandlers() {
+        // Submenu state — hoisted so menu title handlers can access it
+        let activeSubmenu = null
+        const hideSubmenu = () => {
+            if (activeSubmenu) {
+                activeSubmenu.classList.add('hide')
+                activeSubmenu = null
+            }
+        }
+
         // Menu dropdowns
         const menus = document.querySelectorAll('.menu')
         menus.forEach(menu => {
@@ -1402,6 +1411,7 @@ class LayersApp {
             if (title && items) {
                 title.addEventListener('click', (e) => {
                     e.stopPropagation()
+                    hideSubmenu()
                     // Close other menus
                     document.querySelectorAll('.menu-items').forEach(m => {
                         if (m !== items) m.classList.add('hide')
@@ -1410,15 +1420,6 @@ class LayersApp {
                 })
             }
         })
-
-        // Submenu show/hide — submenus are siblings of .menu-items, positioned via JS
-        let activeSubmenu = null
-        const hideSubmenu = () => {
-            if (activeSubmenu) {
-                activeSubmenu.classList.add('hide')
-                activeSubmenu = null
-            }
-        }
         document.querySelectorAll('.has-submenu[data-submenu]').forEach(trigger => {
             const submenuId = trigger.dataset.submenu
             const submenu = document.querySelector(`.submenu[data-submenu-id="${submenuId}"]`)
