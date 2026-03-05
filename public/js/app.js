@@ -922,6 +922,86 @@ class LayersApp {
         toast.success('Selection created from mask')
     }
 
+    _showMaskContextMenu(layerId, x, y) {
+        const menu = document.getElementById('maskContextMenu')
+        if (!menu) return
+
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer) return
+
+        // Update disable/enable text
+        const disableItem = menu.querySelector('[data-action="disable"]')
+        if (disableItem) {
+            disableItem.textContent = layer.maskEnabled ? 'Disable Mask' : 'Enable Mask'
+        }
+
+        menu.style.left = `${x}px`
+        menu.style.top = `${y}px`
+        menu.classList.remove('hidden')
+
+        // Close on click outside
+        const close = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.classList.add('hidden')
+                document.removeEventListener('mousedown', close)
+            }
+        }
+        setTimeout(() => document.addEventListener('mousedown', close), 0)
+
+        // Handle menu item clicks
+        menu.onclick = async (e) => {
+            const action = e.target.closest('[data-action]')?.dataset.action
+            if (!action) return
+            menu.classList.add('hidden')
+            document.removeEventListener('mousedown', close)
+
+            switch (action) {
+                case 'invert': await this._invertLayerMask(layerId); break
+                case 'disable': await this._toggleMaskEnabled(layerId); break
+                case 'selection-from-mask': this._selectionFromMask(layerId); break
+                case 'delete': await this._deleteLayerMask(layerId); break
+            }
+        }
+    }
+
+    _showLayerContextMenu(layerId, hasMask, x, y) {
+        const menu = document.getElementById('layerContextMenu')
+        if (!menu) return
+
+        // Show/hide items based on mask state
+        const addMaskItem = menu.querySelector('[data-action="add-mask"]')
+        const maskFromSelItem = menu.querySelector('[data-action="mask-from-selection"]')
+        if (addMaskItem) addMaskItem.classList.toggle('hide', hasMask)
+        if (maskFromSelItem) maskFromSelItem.classList.toggle('hide', hasMask)
+
+        // Don't show if all items are hidden
+        if (hasMask) return
+
+        menu.style.left = `${x}px`
+        menu.style.top = `${y}px`
+        menu.classList.remove('hidden')
+
+        const close = (e) => {
+            if (!menu.contains(e.target)) {
+                menu.classList.add('hidden')
+                document.removeEventListener('mousedown', close)
+            }
+        }
+        setTimeout(() => document.addEventListener('mousedown', close), 0)
+
+        menu.onclick = async (e) => {
+            const action = e.target.closest('[data-action]')?.dataset.action
+            if (!action) return
+            menu.classList.add('hidden')
+            document.removeEventListener('mousedown', close)
+
+            switch (action) {
+                case 'add-mask': await this._addLayerMask(layerId); break
+                case 'mask-from-selection': await this._maskFromSelection(layerId); break
+            }
+        }
+    }
+
     /**
      * Enter mask editing mode for a layer.
      * Shows rubylith overlay and switches tools to paint on mask.
@@ -2150,6 +2230,11 @@ class LayersApp {
         })
 
         this._layerStack.addEventListener('selection-change', () => {
+            // When selecting a different layer, exit mask edit mode
+            if (this._maskEditMode && this._getActiveLayer()?.id !== this._maskEditLayerId) {
+                this._exitMaskEditMode()
+            }
+
             this._updateLayerMenu()
             this._updateToolButtons()
             this._transformTool?.redraw()
@@ -2161,6 +2246,39 @@ class LayersApp {
 
         this._layerStack.addEventListener('child-add', (e) => {
             this._showAddChildEffectDialog(e.detail.layerId)
+        })
+
+        // Mask events from layer-item
+        this._layerStack?.addEventListener('mask-edit', (e) => {
+            const { layerId } = e.detail
+            if (this._maskEditMode && this._maskEditLayerId === layerId) {
+                this._exitMaskEditMode()
+            } else {
+                if (this._maskEditMode) this._exitMaskEditMode()
+                this._enterMaskEditMode(layerId)
+            }
+        })
+
+        this._layerStack?.addEventListener('mask-toggle-visible', (e) => {
+            const layer = this._layers.find(l => l.id === e.detail.layerId)
+            if (!layer?.mask) return
+            layer.maskVisible = !layer.maskVisible
+            if (layer.maskVisible) {
+                this._renderMaskOverlay(layer)
+            } else {
+                document.getElementById('maskOverlay')?.classList.add('hidden')
+            }
+            this._updateLayerStack()
+        })
+
+        this._layerStack?.addEventListener('mask-context-menu', (e) => {
+            const { layerId, x, y } = e.detail
+            this._showMaskContextMenu(layerId, x, y)
+        })
+
+        this._layerStack?.addEventListener('layer-context-menu', (e) => {
+            const { layerId, hasMask, x, y } = e.detail
+            this._showLayerContextMenu(layerId, hasMask, x, y)
         })
     }
 

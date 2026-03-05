@@ -500,6 +500,35 @@
     color: var(--accent4);
 }
 
+/* Context menus */
+.context-menu {
+    position: fixed;
+    background-color: color-mix(in srgb, var(--color2) var(--effect-surface-opacity), transparent var(--effect-surface-transparency));
+    backdrop-filter: var(--glass-blur-strength);
+    -webkit-backdrop-filter: var(--glass-blur-strength);
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--ui-corner-radius-small);
+    z-index: 3000;
+    min-width: 180px;
+    font-family: Nunito, 'Nunito Block';
+    font-size: 0.875rem;
+    color: var(--accent3);
+}
+
+.context-menu.hidden {
+    display: none;
+}
+
+.context-menu div {
+    padding: 8px 16px;
+    cursor: pointer;
+}
+
+.context-menu div:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--accent4);
+}
+
 /* Section labels in menu */
 .menu-section-label {
     padding: 6px 16px 2px !important;
