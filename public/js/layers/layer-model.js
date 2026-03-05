@@ -56,7 +56,12 @@ export function createLayer(options = {}) {
         drawingCanvas: null, // runtime only, never serialized
 
         // Child effects (per-layer filter chain)
-        children: options.children || []
+        children: options.children || [],
+
+        // Layer mask (grayscale ImageData, white=visible, black=hidden)
+        mask: options.mask || null,
+        maskEnabled: options.maskEnabled !== false,
+        maskVisible: options.maskVisible || false
     }
 }
 
@@ -136,6 +141,10 @@ export function cloneLayer(layer) {
         effectParams: JSON.parse(JSON.stringify(layer.effectParams)),
         strokes: layer.strokes ? JSON.parse(JSON.stringify(layer.strokes)) : layer.strokes,
         drawingCanvas: null,
+        mask: layer.mask ? new ImageData(
+            new Uint8ClampedArray(layer.mask.data),
+            layer.mask.width, layer.mask.height
+        ) : null,
         children: (layer.children || []).map(child => ({
             ...child,
             id: `layer-${layerCounter++}`,
@@ -150,12 +159,22 @@ export function cloneLayer(layer) {
  * @returns {string} JSON string
  */
 export function serializeLayers(layers) {
-    // Remove File objects and runtime-only fields (can't be serialized)
-    const serializableLayers = layers.map(layer => ({
-        ...layer,
-        mediaFile: null, // File objects can't be serialized
-        drawingCanvas: undefined // runtime only, never serialized
-    }))
+    const serializableLayers = layers.map(layer => {
+        const serialized = {
+            ...layer,
+            mediaFile: null,
+            drawingCanvas: undefined
+        }
+        // Encode mask ImageData as base64 PNG
+        if (layer.mask) {
+            const canvas = document.createElement('canvas')
+            canvas.width = layer.mask.width
+            canvas.height = layer.mask.height
+            canvas.getContext('2d').putImageData(layer.mask, 0, 0)
+            serialized.mask = canvas.toDataURL('image/png')
+        }
+        return serialized
+    })
     return JSON.stringify(serializableLayers)
 }
 
@@ -166,9 +185,34 @@ export function serializeLayers(layers) {
  */
 export function deserializeLayers(json) {
     try {
-        return JSON.parse(json)
+        const layers = JSON.parse(json)
+        return layers
     } catch {
         return []
+    }
+}
+
+/**
+ * Decode base64 mask strings to ImageData (call after deserialize)
+ * @param {Array} layers - Layer array with possible base64 mask strings
+ * @returns {Promise<void>}
+ */
+export async function decodeMasks(layers) {
+    for (const layer of layers) {
+        if (typeof layer.mask === 'string') {
+            const img = new Image()
+            await new Promise((resolve, reject) => {
+                img.onload = resolve
+                img.onerror = reject
+                img.src = layer.mask
+            })
+            const canvas = document.createElement('canvas')
+            canvas.width = img.width
+            canvas.height = img.height
+            const ctx = canvas.getContext('2d')
+            ctx.drawImage(img, 0, 0)
+            layer.mask = ctx.getImageData(0, 0, img.width, img.height)
+        }
     }
 }
 
