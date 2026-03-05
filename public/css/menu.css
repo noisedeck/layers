@@ -480,12 +480,11 @@
     left: 100%;
     top: -4px;
     min-width: 180px;
-    background-color: color-mix(in srgb, var(--color2) var(--effect-surface-opacity), transparent var(--effect-surface-transparency));
-    backdrop-filter: var(--glass-blur-strength);
+    background-color: var(--color2);
     box-shadow: var(--shadow-lg);
     border-radius: var(--ui-corner-radius-small, 0.375rem);
     z-index: 6;
-    margin-left: 2px;
+    padding-left: 4px;
 }
 
 .menu-items .has-submenu:hover > .submenu {
@@ -497,8 +496,8 @@
 .menu-items .submenu.flip-left {
     left: auto;
     right: 100%;
-    margin-left: 0;
-    margin-right: 2px;
+    padding-left: 0;
+    padding-right: 4px;
 }
 
 .menu-items .submenu div {

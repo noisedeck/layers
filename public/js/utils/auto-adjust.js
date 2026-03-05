@@ -62,6 +62,12 @@ function computeHistogram(pixels) {
 
 /**
  * Auto Levels - stretch per-channel histogram to full range
+ *
+ * filter/bc shader model:
+ *   brightness: default 1, range 0-10, multiplicative (color *= brightness)
+ *   contrast: default 0.5, range 0-1, formula: (color - 0.5) * contrast * 2 + 0.5
+ *   Identity = brightness 1, contrast 0.5
+ *
  * @returns {{ effectId: string, effectParams: object, name: string } | null}
  */
 export function autoLevels(canvas) {
@@ -75,22 +81,26 @@ export function autoLevels(canvas) {
     const gLow = hist.percentile(hist.g, 0.01), gHigh = hist.percentile(hist.g, 0.99)
     const bLow = hist.percentile(hist.b, 0.01), bHigh = hist.percentile(hist.b, 0.99)
 
-    // Use the most extreme values across channels
     const low = Math.min(rLow, gLow, bLow) / 255
     const high = Math.max(rHigh, gHigh, bHigh) / 255
+    const mid = (low + high) / 2
 
-    // Map to brightness/contrast params
     const range = high - low
-    if (range < 0.01) return null // already full range or flat
+    if (range > 0.9) return null // already nearly full range
 
-    const brightness = -(low + high - 1) / 2
-    const contrast = 1 / range
+    // Brightness: multiply to shift midpoint toward 0.5
+    // If image is dark (mid < 0.5), brighten. If light (mid > 0.5), darken.
+    const brightness = mid > 0.01 ? 0.5 / mid : 2
+
+    // Contrast: expand range to fill 0-1
+    // contrast=0.5 is identity, higher expands, lower compresses
+    const contrast = Math.min(0.5 / range, 1)
 
     return {
         effectId: 'filter/bc',
         effectParams: {
-            brightness: Math.max(-1, Math.min(1, brightness)),
-            contrast: Math.max(0.1, Math.min(5, contrast))
+            brightness: Math.max(0.1, Math.min(10, brightness)),
+            contrast: Math.max(0, Math.min(1, contrast))
         },
         name: 'Auto Levels'
     }
@@ -108,25 +118,33 @@ export function autoContrast(canvas) {
 
     const low = hist.percentile(hist.lum, 0.01) / 255
     const high = hist.percentile(hist.lum, 0.99) / 255
+    const mid = (low + high) / 2
 
     const range = high - low
-    if (range < 0.01) return null
+    if (range > 0.9) return null // already nearly full range
 
-    const brightness = -(low + high - 1) / 2
-    const contrast = 1 / range
+    const brightness = mid > 0.01 ? 0.5 / mid : 2
+    const contrast = Math.min(0.5 / range, 1)
 
     return {
         effectId: 'filter/bc',
         effectParams: {
-            brightness: Math.max(-1, Math.min(1, brightness)),
-            contrast: Math.max(0.1, Math.min(5, contrast))
+            brightness: Math.max(0.1, Math.min(10, brightness)),
+            contrast: Math.max(0, Math.min(1, contrast))
         },
         name: 'Auto Contrast'
     }
 }
 
 /**
- * Auto White Balance - neutralize color cast via hue/saturation
+ * Auto White Balance - neutralize color cast via hue rotation
+ *
+ * filter/hs shader model:
+ *   rotation: default 0, range -180 to 180 (degrees)
+ *   hueRange: default 100, range 0-200
+ *   saturation: default 1, range 0-4 (multiplicative)
+ *   Identity = rotation 0, hueRange 100, saturation 1
+ *
  * @returns {{ effectId: string, effectParams: object, name: string } | null}
  */
 export function autoWhiteBalance(canvas) {
@@ -142,37 +160,38 @@ export function autoWhiteBalance(canvas) {
     // Gray world assumption: ideal is equal R, G, B means
     const overall = (rMean + gMean + bMean) / 3
 
-    // Detect dominant color cast
     const rDev = rMean - overall
     const gDev = gMean - overall
     const bDev = bMean - overall
     const maxDev = Math.max(Math.abs(rDev), Math.abs(gDev), Math.abs(bDev))
 
-    if (maxDev < 3) return null // negligible cast
+    if (maxDev < 5) return null // negligible cast
 
-    // Map color cast to hue shift (approximate)
-    let hue = 0
+    // Map dominant color cast to hue rotation (degrees)
+    // and slight desaturation to reduce the cast
+    let rotation = 0
     let saturation = 1
 
-    if (rDev > gDev && rDev > bDev) {
-        // Red/warm cast
-        hue = -maxDev / 255 * 0.3
-        saturation = 1 - maxDev / 255 * 0.2
-    } else if (bDev > rDev && bDev > gDev) {
-        // Blue/cool cast
-        hue = maxDev / 255 * 0.3
-        saturation = 1 - maxDev / 255 * 0.2
-    } else {
-        // Green cast
+    if (Math.abs(rDev) >= Math.abs(gDev) && Math.abs(rDev) >= Math.abs(bDev)) {
+        // Red cast → rotate toward cyan, desaturate slightly
+        rotation = rDev > 0 ? -maxDev / 255 * 60 : maxDev / 255 * 60
         saturation = 1 - maxDev / 255 * 0.3
+    } else if (Math.abs(bDev) >= Math.abs(rDev) && Math.abs(bDev) >= Math.abs(gDev)) {
+        // Blue cast → rotate toward yellow
+        rotation = bDev > 0 ? maxDev / 255 * 60 : -maxDev / 255 * 60
+        saturation = 1 - maxDev / 255 * 0.3
+    } else {
+        // Green cast → rotate away, desaturate more
+        rotation = gDev > 0 ? maxDev / 255 * 40 : -maxDev / 255 * 40
+        saturation = 1 - maxDev / 255 * 0.4
     }
 
     return {
         effectId: 'filter/hs',
         effectParams: {
-            hue: Math.max(-1, Math.min(1, hue)),
-            saturation: Math.max(0, Math.min(4, saturation)),
-            lightness: 0
+            rotation: Math.max(-180, Math.min(180, rotation)),
+            hueRange: 100,
+            saturation: Math.max(0.1, Math.min(4, saturation))
         },
         name: 'Auto White Balance'
     }
