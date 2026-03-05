@@ -76,6 +76,10 @@ class LayersApp {
         this._undoManager = new UndoManager(50)
         this._undoDebounceTimer = null
         this._restoring = false
+
+        // Mask editing
+        this._maskEditMode = false
+        this._maskEditLayerId = null
     }
 
     /**
@@ -113,6 +117,12 @@ class LayersApp {
             if (l.sourceType === 'drawing') {
                 clone.strokes = JSON.parse(JSON.stringify(l.strokes || []))
                 clone.drawingCanvas = null
+            }
+            if (l.mask) {
+                clone.mask = new ImageData(
+                    new Uint8ClampedArray(l.mask.data),
+                    l.mask.width, l.mask.height
+                )
             }
             return clone
         })
@@ -202,6 +212,15 @@ class LayersApp {
         for (const layer of this._layers) {
             if (layer.sourceType === 'drawing' && layer.strokes?.length > 0) {
                 await this._rasterizeDrawingLayer(layer)
+            }
+        }
+
+        // Re-upload mask textures after undo restore
+        for (const layer of this._layers) {
+            if (layer.mask) {
+                this._renderer.uploadMaskTexture(layer.id, layer.mask)
+            } else {
+                this._renderer.removeMaskTexture(layer.id)
             }
         }
 
@@ -760,6 +779,159 @@ class LayersApp {
         }
         toast.success(`Applied: ${result.name}`)
     }
+
+    // ── Mask management ─────────────────────────────────────────────────
+
+    /**
+     * Add a fully white (revealed) mask to a layer.
+     * @param {string} layerId
+     */
+    async _addLayerMask(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer || layer.mask) return
+
+        this._finalizePendingUndo()
+
+        const w = this._canvas.width
+        const h = this._canvas.height
+        const mask = new ImageData(w, h)
+        // Fill with white (fully visible)
+        for (let i = 0; i < mask.data.length; i += 4) {
+            mask.data[i] = 255     // R
+            mask.data[i + 1] = 255 // G
+            mask.data[i + 2] = 255 // B
+            mask.data[i + 3] = 255 // A
+        }
+        layer.mask = mask
+        layer.maskEnabled = true
+
+        this._renderer.uploadMaskTexture(layerId, mask)
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+        toast.success('Layer mask added')
+    }
+
+    /**
+     * Create a mask from the current selection.
+     * @param {string} layerId
+     */
+    async _maskFromSelection(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer) return
+
+        const selMask = this._selectionManager.rasterizeSelection()
+        if (!selMask) {
+            toast.info('No selection active')
+            return
+        }
+
+        this._finalizePendingUndo()
+        layer.mask = selMask
+        layer.maskEnabled = true
+
+        this._renderer.uploadMaskTexture(layerId, selMask)
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+        toast.success('Mask created from selection')
+    }
+
+    /**
+     * Delete a layer's mask.
+     * @param {string} layerId
+     */
+    async _deleteLayerMask(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer || !layer.mask) return
+
+        this._finalizePendingUndo()
+        layer.mask = null
+        layer.maskEnabled = true
+        layer.maskVisible = false
+
+        if (this._maskEditMode && this._maskEditLayerId === layerId) {
+            this._exitMaskEditMode()
+        }
+
+        this._renderer.removeMaskTexture(layerId)
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+        toast.info('Layer mask deleted')
+    }
+
+    /**
+     * Invert a layer's mask (swap black/white).
+     * @param {string} layerId
+     */
+    async _invertLayerMask(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer?.mask) return
+
+        this._finalizePendingUndo()
+        const data = layer.mask.data
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = 255 - data[i]         // R
+            data[i + 1] = 255 - data[i + 1] // G
+            data[i + 2] = 255 - data[i + 2] // B
+            // A stays 255
+        }
+
+        this._renderer.uploadMaskTexture(layerId, layer.mask)
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+        toast.success('Mask inverted')
+    }
+
+    /**
+     * Toggle mask enabled/disabled.
+     * @param {string} layerId
+     */
+    async _toggleMaskEnabled(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer?.mask) return
+
+        this._finalizePendingUndo()
+        layer.maskEnabled = !layer.maskEnabled
+        this._updateLayerStack()
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+    }
+
+    /**
+     * Create a selection from a layer's mask.
+     * @param {string} layerId
+     */
+    _selectionFromMask(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer?.mask) return
+
+        this._selectionManager.setSelection({
+            type: 'mask',
+            data: new ImageData(
+                new Uint8ClampedArray(layer.mask.data),
+                layer.mask.width, layer.mask.height
+            )
+        })
+        toast.success('Selection created from mask')
+    }
+
+    /**
+     * Exit mask editing mode.
+     * Stub — full implementation in Task 5.
+     */
+    _exitMaskEditMode() {
+        this._maskEditMode = false
+        this._maskEditLayerId = null
+    }
+
+    // ── End mask management ─────────────────────────────────────────────
 
     /**
      * Add a child effect to a parent layer
