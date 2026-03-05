@@ -923,12 +923,126 @@ class LayersApp {
     }
 
     /**
+     * Enter mask editing mode for a layer.
+     * Shows rubylith overlay and switches tools to paint on mask.
+     * @param {string} layerId
+     */
+    _enterMaskEditMode(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer?.mask) return
+
+        this._maskEditMode = true
+        this._maskEditLayerId = layerId
+        layer.maskVisible = true
+
+        // Route brush strokes to mask painting
+        if (this._brushTool) {
+            this._brushTool.onStrokeComplete = (stroke) => {
+                const isEraser = this._currentTool === 'eraser'
+                this._handleMaskStroke(stroke, isEraser)
+            }
+        }
+
+        this._renderMaskOverlay(layer)
+        this._updateLayerStack()
+    }
+
+    /**
      * Exit mask editing mode.
-     * Stub — full implementation in Task 5.
      */
     _exitMaskEditMode() {
+        if (!this._maskEditMode) return
+
+        const layer = this._layers.find(l => l.id === this._maskEditLayerId)
+        if (layer) {
+            layer.maskVisible = false
+        }
+
         this._maskEditMode = false
         this._maskEditLayerId = null
+
+        // Clear brush stroke interception
+        if (this._brushTool) {
+            this._brushTool.onStrokeComplete = null
+        }
+
+        const overlay = document.getElementById('maskOverlay')
+        if (overlay) {
+            overlay.classList.add('hidden')
+        }
+        this._updateLayerStack()
+    }
+
+    /**
+     * Render the rubylith overlay for a mask.
+     * Red = hidden areas, transparent = visible areas.
+     * @param {object} layer
+     */
+    _renderMaskOverlay(layer) {
+        const overlay = document.getElementById('maskOverlay')
+        if (!overlay || !layer.mask) return
+
+        overlay.width = layer.mask.width
+        overlay.height = layer.mask.height
+        overlay.classList.remove('hidden')
+
+        const ctx = overlay.getContext('2d')
+        ctx.clearRect(0, 0, overlay.width, overlay.height)
+
+        // Create rubylith: red where mask is dark (hidden)
+        const maskData = layer.mask
+        const overlayData = ctx.createImageData(overlay.width, overlay.height)
+        for (let i = 0; i < maskData.data.length; i += 4) {
+            const maskVal = maskData.data[i] // Red channel = mask value
+            const hiddenAmount = 1 - maskVal / 255
+            overlayData.data[i] = 255       // R
+            overlayData.data[i + 1] = 0     // G
+            overlayData.data[i + 2] = 0     // B
+            overlayData.data[i + 3] = Math.round(hiddenAmount * 128) // A (semi-transparent)
+        }
+        ctx.putImageData(overlayData, 0, 0)
+    }
+
+    /**
+     * Handle a completed stroke in mask edit mode.
+     * Composites the stroke onto the mask ImageData.
+     * @param {object} stroke - Stroke object from drawing tools
+     * @param {boolean} isEraser - True if erasing (paint black/hide)
+     */
+    async _handleMaskStroke(stroke, isEraser) {
+        const layer = this._layers.find(l => l.id === this._maskEditLayerId)
+        if (!layer?.mask) return
+
+        this._finalizePendingUndo()
+
+        // Rasterize the stroke to a temporary canvas
+        if (!this._strokeRenderer) {
+            this._strokeRenderer = new StrokeRenderer()
+        }
+
+        // Force stroke color: white for brush (reveal), black for eraser (hide)
+        const maskStroke = { ...stroke, color: isEraser ? '#000000' : '#ffffff' }
+        const strokeCanvas = this._strokeRenderer.rasterize(
+            [maskStroke], layer.mask.width, layer.mask.height
+        )
+
+        // Composite onto the mask
+        const maskCanvas = document.createElement('canvas')
+        maskCanvas.width = layer.mask.width
+        maskCanvas.height = layer.mask.height
+        const ctx = maskCanvas.getContext('2d')
+        ctx.putImageData(layer.mask, 0, 0)
+        ctx.drawImage(strokeCanvas, 0, 0)
+
+        // Read back the composited result
+        layer.mask = ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height)
+
+        // Update texture and overlay
+        this._renderer.uploadMaskTexture(layer.id, layer.mask)
+        this._renderMaskOverlay(layer)
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoStateDebounced()
     }
 
     // ── End mask management ─────────────────────────────────────────────
@@ -1463,6 +1577,13 @@ class LayersApp {
         }
         if (this._selectionManager) {
             this._selectionManager.resize(width, height)
+        }
+
+        // Update mask overlay size
+        const maskOverlay = document.getElementById('maskOverlay')
+        if (maskOverlay) {
+            maskOverlay.width = width
+            maskOverlay.height = height
         }
 
         // Re-apply current zoom mode
@@ -2245,6 +2366,12 @@ class LayersApp {
      */
     _setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
+            // ESC - exit mask edit mode
+            if (e.key === 'Escape' && this._maskEditMode) {
+                this._exitMaskEditMode()
+                return
+            }
+
             // ESC - cancel drag operation
             if (e.key === 'Escape' && this._reorderState === 'DRAGGING') {
                 e.preventDefault()

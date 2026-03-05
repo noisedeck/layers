@@ -22,6 +22,9 @@ export class BrushTool {
         this._finalizePendingUndo = options.finalizePendingUndo
         this._markDirty = options.markDirty
 
+        /** @type {((stroke: object) => void)|null} */
+        this.onStrokeComplete = null
+
         this._color = '#000000'
         this._size = 5
         this._opacity = 1
@@ -78,7 +81,7 @@ export class BrushTool {
     _onMouseDown(e) {
         if (e.button !== 0) return
         this._state = State.DRAWING
-        this._targetLayer = this._ensureDrawingLayer()
+        this._targetLayer = this.onStrokeComplete ? null : this._ensureDrawingLayer()
 
         const pt = this._getCanvasCoords(e)
         this._currentPoints = [pt]
@@ -103,19 +106,25 @@ export class BrushTool {
         if (this._state !== State.DRAWING) return
         this._state = State.IDLE
 
-        if (this._currentPoints.length > 0 && this._targetLayer) {
-            this._finalizePendingUndo()
+        if (this._currentPoints.length > 0) {
             const stroke = createPathStroke({
                 color: this._color,
                 size: this._size,
                 opacity: this._opacity,
                 points: this._currentPoints
             })
-            this._targetLayer.strokes.push(stroke)
-            await this._rasterizeDrawingLayer(this._targetLayer)
-            await this._rebuild({ force: true })
-            this._markDirty()
-            this._pushUndoState()
+
+            // If an external handler is set (e.g. mask edit mode), route the stroke there
+            if (this.onStrokeComplete) {
+                this.onStrokeComplete(stroke)
+            } else if (this._targetLayer) {
+                this._finalizePendingUndo()
+                this._targetLayer.strokes.push(stroke)
+                await this._rasterizeDrawingLayer(this._targetLayer)
+                await this._rebuild({ force: true })
+                this._markDirty()
+                this._pushUndoState()
+            }
         }
 
         this._currentPoints = []
