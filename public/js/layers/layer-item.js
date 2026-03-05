@@ -122,8 +122,8 @@ class LayerItem extends HTMLElement {
                 <div class="layer-thumbnail">
                     <span class="icon-material">${iconName}</span>
                 </div>
-                ${layer.mask ? `<div class="layer-mask-thumbnail ${layer.maskVisible ? 'mask-visible' : ''} ${!layer.maskEnabled ? 'mask-disabled' : ''}" title="Click: edit mask | Shift+click: toggle overlay | Right-click: mask options">
-                    <canvas class="mask-thumb-canvas" width="24" height="24"></canvas>
+                ${layer.mask ? `<div class="layer-mask-thumbnail ${layer.maskVisible ? 'mask-visible' : ''} ${!layer.maskEnabled ? 'mask-disabled' : ''}" title="Click: edit mask | Right-click: mask options">
+                    <canvas class="mask-thumb-canvas" width="36" height="36"></canvas>
                 </div>` : ''}
                 <div class="layer-info">
                     <div class="layer-name" contenteditable="false" spellcheck="false">${this._escapeHtml(layer.name)}</div>
@@ -196,8 +196,8 @@ class LayerItem extends HTMLElement {
         tempCanvas.height = mask.height
         tempCanvas.getContext('2d').putImageData(mask, 0, 0)
 
-        ctx.clearRect(0, 0, 24, 24)
-        ctx.drawImage(tempCanvas, 0, 0, 24, 24)
+        ctx.clearRect(0, 0, 36, 36)
+        ctx.drawImage(tempCanvas, 0, 0, 36, 36)
     }
 
     /**

@@ -192,13 +192,27 @@
 
 /* Layer Mask Thumbnail */
 .layer-mask-thumbnail {
-    width: 24px;
-    height: 24px;
+    width: 36px;
+    height: 36px;
     border: 1px solid var(--color-border);
-    border-radius: 2px;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     flex-shrink: 0;
     overflow: hidden;
+    background: var(--color-bg-elevated);
+    position: relative;
+}
+
+.layer-mask-thumbnail::after {
+    content: 'M';
+    position: absolute;
+    bottom: 1px;
+    right: 2px;
+    font-size: 8px;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    line-height: 1;
+    pointer-events: none;
 }
 
 .layer-mask-thumbnail:hover {
@@ -208,6 +222,10 @@
 .layer-mask-thumbnail.mask-visible {
     border-color: #e74c3c;
     box-shadow: 0 0 0 1px #e74c3c;
+}
+
+.layer-mask-thumbnail.mask-visible::after {
+    color: #e74c3c;
 }
 
 .layer-mask-thumbnail.mask-disabled {

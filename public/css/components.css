@@ -1398,3 +1398,38 @@ dialog[open] {
     color: var(--color-text-primary);
     border-color: var(--color-text-primary);
 }
+
+/* =========================================================================
+   Mask Edit Mode Banner
+   ========================================================================= */
+
+.mask-edit-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(231, 76, 60, 0.9);
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 2001;
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 6px 6px 0 0;
+}
+
+.mask-edit-banner .icon-material {
+    font-size: 16px;
+}
+
+.mask-edit-banner .mask-edit-hint {
+    opacity: 0.8;
+    margin-left: 8px;
+    font-size: 11px;
+}
+
+.mask-edit-banner.hidden {
+    display: none;
+}

@@ -810,7 +810,8 @@ class LayersApp {
         await this._rebuild()
         this._markDirty()
         this._pushUndoState()
-        toast.success('Layer mask added')
+        this._enterMaskEditMode(layerId)
+        toast.success('Layer mask added — paint to hide areas, Escape to exit')
     }
 
     /**
@@ -888,6 +889,84 @@ class LayersApp {
         toast.success('Mask inverted')
     }
 
+    /** Convert mask format (RGB=val, A=255) to selection format (A=val) */
+    _maskToSelectionFormat(mask) {
+        const copy = new ImageData(new Uint8ClampedArray(mask.data), mask.width, mask.height)
+        for (let i = 0; i < copy.data.length; i += 4) {
+            copy.data[i + 3] = copy.data[i]  // Copy R to A
+        }
+        return copy
+    }
+
+    /** Convert selection format back to mask format (ensure A=255) */
+    _selectionFormatToMask(mask) {
+        const d = mask.data
+        for (let i = 0; i < d.length; i += 4) {
+            d[i + 3] = 255  // Force A=255, R/G/B already have mask value
+        }
+        return mask
+    }
+
+    async _featherLayerMask(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer?.mask) return
+        const radius = await selectionParamDialog.show({ title: 'Feather Mask', label: 'Radius', defaultValue: 5, min: 1, max: 100 })
+        if (radius === null) return
+        this._finalizePendingUndo()
+        const converted = this._maskToSelectionFormat(layer.mask)
+        layer.mask = this._selectionFormatToMask(featherMask(converted, radius))
+        this._renderer.uploadMaskTexture(layerId, layer.mask)
+        if (this._maskEditMode) this._renderMaskOverlay(layer)
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+    }
+
+    async _expandLayerMask(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer?.mask) return
+        const radius = await selectionParamDialog.show({ title: 'Expand Mask', label: 'Radius', defaultValue: 5, min: 1, max: 100 })
+        if (radius === null) return
+        this._finalizePendingUndo()
+        const converted = this._maskToSelectionFormat(layer.mask)
+        layer.mask = this._selectionFormatToMask(expandMask(converted, radius))
+        this._renderer.uploadMaskTexture(layerId, layer.mask)
+        if (this._maskEditMode) this._renderMaskOverlay(layer)
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+    }
+
+    async _contractLayerMask(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer?.mask) return
+        const radius = await selectionParamDialog.show({ title: 'Contract Mask', label: 'Radius', defaultValue: 5, min: 1, max: 100 })
+        if (radius === null) return
+        this._finalizePendingUndo()
+        const converted = this._maskToSelectionFormat(layer.mask)
+        layer.mask = this._selectionFormatToMask(contractMask(converted, radius))
+        this._renderer.uploadMaskTexture(layerId, layer.mask)
+        if (this._maskEditMode) this._renderMaskOverlay(layer)
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+    }
+
+    async _smoothLayerMask(layerId) {
+        const layer = this._layers.find(l => l.id === layerId)
+        if (!layer?.mask) return
+        const radius = await selectionParamDialog.show({ title: 'Smooth Mask', label: 'Radius', defaultValue: 5, min: 1, max: 100 })
+        if (radius === null) return
+        this._finalizePendingUndo()
+        const converted = this._maskToSelectionFormat(layer.mask)
+        layer.mask = this._selectionFormatToMask(smoothMask(converted, radius))
+        this._renderer.uploadMaskTexture(layerId, layer.mask)
+        if (this._maskEditMode) this._renderMaskOverlay(layer)
+        await this._rebuild()
+        this._markDirty()
+        this._pushUndoState()
+    }
+
     /**
      * Toggle mask enabled/disabled.
      * @param {string} layerId
@@ -922,12 +1001,24 @@ class LayersApp {
         toast.success('Selection created from mask')
     }
 
+    _closeContextMenus() {
+        for (const id of ['maskContextMenu', 'layerContextMenu']) {
+            document.getElementById(id)?.classList.add('hidden')
+        }
+        if (this._contextMenuCloseHandler) {
+            document.removeEventListener('mousedown', this._contextMenuCloseHandler)
+            this._contextMenuCloseHandler = null
+        }
+    }
+
     _showMaskContextMenu(layerId, x, y) {
         const menu = document.getElementById('maskContextMenu')
         if (!menu) return
 
         const layer = this._layers.find(l => l.id === layerId)
         if (!layer) return
+
+        this._closeContextMenus()
 
         // Update disable/enable text
         const disableItem = menu.querySelector('[data-action="disable"]')
@@ -940,23 +1031,25 @@ class LayersApp {
         menu.classList.remove('hidden')
 
         // Close on click outside
-        const close = (e) => {
+        this._contextMenuCloseHandler = (e) => {
             if (!menu.contains(e.target)) {
-                menu.classList.add('hidden')
-                document.removeEventListener('mousedown', close)
+                this._closeContextMenus()
             }
         }
-        setTimeout(() => document.addEventListener('mousedown', close), 0)
+        setTimeout(() => document.addEventListener('mousedown', this._contextMenuCloseHandler), 0)
 
         // Handle menu item clicks
         menu.onclick = async (e) => {
             const action = e.target.closest('[data-action]')?.dataset.action
             if (!action) return
-            menu.classList.add('hidden')
-            document.removeEventListener('mousedown', close)
+            this._closeContextMenus()
 
             switch (action) {
                 case 'invert': await this._invertLayerMask(layerId); break
+                case 'feather': await this._featherLayerMask(layerId); break
+                case 'expand': await this._expandLayerMask(layerId); break
+                case 'contract': await this._contractLayerMask(layerId); break
+                case 'smooth': await this._smoothLayerMask(layerId); break
                 case 'disable': await this._toggleMaskEnabled(layerId); break
                 case 'selection-from-mask': this._selectionFromMask(layerId); break
                 case 'delete': await this._deleteLayerMask(layerId); break
@@ -977,23 +1070,23 @@ class LayersApp {
         // Don't show if all items are hidden
         if (hasMask) return
 
+        this._closeContextMenus()
+
         menu.style.left = `${x}px`
         menu.style.top = `${y}px`
         menu.classList.remove('hidden')
 
-        const close = (e) => {
+        this._contextMenuCloseHandler = (e) => {
             if (!menu.contains(e.target)) {
-                menu.classList.add('hidden')
-                document.removeEventListener('mousedown', close)
+                this._closeContextMenus()
             }
         }
-        setTimeout(() => document.addEventListener('mousedown', close), 0)
+        setTimeout(() => document.addEventListener('mousedown', this._contextMenuCloseHandler), 0)
 
         menu.onclick = async (e) => {
             const action = e.target.closest('[data-action]')?.dataset.action
             if (!action) return
-            menu.classList.add('hidden')
-            document.removeEventListener('mousedown', close)
+            this._closeContextMenus()
 
             switch (action) {
                 case 'add-mask': await this._addLayerMask(layerId); break
@@ -1015,6 +1108,9 @@ class LayersApp {
         this._maskEditLayerId = layerId
         layer.maskVisible = true
 
+        // Switch to brush tool for mask painting
+        this._setToolMode('brush')
+
         // Route brush strokes to mask painting
         if (this._brushTool) {
             this._brushTool.onStrokeComplete = (stroke) => {
@@ -1022,6 +1118,13 @@ class LayersApp {
                 this._handleMaskStroke(stroke, isEraser)
             }
         }
+
+        // Show mask edit banner
+        document.getElementById('maskEditBanner')?.classList.remove('hidden')
+        const brushBtn = document.getElementById('brushToolBtn')
+        const eraserBtn = document.getElementById('eraserToolBtn')
+        if (brushBtn) brushBtn.title = 'Reveal (B) — paints white on mask'
+        if (eraserBtn) eraserBtn.title = 'Hide (E) — paints black on mask'
 
         this._renderMaskOverlay(layer)
         this._updateLayerStack()
@@ -1033,9 +1136,15 @@ class LayersApp {
     _exitMaskEditMode() {
         if (!this._maskEditMode) return
 
+        this._closeContextMenus()
+
         const layer = this._layers.find(l => l.id === this._maskEditLayerId)
         if (layer) {
             layer.maskVisible = false
+            // Apply mask: re-upload latest mask data so renderer composites with it
+            if (layer.mask) {
+                this._renderer.uploadMaskTexture(layer.id, layer.mask)
+            }
         }
 
         this._maskEditMode = false
@@ -1046,11 +1155,19 @@ class LayersApp {
             this._brushTool.onStrokeComplete = null
         }
 
+        // Hide mask edit banner and restore tool titles
+        document.getElementById('maskEditBanner')?.classList.add('hidden')
+        const brushBtn = document.getElementById('brushToolBtn')
+        const eraserBtn = document.getElementById('eraserToolBtn')
+        if (brushBtn) brushBtn.title = 'Brush Tool (B)'
+        if (eraserBtn) eraserBtn.title = 'Eraser Tool (E)'
+
         const overlay = document.getElementById('maskOverlay')
         if (overlay) {
             overlay.classList.add('hidden')
         }
         this._updateLayerStack()
+        this._rebuild({ force: true })
     }
 
     /**
@@ -1064,6 +1181,12 @@ class LayersApp {
 
         overlay.width = layer.mask.width
         overlay.height = layer.mask.height
+        // Match CSS size to selection overlay so they align exactly
+        const selOverlay = this._selectionOverlay
+        if (selOverlay) {
+            overlay.style.width = selOverlay.clientWidth + 'px'
+            overlay.style.height = selOverlay.clientHeight + 'px'
+        }
         overlay.classList.remove('hidden')
 
         const ctx = overlay.getContext('2d')
@@ -1100,8 +1223,15 @@ class LayersApp {
             this._strokeRenderer = new StrokeRenderer()
         }
 
-        // Force stroke color: white for brush (reveal), black for eraser (hide)
-        const maskStroke = { ...stroke, color: isEraser ? '#000000' : '#ffffff' }
+        // Scale stroke from overlay coordinates to mask coordinates
+        const scaleX = layer.mask.width / this._selectionOverlay.width
+        const scaleY = layer.mask.height / this._selectionOverlay.height
+        const maskStroke = {
+            ...stroke,
+            color: isEraser ? '#000000' : '#ffffff',
+            size: stroke.size * Math.max(scaleX, scaleY),
+            points: stroke.points.map(p => ({ x: p.x * scaleX, y: p.y * scaleY }))
+        }
         const strokeCanvas = this._strokeRenderer.rasterize(
             [maskStroke], layer.mask.width, layer.mask.height
         )
@@ -2213,6 +2343,16 @@ class LayersApp {
         document.getElementById('flipVMenuItem')?.addEventListener('click', () => {
             this._flipActiveLayer('vertical')
         })
+
+        document.getElementById('addLayerMaskMenuItem')?.addEventListener('click', () => {
+            const layer = this._getActiveLayer()
+            if (layer && !layer.mask) this._addLayerMask(layer.id)
+        })
+
+        document.getElementById('deleteLayerMaskMenuItem')?.addEventListener('click', () => {
+            const layer = this._getActiveLayer()
+            if (layer?.mask) this._deleteLayerMask(layer.id)
+        })
     }
 
     /**
@@ -2328,6 +2468,13 @@ class LayersApp {
         const canFlip = selectedIds.length === 1 && selectedLayers[0]?.sourceType === 'media'
         document.getElementById('flipHMenuItem')?.classList.toggle('disabled', !canFlip)
         document.getElementById('flipVMenuItem')?.classList.toggle('disabled', !canFlip)
+
+        // Mask items: enabled based on active layer mask state
+        const activeLayer = selectedIds.length === 1 ? selectedLayers[0] : null
+        const addMaskItem = document.getElementById('addLayerMaskMenuItem')
+        const deleteMaskItem = document.getElementById('deleteLayerMaskMenuItem')
+        if (addMaskItem) addMaskItem.classList.toggle('disabled', !activeLayer || !!activeLayer.mask)
+        if (deleteMaskItem) deleteMaskItem.classList.toggle('disabled', !activeLayer?.mask)
 
         if (selectedIds.length === 0) {
             // No selection: flatten image
@@ -2501,6 +2648,12 @@ class LayersApp {
      */
     _setupKeyboardShortcuts() {
         document.addEventListener('keydown', (e) => {
+            // ESC - close context menus
+            if (e.key === 'Escape' && this._contextMenuCloseHandler) {
+                this._closeContextMenus()
+                return
+            }
+
             // ESC - exit mask edit mode
             if (e.key === 'Escape' && this._maskEditMode) {
                 this._exitMaskEditMode()
@@ -3465,6 +3618,12 @@ class LayersApp {
         document.getElementById('menu')?.classList.toggle('has-options-bar', showOptions)
         document.getElementById('drawingFilledLabel')?.classList.toggle('hidden', tool !== 'shape')
         document.getElementById('drawingToleranceLabel')?.classList.toggle('hidden', tool !== 'fill')
+
+        // In mask edit mode, keep brush tool active for painting
+        if (this._maskEditMode && (tool === 'brush' || tool === 'eraser')) {
+            this._eraserTool?.deactivate()
+            this._brushTool?.activate()
+        }
 
         this._selectionManager.enabled = (tool === 'selection')
         this._selectionOverlay?.classList.toggle('move-tool', tool === 'move')

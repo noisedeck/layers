@@ -188,6 +188,9 @@
                         <div id="flipHMenuItem" class="disabled">flip horizontal</div>
                         <div id="flipVMenuItem" class="disabled">flip vertical</div>
                         <hr class="menu-seperator">
+                        <div id="addLayerMaskMenuItem" class="disabled">add layer mask</div>
+                        <div id="deleteLayerMaskMenuItem" class="disabled">delete layer mask</div>
+                        <hr class="menu-seperator">
                         <div id="layerActionMenuItem">flatten image</div>
                         <hr class="menu-seperator">
                         <div id="deselectAllLayersMenuItem">deselect all layers</div>
@@ -330,6 +333,11 @@
                 <canvas id="canvas" width="1024" height="1024"></canvas>
                 <canvas id="selectionOverlay" width="1024" height="1024"></canvas>
                 <canvas id="maskOverlay" width="1024" height="1024" class="hidden"></canvas>
+            </div>
+            <div id="maskEditBanner" class="mask-edit-banner hidden">
+                <span class="icon-material">layers</span>
+                <span>Editing Mask</span>
+                <span class="mask-edit-hint">B: reveal | E: hide | Esc: exit</span>
             </div>
         </div>
 
@@ -507,6 +515,10 @@
         <!-- Mask Context Menu -->
         <div id="maskContextMenu" class="context-menu hidden">
             <div data-action="invert">Invert Mask</div>
+            <div data-action="feather">Feather Mask…</div>
+            <div data-action="expand">Expand Mask…</div>
+            <div data-action="contract">Contract Mask…</div>
+            <div data-action="smooth">Smooth Mask…</div>
             <div data-action="disable">Disable Mask</div>
             <div data-action="selection-from-mask">Selection from Mask</div>
             <hr class="menu-seperator">
