@@ -34,6 +34,7 @@ export class LayersRenderer {
         this._layers = []
         this._currentDsl = ''
         this._mediaTextures = new Map()
+        this._maskTextures = new Map()
         this._textCanvases = new Map()
         this._videoUpdateRAF = null
         this._layerStepMap = new Map()
@@ -95,8 +96,12 @@ export class LayersRenderer {
     }
 
     _updateVideoTextures() {
-        const stepIndices = this._getMediaStepIndices()
-        if (!stepIndices) return
+        const allStepIndices = this._getMediaStepIndices()
+        if (!allStepIndices) return
+
+        // Filter out media step indices that belong to mask textures
+        const maskStepIndices = this._getMaskMediaStepIndices()
+        const stepIndices = allStepIndices.filter(idx => !maskStepIndices.has(idx))
 
         const visibleMediaLayers = this._layers.filter(l => l.visible && (l.sourceType === 'media' || l.sourceType === 'drawing'))
 
@@ -180,6 +185,7 @@ export class LayersRenderer {
 
             this._buildLayerStepMap()
             this._uploadMediaTextures()
+            this._uploadMaskTextures()
             this._uploadTextTextures()
             this._applyAllLayerParams()
 
@@ -287,6 +293,12 @@ export class LayersRenderer {
                 if (childEffectName) {
                     mapStepIndex(child.id, childEffectName)
                 }
+            }
+
+            // Map mask media step — the media() call inside alphaMask(tex: media(), ...)
+            // This must come after children to match DSL generation order
+            if (layer.mask && layer.maskEnabled !== false) {
+                mapStepIndex(`mask_${layer.id}`, 'media')
             }
         }
     }
@@ -481,11 +493,15 @@ export class LayersRenderer {
     }
 
     _uploadMediaTextures() {
-        const stepIndices = this._getMediaStepIndices()
-        if (!stepIndices) {
+        const allStepIndices = this._getMediaStepIndices()
+        if (!allStepIndices) {
             console.warn('[LayersRenderer] No pipeline graph, cannot upload textures')
             return
         }
+
+        // Filter out media step indices that belong to mask textures
+        const maskStepIndices = this._getMaskMediaStepIndices()
+        const stepIndices = allStepIndices.filter(idx => !maskStepIndices.has(idx))
 
         const visibleMediaLayers = this._layers.filter(l => l.visible && (l.sourceType === 'media' || l.sourceType === 'drawing'))
         const stepParameterValues = {}
@@ -517,6 +533,47 @@ export class LayersRenderer {
         if (Object.keys(stepParameterValues).length > 0) {
             this._renderer.applyStepParameterValues?.(stepParameterValues)
         }
+    }
+
+    /**
+     * Upload mask textures to their corresponding media step texture slots.
+     * Each mask uses a media() call in the DSL, tracked in _layerStepMap
+     * with the key `mask_${layerId}`.
+     * @private
+     */
+    _uploadMaskTextures() {
+        const passes = this._renderer.pipeline?.graph?.passes
+        if (!passes) return
+
+        for (const [layerId, maskData] of this._maskTextures) {
+            const maskStepKey = `mask_${layerId}`
+            const stepIndex = this._layerStepMap.get(maskStepKey)
+            if (stepIndex === undefined) continue
+
+            const textureId = `imageTex_step_${stepIndex}`
+            try {
+                this._renderer.updateTextureFromSource?.(textureId, maskData.element, { flipY: false })
+            } catch (err) {
+                console.warn(`[LayersRenderer] Failed to upload mask texture for ${layerId}:`, err)
+            }
+        }
+    }
+
+    /**
+     * Get the set of media step indices used by mask textures.
+     * Used by _uploadMediaTextures and _updateVideoTextures to skip mask steps.
+     * @returns {Set<number>}
+     * @private
+     */
+    _getMaskMediaStepIndices() {
+        const indices = new Set()
+        for (const [layerId] of this._maskTextures) {
+            const stepIndex = this._layerStepMap.get(`mask_${layerId}`)
+            if (stepIndex !== undefined) {
+                indices.add(stepIndex)
+            }
+        }
+        return indices
     }
 
     async loadMedia(layerId, file, mediaType) {
@@ -584,6 +641,33 @@ export class LayersRenderer {
             media.element.src = ''
         }
         this._mediaTextures.delete(layerId)
+    }
+
+    /**
+     * Upload or update a mask texture for a layer.
+     * @param {string} layerId - Layer ID
+     * @param {ImageData} maskData - Grayscale mask ImageData
+     */
+    uploadMaskTexture(layerId, maskData) {
+        const canvas = document.createElement('canvas')
+        canvas.width = maskData.width
+        canvas.height = maskData.height
+        const ctx = canvas.getContext('2d')
+        ctx.putImageData(maskData, 0, 0)
+
+        this._maskTextures.set(layerId, {
+            element: canvas,
+            width: maskData.width,
+            height: maskData.height
+        })
+    }
+
+    /**
+     * Remove a mask texture.
+     * @param {string} layerId
+     */
+    removeMaskTexture(layerId) {
+        this._maskTextures.delete(layerId)
     }
 
     _isTextEffect(effectId) {
@@ -797,6 +881,13 @@ export class LayersRenderer {
                     const hex = `#${toHex(color[0])}${toHex(color[1])}${toHex(color[2])}`
                     lines.push(`solid(color: ${hex}, alpha: ${effectAlpha.toFixed(4)}).write(o${currentOutput})`)
                     currentOutput = this._buildChildChain(layer, currentOutput, lines)
+
+                    // Apply layer mask if present and enabled
+                    if (layer.mask && layer.maskEnabled !== false) {
+                        const maskOutput = currentOutput + 1
+                        lines.push(`read(o${currentOutput}).alphaMask(tex: media(), maskMode: 1).write(o${maskOutput})`)
+                        currentOutput = maskOutput
+                    }
                 } else {
                     // Media or effect base - blend over transparent background for opacity
                     const layerCall = (layer.sourceType === 'media' || layer.sourceType === 'drawing')
@@ -808,6 +899,13 @@ export class LayersRenderer {
                     lines.push(`read(o${currentOutput}).blendMode(tex: read(o${currentOutput + 1}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${currentOutput + 2})`)
                     currentOutput += 2
                     currentOutput = this._buildChildChain(layer, currentOutput, lines)
+
+                    // Apply layer mask if present and enabled
+                    if (layer.mask && layer.maskEnabled !== false) {
+                        const maskOutput = currentOutput + 1
+                        lines.push(`read(o${currentOutput}).alphaMask(tex: media(), maskMode: 1).write(o${maskOutput})`)
+                        currentOutput = maskOutput
+                    }
                 }
             } else {
                 // Non-base layers - blend with previous
@@ -830,6 +928,13 @@ export class LayersRenderer {
 
                 // Apply child effects to this layer's output
                 currentOutput = this._buildChildChain(layer, currentOutput, lines)
+
+                // Apply layer mask if present and enabled
+                if (layer.mask && layer.maskEnabled !== false) {
+                    const maskOutput = currentOutput + 1
+                    lines.push(`read(o${currentOutput}).alphaMask(tex: media(), maskMode: 1).write(o${maskOutput})`)
+                    currentOutput = maskOutput
+                }
 
                 const nextOutput = currentOutput + 1
                 lines.push(`read(o${prevOutput}).blendMode(tex: read(o${currentOutput}), mode: ${layer.blendMode}, mixAmt: ${mixAmt}).write(o${nextOutput})`)
