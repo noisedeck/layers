@@ -6,7 +6,7 @@
  */
 
 import { LayersRenderer } from './noisemaker/renderer.js'
-import { createMediaLayer, createEffectLayer, createChildEffect, createDrawingLayer } from './layers/layer-model.js'
+import { createMediaLayer, createEffectLayer, createChildEffect, createDrawingLayer, decodeMasks } from './layers/layer-model.js'
 import './layers/layer-stack.js'
 import { EffectParams } from './layers/effect-params.js'
 import { openDialog } from './ui/open-dialog.js'
@@ -1170,6 +1170,15 @@ class LayersApp {
                 this._renderer.unloadMedia(l.id)
             }
         })
+        // Clean up mask textures
+        for (const layer of this._layers) {
+            if (layer.mask) {
+                this._renderer.removeMaskTexture(layer.id)
+            }
+        }
+        if (this._maskEditMode) {
+            this._exitMaskEditMode()
+        }
         this._layers = []
         this._undoManager.clear()
         this._updateUndoMenuState()
@@ -1213,6 +1222,14 @@ class LayersApp {
         // Unload media if needed
         if (layer.sourceType === 'media') {
             this._renderer.unloadMedia(layerId)
+        }
+
+        // Clean up mask texture if present
+        if (layer.mask) {
+            this._renderer.removeMaskTexture(layer.id)
+        }
+        if (this._maskEditMode && this._maskEditLayerId === layer.id) {
+            this._exitMaskEditMode()
         }
 
         // Remove layer
@@ -3709,6 +3726,9 @@ class LayersApp {
             // Restore layers
             this._layers = project.layers
 
+            // Decode serialized masks back to ImageData
+            await decodeMasks(this._layers)
+
             // Load media for each media layer
             for (const layer of this._layers) {
                 if (layer.sourceType === 'media') {
@@ -3882,6 +3902,28 @@ class LayersApp {
             }
         }
 
+        // Crop masks to match new canvas bounds
+        for (const layer of this._layers) {
+            if (layer.mask) {
+                const tempCanvas = document.createElement('canvas')
+                tempCanvas.width = layer.mask.width
+                tempCanvas.height = layer.mask.height
+                tempCanvas.getContext('2d').putImageData(layer.mask, 0, 0)
+
+                const croppedCanvas = document.createElement('canvas')
+                croppedCanvas.width = bounds.width
+                croppedCanvas.height = bounds.height
+                const ctx = croppedCanvas.getContext('2d')
+                ctx.drawImage(
+                    tempCanvas,
+                    bounds.x, bounds.y, bounds.width, bounds.height,
+                    0, 0, bounds.width, bounds.height
+                )
+                layer.mask = ctx.getImageData(0, 0, bounds.width, bounds.height)
+                this._renderer.uploadMaskTexture(layer.id, layer.mask)
+            }
+        }
+
         // Stop renderer before resizing (resize invalidates WebGL state)
         this._renderer.stop()
         this._resizeCanvas(bounds.width, bounds.height)
@@ -3951,6 +3993,24 @@ class LayersApp {
                 // Effect layers: scale offsets only
                 layer.offsetX = Math.round((layer.offsetX || 0) * scaleX)
                 layer.offsetY = Math.round((layer.offsetY || 0) * scaleY)
+            }
+        }
+
+        // Resize masks to match new canvas dimensions
+        for (const layer of this._layers) {
+            if (layer.mask) {
+                const tempCanvas = document.createElement('canvas')
+                tempCanvas.width = layer.mask.width
+                tempCanvas.height = layer.mask.height
+                tempCanvas.getContext('2d').putImageData(layer.mask, 0, 0)
+
+                const resizedCanvas = document.createElement('canvas')
+                resizedCanvas.width = newWidth
+                resizedCanvas.height = newHeight
+                const ctx = resizedCanvas.getContext('2d')
+                ctx.drawImage(tempCanvas, 0, 0, newWidth, newHeight)
+                layer.mask = ctx.getImageData(0, 0, newWidth, newHeight)
+                this._renderer.uploadMaskTexture(layer.id, layer.mask)
             }
         }
 
@@ -4126,6 +4186,24 @@ class LayersApp {
         for (const layer of this._layers) {
             layer.offsetX = (layer.offsetX || 0) + shiftX
             layer.offsetY = (layer.offsetY || 0) + shiftY
+        }
+
+        // Reposition masks onto new canvas dimensions
+        for (const layer of this._layers) {
+            if (layer.mask) {
+                const tempCanvas = document.createElement('canvas')
+                tempCanvas.width = layer.mask.width
+                tempCanvas.height = layer.mask.height
+                tempCanvas.getContext('2d').putImageData(layer.mask, 0, 0)
+
+                const resizedCanvas = document.createElement('canvas')
+                resizedCanvas.width = newWidth
+                resizedCanvas.height = newHeight
+                const ctx = resizedCanvas.getContext('2d')
+                ctx.drawImage(tempCanvas, shiftX, shiftY)
+                layer.mask = ctx.getImageData(0, 0, newWidth, newHeight)
+                this._renderer.uploadMaskTexture(layer.id, layer.mask)
+            }
         }
 
         // Stop renderer before resizing (resize invalidates WebGL state)
