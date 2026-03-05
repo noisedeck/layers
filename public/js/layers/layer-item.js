@@ -122,6 +122,9 @@ class LayerItem extends HTMLElement {
                 <div class="layer-thumbnail">
                     <span class="icon-material">${iconName}</span>
                 </div>
+                ${layer.mask ? `<div class="layer-mask-thumbnail ${layer.maskVisible ? 'mask-visible' : ''} ${!layer.maskEnabled ? 'mask-disabled' : ''}" title="Click: edit mask | Shift+click: toggle overlay | Right-click: mask options">
+                    <canvas class="mask-thumb-canvas" width="24" height="24"></canvas>
+                </div>` : ''}
                 <div class="layer-info">
                     <div class="layer-name" contenteditable="false" spellcheck="false">${this._escapeHtml(layer.name)}</div>
                     <div class="layer-type ${layer.sourceType}">${this._formatLayerType(layer)}</div>
@@ -149,6 +152,7 @@ class LayerItem extends HTMLElement {
         `
 
         this._initEffectParams()
+        this._renderMaskThumbnail()
     }
 
     /**
@@ -173,6 +177,27 @@ class LayerItem extends HTMLElement {
             // Apply expanded state via class
             this.classList.toggle('params-expanded', this._paramsExpanded)
         }
+    }
+
+    /**
+     * Draw the mask preview into the thumbnail canvas
+     * @private
+     */
+    _renderMaskThumbnail() {
+        const canvas = this.querySelector('.mask-thumb-canvas')
+        if (!canvas || !this._layer?.mask) return
+
+        const ctx = canvas.getContext('2d')
+        const mask = this._layer.mask
+
+        // Draw scaled-down mask preview
+        const tempCanvas = document.createElement('canvas')
+        tempCanvas.width = mask.width
+        tempCanvas.height = mask.height
+        tempCanvas.getContext('2d').putImageData(mask, 0, 0)
+
+        ctx.clearRect(0, 0, 24, 24)
+        ctx.drawImage(tempCanvas, 0, 0, 24, 24)
     }
 
     /**
@@ -205,6 +230,25 @@ class LayerItem extends HTMLElement {
                     bubbles: true,
                     detail: { layerId: this._layer.id }
                 }))
+                return
+            }
+
+            const maskThumb = e.target.closest('.layer-mask-thumbnail')
+            if (maskThumb) {
+                e.stopPropagation()
+                if (e.shiftKey) {
+                    // Shift+click: toggle rubylith overlay
+                    this.dispatchEvent(new CustomEvent('mask-toggle-visible', {
+                        bubbles: true,
+                        detail: { layerId: this._layer.id }
+                    }))
+                } else {
+                    // Click: enter/exit mask edit mode
+                    this.dispatchEvent(new CustomEvent('mask-edit', {
+                        bubbles: true,
+                        detail: { layerId: this._layer.id }
+                    }))
+                }
                 return
             }
 
@@ -267,6 +311,33 @@ class LayerItem extends HTMLElement {
         this.addEventListener('dragover', (e) => this._handleDragOver(e))
         this.addEventListener('dragleave', () => this._handleDragLeave())
         this.addEventListener('drop', (e) => this._handleDrop(e))
+
+        // Right-click context menu for mask thumbnail and layer row
+        this.addEventListener('contextmenu', (e) => {
+            e.preventDefault()
+            const maskThumb = e.target.closest('.layer-mask-thumbnail')
+            if (maskThumb) {
+                e.stopPropagation()
+                this.dispatchEvent(new CustomEvent('mask-context-menu', {
+                    bubbles: true,
+                    detail: {
+                        layerId: this._layer.id,
+                        x: e.clientX,
+                        y: e.clientY
+                    }
+                }))
+            } else {
+                this.dispatchEvent(new CustomEvent('layer-context-menu', {
+                    bubbles: true,
+                    detail: {
+                        layerId: this._layer.id,
+                        hasMask: !!this._layer.mask,
+                        x: e.clientX,
+                        y: e.clientY
+                    }
+                }))
+            }
+        })
 
         // Effect parameter changes (from effect-params component)
         this.addEventListener('param-change', (e) => {
