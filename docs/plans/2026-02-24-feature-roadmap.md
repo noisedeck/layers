@@ -4,7 +4,7 @@ Date: 2026-02-24
 
 Features considered during brainstorming to bring Layers up to a viable everyday media editing app. Organized by priority based on impact and dependency analysis.
 
-## Phase 1: Transform System (Current)
+## Phase 1: Transform System
 
 On-canvas resize, rotate, flip with GPU-side bicubic interpolation. Foundational — compositing without transforms isn't compositing.
 
@@ -31,7 +31,7 @@ Make existing Noisemaker effects more accessible for quick photo editing:
 
 Mostly a UX reorganization of capabilities that already exist in the shader pipeline.
 
-## Phase 4: Layer Masks
+## Phase 4: Layer Masks (WIP)
 
 Non-destructive masking for compositing:
 - Per-layer grayscale mask (white=visible, black=hidden)
