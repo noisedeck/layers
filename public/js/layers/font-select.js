@@ -37,10 +37,10 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             width: 100%;
             padding: 0.25rem 0.375rem;
             box-sizing: border-box;
-            background: color-mix(in srgb, var(--color-accent) 15%, transparent 85%);
+            background: color-mix(in srgb, var(--hf-accent-3) 15%, transparent 85%);
             border: none;
-            border-radius: var(--radius-sm, 4px);
-            color: var(--color-text-primary, #ccc);
+            border-radius: var(--hf-radius-sm);
+            color: var(--hf-color-7);
             font-family: Nunito, 'Nunito Block';
             font-size: 0.6875rem;
             font-weight: 560;
@@ -56,7 +56,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
 
         font-select .trigger-arrow {
             font-size: 0.6rem;
-            color: var(--color-text-muted, #888);
+            color: var(--hf-color-5);
             flex-shrink: 0;
             margin-left: auto;
             transition: transform 0.15s ease;
@@ -68,10 +68,10 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
 
         font-select .font-dialog {
             border: none;
-            border-radius: var(--radius-lg);
+            border-radius: var(--hf-radius-lg);
             padding: 0 !important;
             margin: auto;
-            color: var(--color-text-primary, #d9deeb);
+            color: var(--hf-color-7);
             min-width: 280px;
             max-width: 400px;
             width: min(400px, 92vw);
@@ -85,11 +85,11 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
 
         font-select .dialog-titlebar {
             background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%);
-            border-bottom: 1px solid var(--color-border-muted);
+            border-bottom: 1px solid var(--hf-color-3);
             padding: 8px 12px;
             font-size: 0.7rem;
             font-weight: 600;
-            color: var(--color-text-primary);
+            color: var(--hf-color-7);
             text-transform: lowercase;
             letter-spacing: 0.05em;
             display: flex;
@@ -106,7 +106,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
         font-select .dialog-close {
             background: transparent;
             border: none;
-            color: var(--color-text-muted);
+            color: var(--hf-color-5);
             cursor: pointer;
             font-size: 0.8rem;
             padding: 4px;
@@ -120,7 +120,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
 
         font-select .dialog-close:hover {
             opacity: 1;
-            color: var(--color-text-primary);
+            color: var(--hf-color-7);
         }
 
         font-select .dialog-body {
@@ -135,8 +135,8 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             position: relative;
             z-index: 2;
             padding: 6px 10px;
-            background: color-mix(in srgb, var(--color-bg-deep, #0a0e18) 70%, transparent 30%);
-            border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 15%, transparent 85%);
+            background: color-mix(in srgb, var(--hf-color-1) 70%, transparent 30%);
+            border-bottom: 1px solid color-mix(in srgb, var(--hf-accent-3) 15%, transparent 85%);
             box-sizing: border-box;
             display: flex;
             align-items: center;
@@ -146,7 +146,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
         font-select .search-clear {
             background: transparent;
             border: none;
-            color: var(--color-text-muted);
+            color: var(--hf-color-5);
             cursor: pointer;
             padding: 4px;
             line-height: 1;
@@ -161,7 +161,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
 
         font-select .search-clear:hover {
             opacity: 1;
-            color: var(--color-text-primary);
+            color: var(--hf-color-7);
         }
 
         font-select .search-clear[hidden] {
@@ -177,7 +177,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             font-weight: 600;
             text-transform: lowercase;
             letter-spacing: 0.05em;
-            color: var(--color-text-primary, #d9deeb);
+            color: var(--hf-color-7);
             background: transparent;
             border: none;
             padding: 2px 0;
@@ -185,7 +185,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
         }
 
         font-select .search-input::placeholder {
-            color: var(--color-text-muted, #98a7c8);
+            color: var(--hf-color-5);
             opacity: 0.7;
         }
 
@@ -202,9 +202,9 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             font-weight: 700;
             text-transform: lowercase;
             letter-spacing: 0.05em;
-            color: var(--color-accent, #6b8aff);
-            background: color-mix(in srgb, var(--color-bg-deep, #0a0e18) 70%, transparent 30%);
-            border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 15%, transparent 85%);
+            color: var(--hf-accent-3);
+            background: color-mix(in srgb, var(--hf-color-1) 70%, transparent 30%);
+            border-bottom: 1px solid color-mix(in srgb, var(--hf-accent-3) 15%, transparent 85%);
             position: sticky;
             top: 0;
             z-index: 1;
@@ -214,7 +214,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             padding: 6px 10px;
             cursor: pointer;
             transition: background 0.1s ease;
-            border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 8%, transparent 92%);
+            border-bottom: 1px solid color-mix(in srgb, var(--hf-accent-3) 8%, transparent 92%);
             display: grid;
             grid-template-columns: 1fr auto;
             column-gap: 8px;
@@ -227,17 +227,17 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
 
         font-select .option:hover,
         font-select .option.focused {
-            background: color-mix(in srgb, var(--color-accent) 20%, transparent 80%);
+            background: color-mix(in srgb, var(--hf-accent-3) 20%, transparent 80%);
         }
 
         font-select .option.selected {
-            background: color-mix(in srgb, var(--color-accent) 30%, transparent 70%);
+            background: color-mix(in srgb, var(--hf-accent-3) 30%, transparent 70%);
         }
 
         font-select .option-name {
             font-size: 0.75rem;
             font-weight: 500;
-            color: var(--color-text-primary, #d9deeb);
+            color: var(--hf-color-7);
             min-width: 0;
             white-space: nowrap;
             overflow: hidden;
@@ -259,10 +259,10 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             text-transform: lowercase;
             letter-spacing: 0.04em;
             padding: 1px 6px;
-            background: color-mix(in srgb, var(--color-accent, #6b8aff) 15%, transparent 85%);
+            background: color-mix(in srgb, var(--hf-accent-3) 15%, transparent 85%);
             border: none;
-            border-radius: var(--radius-sm);
-            color: var(--color-accent, #6b8aff);
+            border-radius: var(--hf-radius-sm);
+            color: var(--hf-accent-3);
             opacity: 0.65;
             cursor: pointer;
             transition: opacity 0.15s ease, background 0.15s ease;
@@ -271,7 +271,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
 
         font-select .option-tag:hover {
             opacity: 1;
-            background: color-mix(in srgb, var(--color-accent, #6b8aff) 25%, transparent 75%);
+            background: color-mix(in srgb, var(--hf-accent-3) 25%, transparent 75%);
         }
 
         font-select .dropdown-options::-webkit-scrollbar {
@@ -283,30 +283,30 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
         }
 
         font-select .dropdown-options::-webkit-scrollbar-thumb {
-            background: color-mix(in srgb, var(--color-accent) 30%, transparent 70%);
+            background: color-mix(in srgb, var(--hf-accent-3) 30%, transparent 70%);
             border-radius: 0.2rem;
         }
 
         font-select .dropdown-options::-webkit-scrollbar-thumb:hover {
-            background: color-mix(in srgb, var(--color-accent) 50%, transparent 50%);
+            background: color-mix(in srgb, var(--hf-accent-3) 50%, transparent 50%);
         }
 
         font-select .dropdown-options {
             scrollbar-width: thin;
-            scrollbar-color: color-mix(in srgb, var(--color-accent) 30%, transparent 70%) transparent;
+            scrollbar-color: color-mix(in srgb, var(--hf-accent-3) 30%, transparent 70%) transparent;
         }
 
         font-select .empty-message {
             padding: 16px 12px;
             font-size: 0.75rem;
             font-style: italic;
-            color: var(--color-text-muted, #98a7c8);
+            color: var(--hf-color-5);
             text-align: center;
         }
 
         font-select .font-install-prompt {
             padding: 10px 12px;
-            border-top: 1px solid var(--color-border-muted, rgba(255,255,255,0.1));
+            border-top: 1px solid var(--hf-color-3);
             text-align: center;
         }
 
@@ -315,10 +315,10 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
             align-items: center;
             gap: 6px;
             padding: 6px 12px;
-            background: color-mix(in srgb, var(--color-accent, #6b8aff) 20%, transparent 80%);
-            border: 1px solid color-mix(in srgb, var(--color-accent, #6b8aff) 40%, transparent 60%);
-            border-radius: var(--radius-sm, 4px);
-            color: var(--color-text-primary, #ccc);
+            background: color-mix(in srgb, var(--hf-accent-3) 20%, transparent 80%);
+            border: 1px solid color-mix(in srgb, var(--hf-accent-3) 40%, transparent 60%);
+            border-radius: var(--hf-radius-sm);
+            color: var(--hf-color-7);
             font-family: Nunito, 'Nunito Block';
             font-size: 0.75rem;
             font-weight: 600;
@@ -327,7 +327,7 @@ if (!document.getElementById(FONT_SELECT_STYLES_ID)) {
         }
 
         font-select .font-install-btn:hover {
-            background: color-mix(in srgb, var(--color-accent, #6b8aff) 35%, transparent 65%);
+            background: color-mix(in srgb, var(--hf-accent-3) 35%, transparent 65%);
         }
     `
     document.head.appendChild(style)

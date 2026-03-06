@@ -339,8 +339,8 @@ const EFFECT_PICKER_STYLES = `
     gap: 8px;
     padding: 8px 12px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--hf-color-3);
+    border-radius: var(--hf-radius-sm);
     margin-bottom: 12px;
     position: sticky;
     top: 0;
@@ -349,40 +349,40 @@ const EFFECT_PICKER_STYLES = `
 
 .effect-search .icon-material {
     font-size: 18px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .effect-search-input {
     flex: 1;
     background: transparent;
     border: none;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     font-family: var(--font-body);
     font-size: 14px;
     outline: none;
 }
 
 .effect-search-input::placeholder {
-    color: var(--color-text-placeholder);
+    color: var(--hf-color-5);
 }
 
 .effect-search-clear {
     background: none;
     border: none;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     cursor: pointer;
     padding: 4px;
     line-height: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    border-radius: var(--hf-radius-sm);
+    transition: all 0.15s ease;
 }
 
 .effect-search-clear:hover {
-    color: var(--color-text-primary);
-    background: var(--color-bg-hover);
+    color: var(--hf-color-7);
+    background: var(--hf-color-3);
 }
 
 .effect-search-clear.hidden {
@@ -399,9 +399,9 @@ const EFFECT_PICKER_STYLES = `
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
     background: rgba(0, 0, 0, 0.2);
-    border-bottom: 1px solid var(--color-border-muted);
+    border-bottom: 1px solid var(--hf-color-3);
 }
 
 .effect-item {
@@ -411,8 +411,8 @@ const EFFECT_PICKER_STYLES = `
     align-items: center;
     padding: 10px 12px;
     cursor: pointer;
-    border-bottom: 1px solid var(--color-border-muted);
-    transition: background var(--transition-fast);
+    border-bottom: 1px solid var(--hf-color-3);
+    transition: background 0.15s ease;
 }
 
 .effect-item:hover {
@@ -426,7 +426,7 @@ const EFFECT_PICKER_STYLES = `
 .effect-name {
     font-size: 13px;
     font-weight: 500;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
 }
 
 .effect-tags {
@@ -438,8 +438,8 @@ const EFFECT_PICKER_STYLES = `
     font-size: 10px;
     padding: 2px 6px;
     background: rgba(210, 98, 0, 0.15);
-    color: var(--color-accent);
-    border-radius: var(--radius-sm);
+    color: var(--hf-accent-3);
+    border-radius: var(--hf-radius-sm);
     cursor: pointer;
 }
 
@@ -450,7 +450,7 @@ const EFFECT_PICKER_STYLES = `
 .effect-description {
     grid-column: 1 / -1;
     font-size: 11px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -459,7 +459,7 @@ const EFFECT_PICKER_STYLES = `
 .effect-empty {
     padding: 24px;
     text-align: center;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     font-style: italic;
 }
 
@@ -474,17 +474,17 @@ const EFFECT_PICKER_STYLES = `
     font-size: 12px;
     padding: 6px 12px;
     background: rgba(0, 0, 0, 0.3);
-    border: 1px solid var(--color-border-muted);
-    border-radius: var(--radius-md);
-    color: var(--color-text-secondary);
+    border: 1px solid var(--hf-color-3);
+    border-radius: var(--hf-radius-md);
+    color: var(--hf-color-6);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.15s ease;
 }
 
 .effect-filter-chip:hover {
     background: rgba(210, 98, 0, 0.15);
-    border-color: var(--color-accent);
-    color: var(--color-accent);
+    border-color: var(--hf-accent-3);
+    color: var(--hf-accent-3);
 }
 
 `
