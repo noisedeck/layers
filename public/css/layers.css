@@ -15,7 +15,7 @@
     border: 1px solid var(--hf-color-2);
     border-radius: var(--hf-radius-md);
     margin-bottom: 6px;
-    overflow: hidden;
+    overflow: visible;
     transition: all 0.12s ease-out;
     cursor: pointer;
 }
