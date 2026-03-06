@@ -993,6 +993,15 @@ dialog[open] {
    Canvas Size Dialog
    ========================================================================= */
 
+.settings-dialog {
+    width: 400px;
+    min-height: 240px;
+}
+
+.settings-dialog .dialog-body {
+    padding: 32px;
+}
+
 .canvas-size-dialog {
     width: 560px;
 }
