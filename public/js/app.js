@@ -12,6 +12,7 @@ import { EffectParams } from './layers/effect-params.js'
 import { openDialog } from './ui/open-dialog.js'
 import { addLayerDialog } from './ui/add-layer-dialog.js'
 import { aboutDialog } from './ui/about-dialog.js'
+import { settingsDialog } from './ui/settings-dialog.js'
 import { saveProjectDialog } from './ui/save-project-dialog.js'
 import { projectManagerDialog } from './ui/project-manager-dialog.js'
 import { confirmDialog } from './ui/confirm-dialog.js'
@@ -303,6 +304,8 @@ class LayersApp {
      */
     async init() {
         console.debug('[Layers] Initializing...')
+
+        settingsDialog.initTheme()
 
         // Register service worker for PWA support (disabled)
         // registerServiceWorker()
@@ -1983,6 +1986,11 @@ class LayersApp {
         document.addEventListener('click', () => {
             document.querySelectorAll('.menu-items').forEach(m => m.classList.add('hide'))
             hideSubmenu()
+        })
+
+        // Logo menu - Settings
+        document.getElementById('settingsMenuItem')?.addEventListener('click', () => {
+            settingsDialog.show()
         })
 
         // Logo menu - About
