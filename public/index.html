@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="neutral-dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -44,11 +44,22 @@
     <!-- CDN preconnect -->
     <link rel="preconnect" href="https://fonts.noisefactor.io" crossorigin>
     <link rel="preconnect" href="https://shaders.noisedeck.app" crossorigin>
+    <link rel="preconnect" href="https://handfish.noisefactor.io" crossorigin>
     <link rel="preload" href="https://fonts.noisefactor.io/fonts/nunito/Nunito-Block.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="https://fonts.noisefactor.io/fonts/noto-sans-mono/NotoSansMono-Block.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="preload" href="https://fonts.noisefactor.io/fonts/cormorant-upright/CormorantUpright-Block.woff2" as="font" type="font/woff2" crossorigin>
+    <script type="importmap">
+        {
+            "imports": {
+                "handfish": "https://handfish.noisefactor.io/0.9.0/handfish.esm.min.js"
+            }
+        }
+    </script>
     <link rel="stylesheet" href="css/fonts.css">
-    <link rel="stylesheet" href="css/colors.css">
+    <!-- Handfish Design System -->
+    <link rel="stylesheet" href="https://handfish.noisefactor.io/0.9.0/styles/tokens.css">
+    <link rel="stylesheet" href="https://handfish.noisefactor.io/0.9.0/styles/themes/neutral.css">
+    <link rel="stylesheet" href="css/theme.css">
     <link rel="stylesheet" href="css/menu.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/layers.css">
