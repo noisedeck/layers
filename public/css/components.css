@@ -996,10 +996,12 @@ dialog[open] {
 .settings-dialog {
     width: 400px;
     min-height: 240px;
+    overflow: visible;
 }
 
 .settings-dialog .dialog-body {
     padding: 32px;
+    overflow: visible;
 }
 
 .canvas-size-dialog {

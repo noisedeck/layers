@@ -58,7 +58,7 @@ class SettingsDialog {
      * Sets up system preference listener if in system mode.
      */
     initTheme() {
-        const saved = localStorage.getItem(STORAGE_KEY) || 'gray-light'
+        const saved = localStorage.getItem(STORAGE_KEY) || 'system'
         applyTheme(saved)
         this._updateSystemListener(saved)
     }
@@ -72,7 +72,7 @@ class SettingsDialog {
         }
 
         // Sync dropdown with current saved value
-        const saved = localStorage.getItem(STORAGE_KEY) || 'gray-light'
+        const saved = localStorage.getItem(STORAGE_KEY) || 'system'
         this._themeSelect.value = saved
 
         this._dialog.showModal()
@@ -115,7 +115,7 @@ class SettingsDialog {
         this._themeSelect = this._dialog.querySelector('.settings-theme-select')
         this._themeSelect.setOptions(THEMES)
 
-        const saved = localStorage.getItem(STORAGE_KEY) || 'gray-light'
+        const saved = localStorage.getItem(STORAGE_KEY) || 'system'
         this._themeSelect.value = saved
 
         // Theme change handler
