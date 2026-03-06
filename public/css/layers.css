@@ -11,22 +11,22 @@
     position: relative;
     display: flex;
     flex-direction: column;
-    background: var(--color-bg-active);
-    border: 1px solid var(--color-border-muted);
-    border-radius: var(--radius-md);
+    background: var(--hf-color-3);
+    border: 1px solid var(--hf-color-2);
+    border-radius: var(--hf-radius-md);
     margin-bottom: 6px;
     overflow: hidden;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
     cursor: pointer;
 }
 
 .layer-item:hover {
-    border-color: var(--color-border);
+    border-color: var(--hf-color-3);
 }
 
 .layer-item.selected {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 1px var(--color-accent);
+    border-color: var(--hf-accent-3);
+    box-shadow: 0 0 0 1px var(--hf-accent-3);
 }
 
 .layer-item.dragging {
@@ -36,25 +36,25 @@
 }
 
 .layer-item.drag-over {
-    border-color: var(--color-accent);
-    background: var(--color-accent-muted);
+    border-color: var(--hf-accent-3);
+    background: color-mix(in srgb, var(--hf-accent-3) 12%, transparent 88%);
 }
 
 .layer-item.drag-over-above {
-    border-top: 3px solid var(--color-accent);
+    border-top: 3px solid var(--hf-accent-3);
     margin-top: -2px;
 }
 
 .layer-item.drag-over-below {
-    border-bottom: 3px solid var(--color-accent);
+    border-bottom: 3px solid var(--hf-accent-3);
     margin-bottom: 4px;
 }
 
 /* Child Effect Layers (indented below parent) */
 .layer-item.child-layer {
     margin-left: 24px;
-    border-left: 2px solid var(--color-accent-muted);
-    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    border-left: 2px solid color-mix(in srgb, var(--hf-accent-3) 12%, transparent 88%);
+    border-radius: 0 var(--hf-radius-md) var(--hf-radius-md) 0;
 }
 
 .layer-item.child-layer .layer-drag-handle {
@@ -67,12 +67,12 @@
 .layer-add-child {
     background: none;
     border: none;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     cursor: pointer;
     padding: 4px;
     line-height: 1;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    border-radius: var(--hf-radius-sm);
+    transition: all 0.12s ease-out;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -85,8 +85,8 @@
 }
 
 .layer-add-child:hover {
-    color: var(--color-accent);
-    background: var(--color-accent-muted);
+    color: var(--hf-accent-3);
+    background: color-mix(in srgb, var(--hf-accent-3) 12%, transparent 88%);
 }
 
 .layer-add-child .icon-material {
@@ -103,7 +103,7 @@
 
 /* Drag Handle */
 .layer-drag-handle {
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     cursor: grab;
     padding: 2px;
     line-height: 1;
@@ -112,7 +112,7 @@
     justify-content: center;
     flex-shrink: 0;
     opacity: 0.5;
-    transition: opacity var(--transition-fast);
+    transition: opacity 0.12s ease-out;
 }
 
 .layer-drag-handle:hover {
@@ -131,12 +131,12 @@
 .layer-visibility {
     background: none;
     border: none;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     cursor: pointer;
     padding: 4px;
     line-height: 1;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    border-radius: var(--hf-radius-sm);
+    transition: all 0.12s ease-out;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -144,13 +144,13 @@
 }
 
 .layer-visibility:hover {
-    color: var(--color-text-primary);
-    background: var(--color-bg-hover);
+    color: var(--hf-color-7);
+    background: var(--hf-color-3);
 }
 
 .layer-visibility:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .layer-visibility:active {
@@ -158,7 +158,7 @@
 }
 
 .layer-visibility.visible {
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
 }
 
 .layer-visibility .icon-material {
@@ -169,8 +169,8 @@
 .layer-thumbnail {
     width: 36px;
     height: 36px;
-    border-radius: var(--radius-sm);
-    background: var(--color-bg-elevated);
+    border-radius: var(--hf-radius-sm);
+    background: var(--hf-color-1);
     overflow: hidden;
     flex-shrink: 0;
     display: flex;
@@ -187,19 +187,19 @@
 
 .layer-thumbnail .icon-material {
     font-size: 20px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 /* Layer Mask Thumbnail */
 .layer-mask-thumbnail {
     width: 36px;
     height: 36px;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border: 1px solid var(--hf-color-3);
+    border-radius: var(--hf-radius-sm);
     cursor: pointer;
     flex-shrink: 0;
     overflow: hidden;
-    background: var(--color-bg-elevated);
+    background: var(--hf-color-1);
     position: relative;
 }
 
@@ -210,13 +210,13 @@
     right: 2px;
     font-size: 8px;
     font-weight: 700;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     line-height: 1;
     pointer-events: none;
 }
 
 .layer-mask-thumbnail:hover {
-    border-color: var(--color-accent);
+    border-color: var(--hf-accent-3);
 }
 
 .layer-mask-thumbnail.mask-visible {
@@ -250,50 +250,50 @@
 .layer-name {
     font-size: 13px;
     font-weight: 500;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: text;
     padding: 2px 4px;
     margin: -2px -4px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--hf-radius-sm);
     border: 1px solid transparent;
 }
 
 .layer-name:hover {
-    background: var(--color-bg-hover);
+    background: var(--hf-color-3);
 }
 
 .layer-name.editing {
-    background: var(--overlay-dark);
-    border-color: var(--color-accent);
+    background: rgba(0, 0, 0, 0.4);
+    border-color: var(--hf-accent-3);
     outline: none;
 }
 
 .layer-type {
     font-size: 10px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .layer-type.media {
-    color: var(--color-secondary);
+    color: var(--hf-accent-1);
 }
 
 .layer-type.effect {
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
 }
 
 /* Layer Delete Button */
 .layer-delete {
     background: none;
     border: none;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     cursor: pointer;
     padding: 4px;
     line-height: 1;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    border-radius: var(--hf-radius-sm);
+    transition: all 0.12s ease-out;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -306,13 +306,13 @@
 }
 
 .layer-delete:hover {
-    color: var(--color-error);
-    background: var(--color-error-muted);
+    color: var(--hf-red);
+    background: color-mix(in srgb, var(--hf-red) 12%, transparent 88%);
 }
 
 .layer-delete:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .layer-delete:active {
@@ -337,7 +337,7 @@
     align-items: center;
     gap: 8px;
     padding: 6px 10px 10px;
-    border-top: 1px solid var(--color-border-muted);
+    border-top: 1px solid var(--hf-color-2);
     background: rgba(0, 0, 0, 0.15);
 }
 
@@ -345,12 +345,12 @@
 .layer-params-toggle {
     background: none;
     border: none;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     cursor: pointer;
     padding: 2px;
     line-height: 1;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    border-radius: var(--hf-radius-sm);
+    transition: all 0.12s ease-out;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -358,13 +358,13 @@
 }
 
 .layer-params-toggle:hover {
-    color: var(--color-text-primary);
-    background: var(--color-bg-hover);
+    color: var(--hf-color-7);
+    background: var(--hf-color-3);
 }
 
 .layer-params-toggle:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .layer-params-toggle:active {
@@ -373,7 +373,7 @@
 
 .layer-params-toggle .icon-material {
     font-size: 18px;
-    transition: transform var(--transition-fast);
+    transition: transform 0.12s ease-out;
 }
 
 .layer-params-toggle.expanded .icon-material {
@@ -387,26 +387,26 @@
     padding: 4px 24px 4px 8px;
     font-family: var(--font-body);
     font-size: 11px;
-    background-color: var(--color-bg-elevated);
+    background-color: var(--hf-color-1);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394a3b8' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right 6px center;
-    border: 1px solid var(--color-border-muted);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-secondary);
+    border: 1px solid var(--hf-color-2);
+    border-radius: var(--hf-radius-sm);
+    color: var(--hf-color-6);
     appearance: none;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
 }
 
 .layer-blend-mode:hover {
-    border-color: var(--color-border);
-    color: var(--color-text-primary);
+    border-color: var(--hf-color-3);
+    color: var(--hf-color-7);
 }
 
 .layer-blend-mode:focus {
     outline: none;
-    border-color: var(--color-accent);
+    border-color: var(--hf-accent-3);
 }
 
 /* Opacity Slider */
@@ -420,7 +420,7 @@
 .layer-opacity {
     flex: 1;
     height: 4px;
-    background: var(--color-border);
+    background: var(--hf-color-3);
     border: none;
     border-radius: 2px;
     outline: none;
@@ -432,21 +432,21 @@
     -webkit-appearance: none;
     width: 20px;
     height: 20px;
-    background: var(--color-ui);
+    background: var(--hf-color-5);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: var(--color-ui-glow);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--hf-color-5) 40%, transparent 60%);
 }
 
 .layer-opacity:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .layer-opacity-value {
     font-size: 10px;
     font-family: var(--font-mono);
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     min-width: 32px;
     text-align: right;
 }
@@ -470,7 +470,7 @@ layer-stack {
    ========================================================================= */
 
 .layer-item.effect-layer .layer-thumbnail {
-    background: linear-gradient(180deg, var(--color-accent-muted) 0%, var(--color-bg-elevated) 100%);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--hf-accent-3) 12%, transparent 88%) 0%, var(--hf-color-1) 100%);
 }
 
 /* =========================================================================
@@ -486,7 +486,7 @@ layer-stack {
 }
 
 .layer-lock-icon {
-    color: var(--color-warning);
+    color: var(--hf-yellow);
     font-size: 14px;
 }
 
@@ -497,7 +497,7 @@ layer-stack {
 effect-params {
     display: none;
     padding: 10px 12px;
-    border-top: 1px solid var(--color-border-muted);
+    border-top: 1px solid var(--hf-color-2);
     background: rgba(0, 0, 0, 0.2);
 }
 
@@ -512,7 +512,7 @@ effect-params {
 .effect-params-empty,
 .effect-params-loading {
     font-size: 11px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     font-style: italic;
 }
 
@@ -524,7 +524,7 @@ effect-params {
 
 .effect-params-title {
     font-size: 10px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     font-weight: 600;
 }
 
@@ -537,7 +537,7 @@ effect-params {
 /* Control group - single column layout */
 .control-group {
     display: grid;
-    grid-template-columns: 70px 1fr 40px;
+    grid-template-columns: 70px 1fr;
     align-items: center;
     gap: 8px;
     min-height: 24px;
@@ -545,168 +545,18 @@ effect-params {
 
 .control-label {
     font-size: 11px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     text-transform: lowercase;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.control-value {
-    font-size: 10px;
-    font-family: var(--font-mono);
-    color: var(--color-text-muted);
-    text-align: right;
-    min-width: 35px;
-}
-
-/* Slider control */
-.control-slider {
-    width: 100%;
-    height: 4px;
-    background: var(--color-border);
-    border: none;
-    border-radius: 2px;
-    outline: none;
-    -webkit-appearance: none;
-    appearance: none;
-    cursor: pointer;
-}
-
-.control-slider:hover {
-    background: color-mix(in srgb, var(--color-ui) 30%, var(--color-border) 70%);
-}
-
-.control-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    background: var(--color-ui);
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: var(--color-ui-glow);
-    transition: transform var(--transition-fast);
-}
-
-.control-slider:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
-}
-
-.control-slider::-webkit-slider-thumb:hover {
-    transform: scale(1.15);
-}
-
-.control-slider::-moz-range-thumb {
-    width: 20px;
-    height: 20px;
-    background: var(--color-ui);
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-}
-
-/* Dropdown control */
-.control-dropdown {
-    width: 100%;
-    padding: 4px 24px 4px 8px;
-    font-family: var(--font-body);
-    font-size: 11px;
-    background-color: var(--overlay-dark);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394a3b8' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 6px center;
-    border: 1px solid var(--color-border-muted);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-secondary);
-    appearance: none;
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    grid-column: 2 / 4;
-}
-
-.control-dropdown:hover {
-    border-color: var(--color-border);
-    color: var(--color-text-primary);
-}
-
-.control-dropdown:focus {
-    outline: none;
-    border-color: var(--color-accent);
-}
-
-/* Toggle control */
-.control-toggle {
-    background: none;
-    border: none;
-    padding: 0;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    grid-column: 2 / 4;
-    justify-self: start;
-}
-
-.toggle-track {
-    position: relative;
-    width: 32px;
-    height: 16px;
-    background: var(--color-border);
-    border-radius: 8px;
-    transition: background var(--transition-fast);
-}
-
-.control-toggle.active .toggle-track {
-    background: color-mix(in srgb, var(--color-ui) 50%, var(--color-border) 50%);
-}
-
-.toggle-thumb {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 12px;
-    height: 12px;
-    background: var(--color-text-muted);
-    border-radius: 50%;
-    transition: left var(--transition-fast), background var(--transition-fast);
-}
-
-.control-toggle.active .toggle-thumb {
-    left: 18px;
-    background: var(--color-ui-hover);
-}
-
-/* Color picker control */
-.control-color-container {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    grid-column: 2 / 4;
-}
-
-.control-color {
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    border: 1px solid var(--color-border-muted);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    background: transparent;
-}
-
-.control-color::-webkit-color-swatch-wrapper {
-    padding: 0;
-}
-
-.control-color::-webkit-color-swatch {
-    border: none;
-    border-radius: 2px;
-}
-
-.control-color-hex {
-    font-size: 10px;
-    font-family: var(--font-mono);
-    color: var(--color-text-muted);
+/* Handfish components span the control column */
+.control-group select-dropdown,
+.control-group toggle-switch,
+.control-group color-picker {
+    grid-column: 2 / -1;
 }
 
 /* Button control */
@@ -714,20 +564,20 @@ effect-params {
     padding: 4px 12px;
     font-size: 10px;
     font-family: var(--font-body);
-    background: var(--overlay-dark);
-    border: 1px solid var(--color-border-muted);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-secondary);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--hf-color-2);
+    border-radius: var(--hf-radius-sm);
+    color: var(--hf-color-6);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
     grid-column: 2 / 4;
     justify-self: start;
 }
 
 .control-button:hover {
-    border-color: var(--color-accent);
-    color: var(--color-accent);
-    background: var(--color-accent-muted);
+    border-color: var(--hf-accent-3);
+    color: var(--hf-accent-3);
+    background: color-mix(in srgb, var(--hf-accent-3) 12%, transparent 88%);
 }
 
 /* Text input control */
@@ -737,23 +587,23 @@ effect-params {
     padding: 6px 8px;
     font-family: var(--font-body);
     font-size: 11px;
-    background: var(--overlay-dark);
-    border: 1px solid var(--color-border-muted);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-primary);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--hf-color-2);
+    border-radius: var(--hf-radius-sm);
+    color: var(--hf-color-7);
     grid-column: 2 / 4;
-    transition: border-color var(--transition-fast);
+    transition: border-color 0.12s ease-out;
 }
 
 .control-text:hover,
 .control-textarea:hover {
-    border-color: var(--color-border);
+    border-color: var(--hf-color-3);
 }
 
 .control-text:focus,
 .control-textarea:focus {
     outline: none;
-    border-color: var(--color-accent);
+    border-color: var(--hf-accent-3);
 }
 
 .control-textarea {

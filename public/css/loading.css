@@ -11,9 +11,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--color-bg);
+    background-color: var(--hf-color-2);
     opacity: 1;
-    transition: opacity var(--transition-slow);
+    transition: opacity 0.35s ease-out;
 }
 
 #loading-screen.fade-out {
@@ -30,10 +30,10 @@
     position: relative;
     width: 420px;
     height: 280px;
-    background: var(--color-glass);
+    background: color-mix(in srgb, var(--hf-color-2) var(--hf-panel-opacity), transparent var(--hf-panel-transparency));
     border: none;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-xl), var(--shadow-glow);
+    border-radius: var(--hf-radius-xl);
+    box-shadow: var(--hf-shadow-xl), var(--hf-shadow-lg);
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -52,8 +52,8 @@
     width: 64px;
     height: 64px;
     margin-bottom: 16px;
-    color: var(--color-text-primary);
-    filter: drop-shadow(0 0 20px color-mix(in srgb, var(--color-accent) 40%, transparent));
+    color: var(--hf-color-7);
+    filter: drop-shadow(0 0 20px color-mix(in srgb, var(--hf-accent-3) 40%, transparent));
     animation: title-glow 3s ease-in-out infinite alternate;
 }
 
@@ -61,11 +61,11 @@
     font-family: var(--font-accent);
     font-size: 42px;
     font-weight: 600;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     margin: 0;
     text-shadow:
-        0 0 40px color-mix(in srgb, var(--color-accent) 40%, transparent),
-        0 0 80px color-mix(in srgb, var(--color-accent) 20%, transparent);
+        0 0 40px color-mix(in srgb, var(--hf-accent-3) 40%, transparent),
+        0 0 80px color-mix(in srgb, var(--hf-accent-3) 20%, transparent);
     animation: title-glow 3s ease-in-out infinite alternate;
     display: flex;
     flex-direction: column;
@@ -80,13 +80,13 @@
 @keyframes title-glow {
     0% {
         text-shadow:
-            0 0 40px color-mix(in srgb, var(--color-accent) 30%, transparent),
-            0 0 80px color-mix(in srgb, var(--color-accent) 15%, transparent);
+            0 0 40px color-mix(in srgb, var(--hf-accent-3) 30%, transparent),
+            0 0 80px color-mix(in srgb, var(--hf-accent-3) 15%, transparent);
     }
     100% {
         text-shadow:
-            0 0 50px color-mix(in srgb, var(--color-accent) 50%, transparent),
-            0 0 100px color-mix(in srgb, var(--color-accent) 25%, transparent);
+            0 0 50px color-mix(in srgb, var(--hf-accent-3) 50%, transparent),
+            0 0 100px color-mix(in srgb, var(--hf-accent-3) 25%, transparent);
     }
 }
 
@@ -95,7 +95,7 @@
     font-family: var(--font-body);
     font-size: 11px;
     font-weight: 400;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     margin: 8px 0 0;
     opacity: 0.8;
 }
@@ -105,7 +105,7 @@
     margin-top: 24px;
     font-family: var(--font-body);
     font-size: 13px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     display: flex;
     align-items: center;
     gap: 8px;
@@ -117,7 +117,7 @@
     width: 16px;
     height: 16px;
     border: 2px solid rgba(255, 255, 255, 0.2);
-    border-top-color: var(--color-accent);
+    border-top-color: var(--hf-accent-3);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

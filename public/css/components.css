@@ -16,17 +16,17 @@
     font-family: var(--font-body);
     font-size: 13px;
     font-weight: 500;
-    color: var(--color-text-primary);
-    background: linear-gradient(180deg, var(--color-bg-hover) 0%, var(--color-bg-elevated) 100%);
+    color: var(--hf-color-7);
+    background: linear-gradient(180deg, var(--hf-color-3) 0%, var(--hf-color-1) 100%);
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--hf-radius-sm);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
     white-space: nowrap;
 }
 
 .action-btn:hover {
-    background: linear-gradient(180deg, var(--color-bg-active) 0%, var(--color-bg-hover) 100%);
+    background: linear-gradient(180deg, var(--hf-color-3) 0%, var(--hf-color-3) 100%);
 }
 
 .action-btn:active {
@@ -35,28 +35,28 @@
 
 .action-btn:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .action-btn.primary {
-    background: linear-gradient(180deg, var(--color-accent) 0%, #a84f00 100%);
-    color: var(--color-text-inverse);
+    background: linear-gradient(180deg, var(--hf-accent-3) 0%, #a84f00 100%);
+    color: white;
     font-weight: 600;
 }
 
 .action-btn.primary:hover {
-    background: linear-gradient(180deg, var(--color-accent-hover) 0%, var(--color-accent) 100%);
+    background: linear-gradient(180deg, var(--hf-accent-4) 0%, var(--hf-accent-3) 100%);
     box-shadow: 0 0 20px rgba(210, 98, 0, 0.4);
 }
 
 .action-btn.danger {
-    background: linear-gradient(180deg, var(--color-error) 0%, #e05555 100%);
-    color: var(--color-text-inverse);
+    background: linear-gradient(180deg, var(--hf-red) 0%, #e05555 100%);
+    color: white;
     font-weight: 600;
 }
 
 .action-btn.danger:hover {
-    background: linear-gradient(180deg, #ff8080 0%, var(--color-error) 100%);
+    background: linear-gradient(180deg, #ff8080 0%, var(--hf-red) 100%);
     box-shadow: 0 0 20px rgba(255, 107, 107, 0.4);
 }
 
@@ -96,18 +96,18 @@
     align-items: center;
     gap: 12px;
     padding: 14px 18px;
-    background-color: var(--color-glass);
+    background-color: color-mix(in srgb, var(--hf-color-2) var(--hf-panel-opacity), transparent var(--hf-panel-transparency));
     backdrop-filter: blur(8px);
     border: none;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-lg);
-    color: var(--color-text-primary);
+    border-radius: var(--hf-radius-lg);
+    box-shadow: var(--hf-shadow-lg);
+    color: var(--hf-color-7);
     font-family: var(--font-body);
     font-size: 13px;
     pointer-events: auto;
     opacity: 0;
     transform: translateY(20px);
-    transition: all var(--transition-normal);
+    transition: all 0.2s ease-out;
     max-width: 400px;
 }
 
@@ -139,12 +139,12 @@
 .toast-close {
     background: none;
     border: none;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     cursor: pointer;
     padding: 4px;
     line-height: 1;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    border-radius: var(--hf-radius-sm);
+    transition: all 0.12s ease-out;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -155,46 +155,46 @@
 }
 
 .toast-close:hover {
-    color: var(--color-text-primary);
-    background-color: var(--color-bg-hover);
+    color: var(--hf-color-7);
+    background-color: var(--hf-color-3);
 }
 
 .toast-close:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 /* Toast types */
 .toast-success {
-    border-left: 3px solid var(--color-success);
+    border-left: 3px solid var(--hf-green);
 }
 
 .toast-success .toast-icon {
-    color: var(--color-success);
+    color: var(--hf-green);
 }
 
 .toast-error {
-    border-left: 3px solid var(--color-error);
+    border-left: 3px solid var(--hf-red);
 }
 
 .toast-error .toast-icon {
-    color: var(--color-error);
+    color: var(--hf-red);
 }
 
 .toast-warning {
-    border-left: 3px solid var(--color-warning);
+    border-left: 3px solid var(--hf-yellow);
 }
 
 .toast-warning .toast-icon {
-    color: var(--color-warning);
+    color: var(--hf-yellow);
 }
 
 .toast-info {
-    border-left: 3px solid var(--color-accent);
+    border-left: 3px solid var(--hf-accent-3);
 }
 
 .toast-info .toast-icon {
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
 }
 
 /* Toast action button (for updates, etc.) */
@@ -204,17 +204,17 @@
     font-family: var(--font-body);
     font-size: 12px;
     font-weight: 500;
-    color: var(--color-text-inverse);
-    background: var(--color-accent);
+    color: white;
+    background: var(--hf-accent-3);
     border: none;
-    border-radius: var(--radius-sm);
+    border-radius: var(--hf-radius-sm);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
     white-space: nowrap;
 }
 
 .toast-action:hover {
-    background: var(--color-accent-hover);
+    background: var(--hf-accent-4);
 }
 
 .toast-action:disabled {
@@ -227,13 +227,13 @@
    ========================================================================= */
 
 dialog {
-    background: var(--color-bg-overlay);
+    background: color-mix(in srgb, var(--hf-color-2) 92%, transparent 8%);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: none;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-xl);
-    color: var(--color-text-primary);
+    border-radius: var(--hf-radius-xl);
+    box-shadow: var(--hf-shadow-xl);
+    color: var(--hf-color-7);
     padding: 0;
     max-width: 90vw;
     max-height: 85vh;
@@ -247,11 +247,11 @@ dialog:focus {
 
 dialog *:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 dialog::backdrop {
-    background: var(--color-backdrop);
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
 }
 
@@ -276,21 +276,21 @@ dialog[open] {
     justify-content: space-between;
     padding: 16px 20px;
     background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%);
-    border-bottom: 1px solid var(--color-border-muted);
+    border-bottom: 1px solid var(--hf-color-2);
 }
 
 .dialog-header h2 {
     font-family: var(--font-accent);
     font-size: 20px;
     font-weight: 600;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     margin: 0;
 }
 
 .dialog-close {
     background: none;
     border: none;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     font-size: 20px;
     cursor: pointer;
     padding: 0;
@@ -300,18 +300,18 @@ dialog[open] {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
+    border-radius: var(--hf-radius-sm);
+    transition: all 0.12s ease-out;
 }
 
 .dialog-close:hover {
     background-color: rgba(255, 255, 255, 0.1);
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
 }
 
 .dialog-close:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .dialog-body {
@@ -326,7 +326,7 @@ dialog[open] {
     gap: 12px;
     padding: 16px 24px;
     background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.02) 100%);
-    border-top: 1px solid var(--color-border-muted);
+    border-top: 1px solid var(--hf-color-2);
 }
 
 /* =========================================================================
@@ -341,7 +341,7 @@ dialog[open] {
     display: block;
     font-size: 12px;
     font-weight: 500;
-    color: var(--color-text-secondary);
+    color: var(--hf-color-6);
     margin-bottom: 6px;
 }
 
@@ -354,25 +354,25 @@ dialog[open] {
     padding: 10px 12px;
     font-family: var(--font-body);
     font-size: 14px;
-    background-color: var(--overlay-dark);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-primary);
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    background-color: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--hf-color-3);
+    border-radius: var(--hf-radius-sm);
+    color: var(--hf-color-7);
+    transition: border-color 0.12s ease-out, box-shadow 0.12s ease-out;
     box-sizing: border-box;
 }
 
 .form-field input::placeholder,
 .form-field textarea::placeholder {
-    color: var(--color-text-placeholder);
+    color: var(--hf-color-4);
 }
 
 .form-field input:focus,
 .form-field select:focus,
 .form-field textarea:focus {
     outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px var(--color-accent);
+    border-color: var(--hf-accent-3);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .form-field select {
@@ -393,24 +393,24 @@ dialog[open] {
     padding: 6px 12px;
     font-family: var(--font-body);
     font-size: 12px;
-    background: var(--color-bg-hover);
+    background: var(--hf-color-3);
     border: none;
-    border-radius: var(--radius-sm);
-    color: var(--color-text-primary);
+    border-radius: var(--hf-radius-sm);
+    color: var(--hf-color-7);
     cursor: pointer;
     margin-right: 12px;
-    transition: background var(--transition-fast);
+    transition: background 0.12s ease-out;
 }
 
 .form-field input[type="file"]::file-selector-button:hover {
-    background: var(--color-bg-active);
+    background: var(--hf-color-3);
 }
 
 /* Slider */
 .form-field input[type="range"] {
     width: 100%;
     height: 4px;
-    background: var(--color-border);
+    background: var(--hf-color-3);
     border: none;
     border-radius: 2px;
     -webkit-appearance: none;
@@ -419,18 +419,18 @@ dialog[open] {
 
 .form-field input[type="range"]:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .form-field input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     width: 16px;
     height: 16px;
-    background: var(--color-ui);
+    background: var(--hf-color-5);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: var(--color-ui-glow);
-    transition: transform var(--transition-fast);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--hf-color-5) 40%, transparent 60%);
+    transition: transform 0.12s ease-out;
 }
 
 .form-field input[type="range"]::-webkit-slider-thumb:hover {
@@ -457,13 +457,13 @@ dialog[open] {
     align-items: center;
     justify-content: center;
     padding: 2.75rem 2.5rem;
-    background: linear-gradient(180deg, var(--color-accent-muted) 0%, transparent 100%);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--hf-accent-3) 12%, transparent 88%) 0%, transparent 100%);
 }
 
 .about-modal-logo {
     width: min(80%, 200px);
     height: auto;
-    filter: drop-shadow(0 0 20px var(--color-accent));
+    filter: drop-shadow(0 0 20px var(--hf-accent-3));
 }
 
 .about-modal-details {
@@ -472,14 +472,14 @@ dialog[open] {
     justify-content: center;
     gap: 1rem;
     padding: 2.75rem 1.5rem;
-    color: var(--color-text-secondary);
+    color: var(--hf-color-6);
 }
 
 .about-modal-title {
     font-family: var(--font-accent);
     font-weight: 600;
     font-size: clamp(2rem, 4vw, 2.5rem);
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     text-shadow:
         0 0 40px rgba(210, 98, 0, 0.4),
         0 0 80px rgba(210, 98, 0, 0.2);
@@ -488,12 +488,12 @@ dialog[open] {
 .about-modal-tagline,
 .about-modal-subtitle {
     font-size: 1rem;
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
 }
 
 .about-modal-copyright {
     font-size: 0.9rem;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .about-modal-build {
@@ -501,29 +501,29 @@ dialog[open] {
 }
 
 .about-modal-link {
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
     text-decoration: none;
-    transition: color var(--transition-fast);
+    transition: color 0.12s ease-out;
 }
 
 .about-modal-link:hover {
-    color: var(--color-accent-hover);
+    color: var(--hf-accent-4);
 }
 
 .about-modal-ecosystem {
     font-size: 0.8rem;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     margin-top: 0.75rem;
     line-height: 1.4;
 }
 
 .about-modal-ecosystem a {
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
     text-decoration: none;
 }
 
 .about-modal-ecosystem a:hover {
-    color: var(--color-accent-hover);
+    color: var(--hf-accent-4);
 }
 
 @media (max-width: 720px) {
@@ -560,9 +560,9 @@ dialog[open] {
 
 .share-preview {
     margin-bottom: 16px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--hf-radius-sm);
     overflow: hidden;
-    background-color: var(--overlay-dark);
+    background-color: rgba(0, 0, 0, 0.4);
     aspect-ratio: 1200 / 630;
 }
 
@@ -579,15 +579,15 @@ dialog[open] {
     gap: 10px;
     padding: 12px;
     background-color: rgba(210, 98, 0, 0.05);
-    border-radius: var(--radius-sm);
+    border-radius: var(--hf-radius-sm);
     font-size: 12px;
-    color: var(--color-text-secondary);
+    color: var(--hf-color-6);
     margin-bottom: 20px;
 }
 
 .share-info .icon-material {
     font-size: 18px;
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
     flex-shrink: 0;
 }
 
@@ -603,7 +603,7 @@ dialog[open] {
     margin-bottom: 20px;
     font-size: 16px;
     font-weight: 500;
-    color: var(--color-success);
+    color: var(--hf-green);
 }
 
 .share-url-field {
@@ -617,15 +617,15 @@ dialog[open] {
     padding: 10px 12px;
     font-family: var(--font-mono);
     font-size: 12px;
-    background-color: var(--overlay-dark);
+    background-color: rgba(0, 0, 0, 0.4);
     border: none;
-    border-radius: var(--radius-sm);
-    color: var(--color-accent);
+    border-radius: var(--hf-radius-sm);
+    color: var(--hf-accent-3);
 }
 
 .share-expires {
     font-size: 11px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     margin-bottom: 20px;
 }
 
@@ -637,7 +637,7 @@ dialog[open] {
     display: none;
     position: fixed;
     inset: 0;
-    background: var(--color-backdrop);
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
     z-index: 10000;
     justify-content: center;
@@ -658,7 +658,7 @@ dialog[open] {
     display: none;
     position: fixed;
     inset: 0;
-    background: var(--color-backdrop);
+    background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px);
     z-index: 10001;
     justify-content: center;
@@ -675,13 +675,13 @@ dialog[open] {
 .info-dialog,
 .choice-dialog {
     width: 360px;
-    background: var(--color-bg-overlay);
+    background: color-mix(in srgb, var(--hf-color-2) 92%, transparent 8%);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: none;
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
-    color: var(--color-text-primary);
+    border-radius: var(--hf-radius-lg);
+    box-shadow: var(--hf-shadow-xl);
+    color: var(--hf-color-7);
     padding: 0;
     max-width: 90vw;
     animation: dialog-open 0.2s ease-out;
@@ -699,7 +699,7 @@ dialog[open] {
     margin: 0;
     font-size: 14px;
     line-height: 1.5;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
 }
 
 .confirm-dialog .dialog-actions,
@@ -709,18 +709,18 @@ dialog[open] {
     justify-content: flex-end;
     gap: 8px;
     padding: 16px 24px;
-    border-top: 1px solid var(--color-border-muted);
+    border-top: 1px solid var(--hf-color-2);
 }
 
 .open-dialog {
     width: 560px;
-    background: var(--color-bg-overlay);
+    background: color-mix(in srgb, var(--hf-color-2) 92%, transparent 8%);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border: none;
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-xl);
-    color: var(--color-text-primary);
+    border-radius: var(--hf-radius-xl);
+    box-shadow: var(--hf-shadow-xl);
+    color: var(--hf-color-7);
     padding: 0;
     max-width: 90vw;
     max-height: 85vh;
@@ -750,37 +750,37 @@ dialog[open] {
     align-items: center;
     gap: 12px;
     padding: 24px;
-    background: var(--overlay-dark);
-    border: 2px solid var(--color-border);
-    border-radius: var(--radius-lg);
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid var(--hf-color-3);
+    border-radius: var(--hf-radius-lg);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
 }
 
 .media-option:hover {
-    border-color: var(--color-accent);
+    border-color: var(--hf-accent-3);
     background: rgba(210, 98, 0, 0.05);
 }
 
 .media-option.selected {
-    border-color: var(--color-accent);
+    border-color: var(--hf-accent-3);
     background: rgba(210, 98, 0, 0.1);
 }
 
 .media-option .icon-material {
     font-size: 48px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .media-option:hover .icon-material,
 .media-option.selected .icon-material {
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
 }
 
 .media-option span {
     font-size: 14px;
     font-weight: 500;
-    color: var(--color-text-secondary);
+    color: var(--hf-color-6);
 }
 
 .privacy-notice {
@@ -790,14 +790,14 @@ dialog[open] {
     padding: 12px;
     margin-top: 16px;
     font-size: 12px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     background: rgba(0, 0, 0, 0.2);
-    border-radius: var(--radius-sm);
+    border-radius: var(--hf-radius-sm);
 }
 
 .privacy-notice .icon-material {
     font-size: 18px;
-    color: var(--color-success);
+    color: var(--hf-green);
 }
 
 .load-project-section {
@@ -809,7 +809,7 @@ dialog[open] {
     align-items: center;
     gap: 16px;
     margin-bottom: 16px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     font-size: 12px;
 }
 
@@ -818,7 +818,7 @@ dialog[open] {
     content: '';
     flex: 1;
     height: 1px;
-    background: var(--color-border-muted);
+    background: var(--hf-color-2);
 }
 
 .load-project-btn {
@@ -857,17 +857,17 @@ dialog[open] {
 .form-error {
     margin-top: 6px;
     font-size: 12px;
-    color: var(--color-error);
+    color: var(--hf-red);
 }
 
 .confirm-message {
     font-size: 14px;
     line-height: 1.6;
-    color: var(--color-text-secondary);
+    color: var(--hf-color-6);
 }
 
 .confirm-message span {
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     font-weight: 500;
 }
 
@@ -877,7 +877,7 @@ dialog[open] {
     justify-content: center;
     gap: 12px;
     padding: 24px;
-    color: var(--color-text-secondary);
+    color: var(--hf-color-6);
     font-size: 14px;
 }
 
@@ -904,7 +904,7 @@ dialog[open] {
     justify-content: center;
     gap: 12px;
     padding: 48px 24px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .project-list-empty .icon-material {
@@ -922,20 +922,20 @@ dialog[open] {
     align-items: center;
     justify-content: space-between;
     padding: 12px 16px;
-    background: var(--overlay-dark);
-    border: 2px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid var(--hf-color-3);
+    border-radius: var(--hf-radius-sm);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
 }
 
 .project-item:hover {
-    border-color: var(--color-bg-active);
-    background: var(--color-bg-elevated);
+    border-color: var(--hf-color-3);
+    background: var(--hf-color-1);
 }
 
 .project-item.selected {
-    border-color: var(--color-accent);
+    border-color: var(--hf-accent-3);
     background: rgba(210, 98, 0, 0.1);
 }
 
@@ -947,7 +947,7 @@ dialog[open] {
 .project-item-name {
     font-size: 14px;
     font-weight: 500;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -956,7 +956,7 @@ dialog[open] {
 .project-item-date {
     margin-top: 4px;
     font-size: 12px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .project-item-delete {
@@ -969,10 +969,10 @@ dialog[open] {
     margin-left: 12px;
     background: none;
     border: none;
-    border-radius: var(--radius-sm);
-    color: var(--color-text-muted);
+    border-radius: var(--hf-radius-sm);
+    color: var(--hf-color-5);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
     opacity: 0;
 }
 
@@ -982,7 +982,7 @@ dialog[open] {
 
 .project-item-delete:hover {
     background: rgba(255, 107, 107, 0.1);
-    color: var(--color-error);
+    color: var(--hf-red);
 }
 
 .project-item-delete .icon-material {
@@ -1014,25 +1014,25 @@ dialog[open] {
     min-width: 90px;
     flex: 1;
     font-family: var(--font-body);
-    background: var(--overlay-dark);
-    border: 2px solid var(--color-border);
-    border-radius: var(--radius-md);
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid var(--hf-color-3);
+    border-radius: var(--hf-radius-md);
     cursor: pointer;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
 }
 
 .size-preset:hover {
-    border-color: var(--color-accent);
+    border-color: var(--hf-accent-3);
     background: rgba(210, 98, 0, 0.05);
 }
 
 .size-preset:hover .preset-preview {
-    border-color: var(--color-accent);
+    border-color: var(--hf-accent-3);
     box-shadow: 0 0 8px rgba(210, 98, 0, 0.3);
 }
 
 .size-preset:hover .preset-label {
-    color: var(--color-accent);
+    color: var(--hf-accent-3);
 }
 
 .preset-preview-container {
@@ -1045,17 +1045,17 @@ dialog[open] {
 
 .preset-preview {
     background: rgba(255, 255, 255, 0.1);
-    border: 1px solid var(--color-text-muted);
+    border: 1px solid var(--hf-color-5);
     border-radius: 2px;
-    transition: all var(--transition-fast);
+    transition: all 0.12s ease-out;
 }
 
 .preset-label {
     font-size: 11px;
     font-weight: 500;
-    color: var(--color-text-secondary);
+    color: var(--hf-color-6);
     white-space: nowrap;
-    transition: color var(--transition-fast);
+    transition: color 0.12s ease-out;
 }
 
 .size-inputs {
@@ -1073,7 +1073,7 @@ dialog[open] {
 .size-separator {
     margin-top: 28px;
     font-size: 16px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .input-with-unit {
@@ -1090,17 +1090,17 @@ dialog[open] {
 .input-unit {
     padding: 10px 12px;
     font-size: 13px;
-    color: var(--color-text-muted);
-    background: var(--overlay-dark);
-    border: 1px solid var(--color-border);
+    color: var(--hf-color-5);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--hf-color-3);
     border-left: none;
-    border-top-right-radius: var(--radius-sm);
-    border-bottom-right-radius: var(--radius-sm);
+    border-top-right-radius: var(--hf-radius-sm);
+    border-bottom-right-radius: var(--hf-radius-sm);
 }
 
 .size-limits {
     font-size: 11px;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     text-align: center;
 }
 
@@ -1116,7 +1116,7 @@ dialog[open] {
 .anchor-btn {
     width: 20px;
     height: 20px;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--hf-color-3);
     border-radius: 2px;
     background: transparent;
     cursor: pointer;
@@ -1130,15 +1130,15 @@ dialog[open] {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background: var(--color-text-muted);
+    background: var(--hf-color-5);
 }
 
 .anchor-btn.active .anchor-dot {
-    background: var(--color-text-primary);
+    background: var(--hf-color-7);
 }
 
 .anchor-btn:hover {
-    border-color: var(--color-text-muted);
+    border-color: var(--hf-color-5);
 }
 
 .anchor-section {
@@ -1150,13 +1150,13 @@ dialog[open] {
     display: block;
     margin-bottom: 0.5em;
     font-size: 0.875rem;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .constrain-row {
     margin: 0.75em 0;
     font-size: 0.875rem;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .constrain-row label {
@@ -1186,22 +1186,22 @@ dialog[open] {
 
 .export-modal-title {
     background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%);
-    border-bottom: 1px solid var(--color-border-muted);
+    border-bottom: 1px solid var(--hf-color-2);
     padding: 16px 20px;
     font-family: var(--font-accent);
     font-size: 20px;
     font-weight: 600;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     display: flex;
     align-items: center;
     gap: 0.5em;
-    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+    border-radius: var(--hf-radius-xl) var(--hf-radius-xl) 0 0;
 }
 
 .export-modal-close {
     background: transparent;
     border: none;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     cursor: pointer;
     font-size: 0.875rem;
     padding: 0.25em 0.5em;
@@ -1213,7 +1213,7 @@ dialog[open] {
 
 .export-modal-close:hover {
     opacity: 1;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
 }
 
 .export-modal-content {
@@ -1238,17 +1238,17 @@ dialog[open] {
 
 .export-settings-grid .control-label {
     font-size: 0.6875rem;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .export-settings-grid input,
 .export-settings-grid select {
     width: 100%;
     padding: 0.375rem 0.5rem;
-    background: var(--overlay-dark);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-primary);
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--hf-color-3);
+    border-radius: var(--hf-radius-sm);
+    color: var(--hf-color-7);
     font-family: var(--font-body);
     font-size: 0.75rem;
 }
@@ -1256,7 +1256,7 @@ dialog[open] {
 .export-settings-grid input:focus,
 .export-settings-grid select:focus {
     outline: none;
-    border-color: var(--color-accent);
+    border-color: var(--hf-accent-3);
 }
 
 .export-info-row {
@@ -1264,23 +1264,23 @@ dialog[open] {
     justify-content: space-between;
     margin-top: 0.75rem;
     padding: 0.5rem;
-    background: color-mix(in srgb, var(--overlay-dark) 50%, transparent 50%);
-    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, rgba(0, 0, 0, 0.4) 50%, transparent 50%);
+    border-radius: var(--hf-radius-sm);
     font-size: 0.6875rem;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
 }
 
 .export-info-row span {
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
 }
 
 .export-warning-row {
     margin-top: 0.5rem;
     padding: 0.4rem 0.5rem;
-    background: color-mix(in srgb, var(--overlay-dark) 50%, transparent 50%);
-    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, rgba(0, 0, 0, 0.4) 50%, transparent 50%);
+    border-radius: var(--hf-radius-sm);
     font-size: 0.625rem;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     font-style: italic;
 }
 
@@ -1293,7 +1293,7 @@ dialog[open] {
 .export-btn {
     flex: 1;
     padding: 0.5rem 1rem;
-    border-radius: var(--radius-sm);
+    border-radius: var(--hf-radius-sm);
     font-family: var(--font-body);
     font-size: 0.75rem;
     font-weight: 600;
@@ -1302,13 +1302,13 @@ dialog[open] {
 }
 
 .export-btn--primary {
-    background: color-mix(in srgb, var(--color-accent) 40%, transparent 60%);
-    border: 1px solid var(--color-accent);
-    color: var(--color-text-primary);
+    background: color-mix(in srgb, var(--hf-accent-3) 40%, transparent 60%);
+    border: 1px solid var(--hf-accent-3);
+    color: var(--hf-color-7);
 }
 
 .export-btn--primary:hover {
-    background: color-mix(in srgb, var(--color-accent) 60%, transparent 40%);
+    background: color-mix(in srgb, var(--hf-accent-3) 60%, transparent 40%);
 }
 
 .export-progress-container {
@@ -1318,7 +1318,7 @@ dialog[open] {
 .export-progress-bar-container {
     width: 100%;
     height: 8px;
-    background: var(--overlay-dark);
+    background: rgba(0, 0, 0, 0.4);
     border-radius: 999px;
     overflow: hidden;
     margin-bottom: 0.75rem;
@@ -1326,7 +1326,7 @@ dialog[open] {
 
 .export-progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, var(--color-accent), var(--color-accent-hover));
+    background: linear-gradient(90deg, var(--hf-accent-3), var(--hf-accent-4));
     border-radius: 999px;
     width: 0%;
     transition: width 0.1s ease-out;
@@ -1334,7 +1334,7 @@ dialog[open] {
 
 .export-progress-text {
     font-size: 0.8125rem;
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     text-align: center;
     margin-bottom: 0.5rem;
 }
@@ -1343,17 +1343,17 @@ dialog[open] {
     display: flex;
     justify-content: space-between;
     font-size: 0.6875rem;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     margin-bottom: 1rem;
 }
 
 .export-progress-cancel {
     width: 100%;
     padding: 0.5rem 1rem;
-    background: color-mix(in srgb, var(--red, #e74c3c) 20%, transparent 80%);
-    border: 1px solid color-mix(in srgb, var(--red, #e74c3c) 50%, transparent 50%);
-    border-radius: var(--radius-sm);
-    color: var(--color-text-primary);
+    background: color-mix(in srgb, var(--hf-red) 20%, transparent 80%);
+    border: 1px solid color-mix(in srgb, var(--hf-red) 50%, transparent 50%);
+    border-radius: var(--hf-radius-sm);
+    color: var(--hf-color-7);
     font-family: var(--font-body);
     font-size: 0.75rem;
     font-weight: 600;
@@ -1362,8 +1362,8 @@ dialog[open] {
 }
 
 .export-progress-cancel:hover {
-    background: color-mix(in srgb, var(--red, #e74c3c) 40%, transparent 60%);
-    border-color: var(--red, #e74c3c);
+    background: color-mix(in srgb, var(--hf-red) 40%, transparent 60%);
+    border-color: var(--hf-red);
 }
 
 /* =========================================================================
@@ -1377,7 +1377,7 @@ dialog[open] {
 
 .font-install-description {
     font-size: 0.75rem;
-    color: var(--color-text-muted);
+    color: var(--hf-color-5);
     line-height: 1.5;
     margin: 0 0 0.75rem 0;
 }
@@ -1386,17 +1386,17 @@ dialog[open] {
     margin-left: 0.5em;
     font-size: 0.7rem;
     background: none;
-    border: 1px solid var(--color-text-muted);
-    color: var(--color-text-muted);
+    border: 1px solid var(--hf-color-5);
+    color: var(--hf-color-5);
     border-radius: 3px;
     padding: 0.1em 0.4em;
     cursor: pointer;
-    transition: color var(--transition-fast), border-color var(--transition-fast);
+    transition: color 0.12s ease-out, border-color 0.12s ease-out;
 }
 
 .font-bundle-uninstall:hover {
-    color: var(--color-text-primary);
-    border-color: var(--color-text-primary);
+    color: var(--hf-color-7);
+    border-color: var(--hf-color-7);
 }
 
 /* =========================================================================
