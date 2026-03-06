@@ -559,6 +559,13 @@ effect-params {
     grid-column: 2 / -1;
 }
 
+.control-group slider-value {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    grid-column: 2 / -1;
+}
+
 /* Button control */
 .control-button {
     padding: 4px 12px;
