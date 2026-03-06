@@ -7,6 +7,7 @@
 
 import { BLEND_MODES } from './blend-modes.js'
 import './effect-params.js'
+import { SelectDropdown, SliderValue } from 'handfish'
 
 /**
  * LayerItem - Web component for a single layer
@@ -89,10 +90,6 @@ class LayerItem extends HTMLElement {
         const isEffect = layer.sourceType === 'effect'
         const isBase = this.hasAttribute('base')
 
-        const blendOptions = BLEND_MODES.map(mode =>
-            `<option value="${mode.id}" ${layer.blendMode === mode.id ? 'selected' : ''}>${mode.name}</option>`
-        ).join('')
-
         let iconName = 'image'
         if (this._isChild) iconName = 'tune'
         else if (isEffect) iconName = 'auto_awesome'
@@ -140,16 +137,24 @@ class LayerItem extends HTMLElement {
                 <button class="layer-params-toggle ${this._paramsExpanded ? 'expanded' : ''}" title="Toggle parameters">
                     <span class="icon-material">arrow_right</span>
                 </button>
-                ${!this._isChild ? `<select class="layer-blend-mode" title="Blend mode">
-                    ${blendOptions}
-                </select>
+                ${!this._isChild ? `<select-dropdown class="layer-blend-mode" title="Blend mode"></select-dropdown>
                 <div class="layer-opacity-container">
-                    <input type="range" class="layer-opacity" min="0" max="100" value="${layer.opacity}" title="Opacity">
-                    <span class="layer-opacity-value">${layer.opacity}%</span>
+                    <slider-value class="layer-opacity" min="0" max="100" step="1" type="int" value="${layer.opacity}" title="Opacity"></slider-value>
                 </div>` : ''}
             </div>
             <effect-params class="layer-effect-params"></effect-params>
         `
+
+        // Initialize blend mode select-dropdown
+        const blendSelect = this.querySelector('.layer-blend-mode')
+        if (blendSelect && !this._isChild) {
+            const opts = BLEND_MODES.map(mode => ({
+                value: mode.id,
+                text: mode.name
+            }))
+            blendSelect.setOptions(opts)
+            blendSelect.value = layer.blendMode || 'mix'
+        }
 
         this._initEffectParams()
         this._renderMaskThumbnail()
@@ -289,15 +294,17 @@ class LayerItem extends HTMLElement {
 
         // Blend mode change
         this.addEventListener('change', (e) => {
-            if (e.target.classList.contains('layer-blend-mode')) {
-                this._handleBlendModeChange(e.target.value)
+            const blendSelect = e.target.closest('.layer-blend-mode')
+            if (blendSelect) {
+                this._handleBlendModeChange(blendSelect.value)
             }
         })
 
         // Opacity change
         this.addEventListener('input', (e) => {
-            if (e.target.classList.contains('layer-opacity')) {
-                this._handleOpacityChange(parseInt(e.target.value, 10))
+            const opacitySlider = e.target.closest('.layer-opacity')
+            if (opacitySlider) {
+                this._handleOpacityChange(parseInt(opacitySlider.value, 10))
             }
         })
 
@@ -444,12 +451,6 @@ class LayerItem extends HTMLElement {
     _handleOpacityChange(opacity) {
         if (!this._layer) return
         this._layer.opacity = opacity
-
-        // Update display
-        const valueEl = this.querySelector('.layer-opacity-value')
-        if (valueEl) {
-            valueEl.textContent = `${opacity}%`
-        }
 
         this._emitChange('opacity', opacity)
     }

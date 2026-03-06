@@ -8,6 +8,7 @@
 import { getEffect } from '../noisemaker/bundle.js'
 import './font-select.js'
 import { getFontaineLoader, BASE_FONTS } from './fontaine-loader.js'
+import { SliderValue, SelectDropdown, ToggleSwitch, ColorPicker } from 'handfish'
 
 // Static effect loader function (set by app after renderer init)
 let effectLoader = null
@@ -178,15 +179,6 @@ class EffectParams extends HTMLElement {
             group.appendChild(controlHandle.element)
         }
 
-        // Value display for sliders
-        if (spec.ui?.control === 'slider' || (spec.type === 'float' || spec.type === 'int') && !spec.choices) {
-            const valueDisplay = document.createElement('span')
-            valueDisplay.className = 'control-value'
-            valueDisplay.textContent = this._formatValue(currentValue, spec)
-            group.appendChild(valueDisplay)
-            controlHandle.valueDisplay = valueDisplay
-        }
-
         this._controls.set(paramName, controlHandle)
         return group
     }
@@ -247,25 +239,18 @@ class EffectParams extends HTMLElement {
      * @private
      */
     _createSlider(paramName, spec, currentValue) {
-        const slider = document.createElement('input')
-        slider.type = 'range'
-        slider.className = 'control-slider'
+        const slider = document.createElement('slider-value')
         slider.min = spec.min ?? 0
         slider.max = spec.max ?? 100
         slider.step = spec.step ?? (spec.type === 'int' ? 1 : 0.01)
         slider.value = currentValue
+        slider.type = spec.type === 'int' ? 'int' : 'float'
 
         slider.addEventListener('input', () => {
             const value = spec.type === 'int'
                 ? parseInt(slider.value, 10)
                 : parseFloat(slider.value)
             this._handleValueChange(paramName, value, spec)
-
-            // Update value display
-            const handle = this._controls.get(paramName)
-            if (handle?.valueDisplay) {
-                handle.valueDisplay.textContent = this._formatValue(value, spec)
-            }
         })
 
         return {
@@ -280,20 +265,15 @@ class EffectParams extends HTMLElement {
      * @private
      */
     _createDropdown(paramName, spec, currentValue) {
-        const select = document.createElement('select')
-        select.className = 'control-dropdown'
+        const select = document.createElement('select-dropdown')
 
-        // Handle choices object or array
         const choices = spec.choices || {}
-        for (const [name, value] of Object.entries(choices)) {
-            const option = document.createElement('option')
-            option.value = value
-            option.textContent = name
-            if (value === currentValue || name === currentValue) {
-                option.selected = true
-            }
-            select.appendChild(option)
-        }
+        const opts = Object.entries(choices).map(([name, value]) => ({
+            value: String(value),
+            text: name
+        }))
+        select.setOptions(opts)
+        select.value = String(currentValue ?? '')
 
         select.addEventListener('change', () => {
             const value = spec.type === 'int'
@@ -305,7 +285,7 @@ class EffectParams extends HTMLElement {
         return {
             element: select,
             getValue: () => spec.type === 'int' ? parseInt(select.value, 10) : select.value,
-            setValue: (v) => { select.value = v }
+            setValue: (v) => { select.value = String(v) }
         }
     }
 
@@ -365,26 +345,17 @@ class EffectParams extends HTMLElement {
      * @private
      */
     _createToggle(paramName, spec, currentValue) {
-        const toggle = document.createElement('button')
-        toggle.type = 'button'
-        toggle.className = `control-toggle ${currentValue ? 'active' : ''}`
-        toggle.innerHTML = `<span class="toggle-track"><span class="toggle-thumb"></span></span>`
+        const toggle = document.createElement('toggle-switch')
+        toggle.checked = !!currentValue
 
-        let checked = !!currentValue
-
-        toggle.addEventListener('click', () => {
-            checked = !checked
-            toggle.classList.toggle('active', checked)
-            this._handleValueChange(paramName, checked, spec)
+        toggle.addEventListener('change', () => {
+            this._handleValueChange(paramName, toggle.checked, spec)
         })
 
         return {
             element: toggle,
-            getValue: () => checked,
-            setValue: (v) => {
-                checked = !!v
-                toggle.classList.toggle('active', checked)
-            }
+            getValue: () => toggle.checked,
+            setValue: (v) => { toggle.checked = !!v }
         }
     }
 
@@ -393,37 +364,21 @@ class EffectParams extends HTMLElement {
      * @private
      */
     _createColorPicker(paramName, spec, currentValue) {
-        const container = document.createElement('div')
-        container.className = 'control-color-container'
+        const colorPicker = document.createElement('color-picker')
 
-        const input = document.createElement('input')
-        input.type = 'color'
-        input.className = 'control-color'
-
-        // Convert array value to hex
         const hexValue = this._arrayToHex(currentValue)
-        input.value = hexValue
+        colorPicker.value = hexValue
 
-        const hexDisplay = document.createElement('span')
-        hexDisplay.className = 'control-color-hex'
-        hexDisplay.textContent = hexValue
-
-        container.appendChild(input)
-        container.appendChild(hexDisplay)
-
-        input.addEventListener('input', () => {
-            hexDisplay.textContent = input.value
-            const arrayValue = this._hexToArray(input.value)
+        colorPicker.addEventListener('input', () => {
+            const arrayValue = this._hexToArray(colorPicker.value)
             this._handleValueChange(paramName, arrayValue, spec)
         })
 
         return {
-            element: container,
-            getValue: () => this._hexToArray(input.value),
+            element: colorPicker,
+            getValue: () => this._hexToArray(colorPicker.value),
             setValue: (v) => {
-                const hex = this._arrayToHex(v)
-                input.value = hex
-                hexDisplay.textContent = hex
+                colorPicker.value = this._arrayToHex(v)
             }
         }
     }
