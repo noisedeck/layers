@@ -1,0 +1,28 @@
+/* Layers theme — computed variables built on Handfish primitives */
+
+:root {
+    /* Glass & blur */
+    --glass-blur-strength: var(--hf-glass-blur);
+
+    /* UI sizing */
+    --ui-titlebar-height: var(--hf-titlebar-height);
+    --ui-corner-radius: var(--hf-radius);
+    --ui-corner-radius-small: var(--hf-radius-md);
+
+    /* Surface opacity (for glassmorphism) */
+    --effect-surface-opacity: var(--hf-panel-opacity);
+    --effect-surface-transparency: var(--hf-panel-transparency);
+
+    /* Menu bar gradient — built on handfish color tokens */
+    --ui-gradient-top: color-mix(in srgb, var(--hf-color-3) 80%, var(--hf-color-4) 20%);
+    --ui-gradient-bottom: color-mix(in srgb, var(--hf-color-2) 60%, var(--hf-color-3) 40%);
+
+    /* Font family aliases */
+    --font-body: var(--hf-font-family);
+    --font-mono: var(--hf-font-family-mono);
+    --font-accent: 'Cormorant Upright', 'Cormorant Upright Block';
+
+    /* Checkerboard transparency pattern */
+    --checkerboard-bg: var(--hf-color-3);
+    --checkerboard-check: var(--hf-color-4);
+}

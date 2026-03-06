@@ -1,6 +1,6 @@
 /**
  * Layers Font Definitions
- * Fonts loaded from fonts.noisefactor.io CDN
+ * Block font fallbacks and app-specific fonts
  */
 
 /* Block font fallbacks for zero-CLS font loading */
@@ -28,33 +28,6 @@
     font-display: block;
 }
 
-/* Noto Sans Mono - Code editor font */
-@font-face {
-    font-family: 'Noto Sans Mono';
-    font-weight: 400;
-    font-style: normal;
-    font-display: swap;
-    src: url('https://fonts.noisefactor.io/fonts/noto-sans-mono/NotoSansMono%5Bwdth%2Cwght%5D.woff2') format('woff2');
-}
-
-/* Nunito - Body text font */
-@font-face {
-    font-family: 'Nunito';
-    font-weight: 500;
-    font-style: normal;
-    font-display: swap;
-    src: url('https://fonts.noisefactor.io/fonts/nunito/Nunito%5Bwght%5D.woff2') format('woff2');
-}
-
-/* Material Symbols Outlined - Icon font */
-@font-face {
-    font-family: 'Material Symbols Outlined';
-    src: url('https://fonts.noisefactor.io/fonts/material-symbols-outlined/material-symbols-outlined.woff2') format('woff2');
-    font-weight: 400;
-    font-style: normal;
-    font-display: block;
-}
-
 /* Cormorant Upright - Accent/display font */
 @font-face {
     font-family: 'Cormorant Upright';
@@ -62,13 +35,6 @@
     font-weight: 600;
     font-style: normal;
     font-display: swap;
-}
-
-/* Font family definitions */
-:root {
-    --font-body: 'Nunito', 'Nunito Block';
-    --font-mono: 'Noto Sans Mono', 'Noto Sans Mono Block';
-    --font-accent: 'Cormorant Upright', 'Cormorant Upright Block';
 }
 
 /* Material Symbols base style */

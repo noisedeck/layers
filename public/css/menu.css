@@ -3,63 +3,6 @@
  * Ported directly from Noisedeck
  */
 
-:root {
-    --ui-titlebar-height: 2.25rem;
-    --ui-corner-radius: 0.5rem;
-    --ui-corner-radius-small: 0.375rem;
-    --glass-blur-strength: blur(20px);
-    --effect-surface-opacity: 85%;
-    --effect-surface-transparency: 15%;
-
-    /* Menu colors - neutral */
-    --color2: #555555;
-    --color6: #d0d0d0;
-    --color7: #f0f0f0;
-    --accent3: #b0b0b0;
-    --accent4: #c0c0c0;
-    --color1: #2a2a2a;
-    --color3: #666666;
-    --color5: #999999;
-    --red: #e74c3c;
-
-    /* Menu bar gradient */
-    --ui-gradient-top: #484848;
-    --ui-gradient-bottom: #606060;
-}
-
-/* Light mode menu colors */
-:root.light-mode,
-:root[data-theme="light"] {
-    --color2: #b0b0b0;
-    --color6: #334155;
-    --color7: #1a1a1a;
-    --accent3: #505050;
-    --accent4: #383838;
-    --color1: #e0e0e0;
-    --color3: #999999;
-    --color5: #666666;
-
-    /* Menu bar gradient - lighter for light mode */
-    --ui-gradient-top: #c8c8c8;
-    --ui-gradient-bottom: #b8b8b8;
-}
-
-/* Auto-detect system preference */
-@media (prefers-color-scheme: light) {
-    :root:not(.dark-mode):not([data-theme="dark"]) {
-        --color2: #b0b0b0;
-        --color6: #334155;
-        --color7: #1a1a1a;
-        --accent3: #505050;
-        --accent4: #383838;
-        --color1: #e0e0e0;
-        --color3: #999999;
-        --color5: #666666;
-        --ui-gradient-top: #c8c8c8;
-        --ui-gradient-bottom: #b8b8b8;
-    }
-}
-
 /* Menu Bar Styles */
 #menu {
     display: grid;
@@ -81,7 +24,7 @@
     position: absolute;
     inset: 0;
     --ui-titlebar-base: color-mix(in srgb,
-            var(--color2) 65%,
+            var(--hf-color-2) 65%,
             transparent 35%);
     --ui-titlebar-gradient: linear-gradient(180deg,
             var(--ui-gradient-top) 0%,
@@ -103,7 +46,7 @@
     padding-left: 0.75em;
     display: flex;
     gap: 1.5em;
-    color: var(--color7);
+    color: var(--hf-color-7);
     align-items: center;
     height: 100%;
 }
@@ -115,19 +58,19 @@
     display: flex;
     justify-content: flex-end;
     gap: 1em;
-    color: var(--color7);
+    color: var(--hf-color-7);
     align-items: center;
     height: 100%;
 }
 
 #menu a {
     font-size: 0.875em;
-    color: var(--accent3);
+    color: var(--hf-accent-3);
     text-decoration: none;
 }
 
 #menu a:hover {
-    color: var(--accent4);
+    color: var(--hf-accent-4);
 }
 
 #menu button:not(.menu-icon-btn) {
@@ -138,7 +81,7 @@
     align-items: center;
     justify-content: center;
     box-sizing: border-box;
-    color: var(--accent3);
+    color: var(--hf-accent-3);
     background: transparent;
     border: none;
     cursor: pointer;
@@ -146,7 +89,7 @@
 
 #menu span:hover,
 #menu button:hover {
-    color: var(--accent4);
+    color: var(--hf-accent-4);
 }
 
 /* Dropdown menu */
@@ -154,7 +97,7 @@
     position: relative;
     font-family: Nunito, 'Nunito Block';
     font-size: 0.875em;
-    color: var(--accent3);
+    color: var(--hf-accent-3);
     margin: 0;
     background-color: transparent;
     padding: 0;
@@ -174,7 +117,7 @@
 }
 
 .menu-title:hover {
-    color: var(--accent4);
+    color: var(--hf-accent-4);
 }
 
 .selection-icon {
@@ -190,28 +133,28 @@
 
 .menu-title:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .menu-separator {
     width: 1px;
     height: 100%;
-    background: color-mix(in srgb, var(--accent3) 18%, transparent 82%);
+    background: color-mix(in srgb, var(--hf-accent-3) 18%, transparent 82%);
     margin: 0 -0.15em;
     align-self: stretch;
 }
 
 .menu-items {
     position: absolute;
-    background-color: color-mix(in srgb, var(--color2) var(--effect-surface-opacity), transparent var(--effect-surface-transparency));
-    color: var(--accent3);
+    background-color: color-mix(in srgb, var(--hf-color-2) var(--effect-surface-opacity), transparent var(--effect-surface-transparency));
+    color: var(--hf-accent-3);
     width: max-content;
     min-width: 200px;
     text-wrap: nowrap;
     z-index: 5;
     top: var(--ui-titlebar-height);
     left: -10px;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--hf-shadow-lg);
     font-weight: normal;
     scrollbar-width: none;
     -ms-overflow-style: none;
@@ -240,7 +183,7 @@
     font-family: Nunito, 'Nunito Block';
     font-size: 16px;
     font-weight: bold;
-    color: var(--color7);
+    color: var(--hf-color-7);
     border-radius: 0 var(--ui-corner-radius) var(--ui-corner-radius) 0;
 }
 
@@ -248,7 +191,7 @@
     position: absolute;
     inset: 0;
     --ui-titlebar-base: color-mix(in srgb,
-            var(--color2) 65%,
+            var(--hf-color-2) 65%,
             transparent 35%);
     --ui-titlebar-gradient: linear-gradient(180deg,
             var(--ui-gradient-top) 0%,
@@ -265,7 +208,7 @@
 .toolbar-separator {
     width: 100%;
     height: 1px;
-    background: color-mix(in srgb, var(--accent3) 18%, transparent 82%);
+    background: color-mix(in srgb, var(--hf-accent-3) 18%, transparent 82%);
     margin: 0.1em 0;
 }
 
@@ -303,12 +246,12 @@
 
 .menu-items div:hover {
     background-color: rgba(255, 255, 255, 0.08);
-    color: var(--accent4);
+    color: var(--hf-accent-4);
 }
 
 .menu-items div:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .menu-shortcut {
@@ -333,7 +276,7 @@
 
 .menu-seperator {
     border: none;
-    border-top: 1px solid color-mix(in srgb, var(--accent3) 20%, transparent 80%);
+    border-top: 1px solid color-mix(in srgb, var(--hf-accent-3) 20%, transparent 80%);
     margin: 0.25em 0;
 }
 
@@ -364,12 +307,12 @@
 }
 
 .menu-icon-btn:hover {
-    color: var(--accent4);
+    color: var(--hf-accent-4);
 }
 
 .menu-icon-btn:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-accent);
+    box-shadow: 0 0 0 2px var(--hf-accent-3);
 }
 
 .menu-icon-btn.disabled {
@@ -378,7 +321,7 @@
 }
 
 .menu-icon-btn.active {
-    color: var(--color-text-primary);
+    color: var(--hf-color-7);
     background: rgba(128, 128, 128, 0.3);
 }
 
@@ -429,7 +372,7 @@
 
 .menu-slider-row label {
     flex-shrink: 0;
-    color: var(--accent3);
+    color: var(--hf-accent-3);
 }
 
 .menu-slider-row input[type="range"] {
@@ -437,7 +380,7 @@
     height: 4px;
     -webkit-appearance: none;
     appearance: none;
-    background: var(--accent3);
+    background: var(--hf-accent-3);
     border-radius: 2px;
     cursor: pointer;
 }
@@ -447,7 +390,7 @@
     appearance: none;
     width: 12px;
     height: 12px;
-    background: var(--accent4);
+    background: var(--hf-accent-4);
     border-radius: 50%;
     cursor: pointer;
 }
@@ -456,7 +399,7 @@
     flex-shrink: 0;
     min-width: 2em;
     text-align: right;
-    color: var(--accent3);
+    color: var(--hf-accent-3);
 }
 
 /* Submenus — positioned as siblings of .menu-items to avoid nested backdrop-filter */
@@ -476,10 +419,10 @@
 .submenu {
     position: absolute;
     min-width: 180px;
-    background-color: color-mix(in srgb, var(--color2) var(--effect-surface-opacity), transparent var(--effect-surface-transparency));
+    background-color: color-mix(in srgb, var(--hf-color-2) var(--effect-surface-opacity), transparent var(--effect-surface-transparency));
     backdrop-filter: var(--glass-blur-strength);
     -webkit-backdrop-filter: var(--glass-blur-strength);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--hf-shadow-lg);
     border-radius: var(--ui-corner-radius-small, 0.375rem);
     z-index: 6;
     flex-direction: column;
@@ -497,22 +440,22 @@
 
 .submenu div:hover {
     background-color: rgba(255, 255, 255, 0.08);
-    color: var(--accent4);
+    color: var(--hf-accent-4);
 }
 
 /* Context menus */
 .context-menu {
     position: fixed;
-    background-color: color-mix(in srgb, var(--color2) var(--effect-surface-opacity), transparent var(--effect-surface-transparency));
+    background-color: color-mix(in srgb, var(--hf-color-2) var(--effect-surface-opacity), transparent var(--effect-surface-transparency));
     backdrop-filter: var(--glass-blur-strength);
     -webkit-backdrop-filter: var(--glass-blur-strength);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--hf-shadow-lg);
     border-radius: var(--ui-corner-radius-small);
     z-index: 3000;
     min-width: 180px;
     font-family: Nunito, 'Nunito Block';
     font-size: 0.875rem;
-    color: var(--accent3);
+    color: var(--hf-accent-3);
 }
 
 .context-menu.hidden {
@@ -526,7 +469,7 @@
 
 .context-menu div:hover {
     background-color: rgba(255, 255, 255, 0.08);
-    color: var(--accent4);
+    color: var(--hf-accent-4);
 }
 
 /* Section labels in menu */
@@ -535,7 +478,7 @@
     font-size: 0.7rem !important;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    color: var(--color5) !important;
+    color: var(--hf-color-5) !important;
     cursor: default !important;
     pointer-events: none;
 }
