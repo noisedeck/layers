@@ -20,16 +20,18 @@ const THEMES = [
     { value: 'earthy', text: 'Earthy' },
     { value: 'organic', text: 'Organic' },
     { value: 'terminal', text: 'Terminal' },
+    { value: 'dark', text: 'Dark' },
+    { value: 'light', text: 'Light' },
 ]
 
 /**
  * Resolve "system" to a concrete theme based on prefers-color-scheme.
- * @returns {string} 'gray-dark' or 'gray-light'
+ * @returns {string} 'neutral-dark' or 'neutral-light'
  */
 function resolveSystemTheme() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches
-        ? 'gray-dark'
-        : 'gray-light'
+        ? 'neutral-dark'
+        : 'neutral-light'
 }
 
 /**
