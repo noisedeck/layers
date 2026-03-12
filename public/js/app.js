@@ -1427,18 +1427,8 @@ class LayersApp {
                 break
 
             case 'opacity':
-                // Base layer opacity requires rebuild (alpha baked into DSL)
-                // Non-base layers can update via blendMode uniform
-                const layerIdx = this._layers.findIndex(l => l.id === detail.layerId)
-                if (layerIdx === 0) {
-                    // Base layer - rebuild with new alpha value
-                    await this._rebuild()
-                } else {
-                    // Non-base layer - update opacity via blendMode uniform
-                    this._renderer.updateLayerOpacity(detail.layerId, detail.value)
-                    // Keep DSL in sync to prevent spurious rebuild on next structural change
-                    this._renderer.syncDsl()
-                }
+                // Rebuild DSL with new opacity baked into blendMode mixAmt
+                await this._rebuild()
                 this._pushUndoStateDebounced()
                 break
 

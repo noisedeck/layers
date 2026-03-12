@@ -380,33 +380,11 @@
     transform: rotate(90deg);
 }
 
-/* Blend Mode Select */
+/* Blend Mode Select — Handfish select-dropdown component */
 .layer-blend-mode {
     flex: 0 0 auto;
     min-width: 70px;
-    padding: 4px 24px 4px 8px;
-    font-family: var(--font-body);
     font-size: 11px;
-    background-color: var(--hf-color-1);
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 10 10'%3E%3Cpath fill='%2394a3b8' d='M5 7L1 3h8z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 6px center;
-    border: 1px solid var(--hf-color-2);
-    border-radius: var(--hf-radius-sm);
-    color: var(--hf-color-6);
-    appearance: none;
-    cursor: pointer;
-    transition: all 0.12s ease-out;
-}
-
-.layer-blend-mode:hover {
-    border-color: var(--hf-color-3);
-    color: var(--hf-color-7);
-}
-
-.layer-blend-mode:focus {
-    outline: none;
-    border-color: var(--hf-accent-3);
 }
 
 /* Opacity Slider */
@@ -417,38 +395,12 @@
     gap: 6px;
 }
 
+/* slider-value uses display:contents — style its children via the container */
 .layer-opacity {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     flex: 1;
-    height: 4px;
-    background: var(--hf-color-3);
-    border: none;
-    border-radius: 2px;
-    outline: none;
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-.layer-opacity::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
-    background: var(--hf-color-5);
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 0 6px color-mix(in srgb, var(--hf-color-5) 40%, transparent 60%);
-}
-
-.layer-opacity:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--hf-accent-3);
-}
-
-.layer-opacity-value {
-    font-size: 10px;
-    font-family: var(--font-mono);
-    color: var(--hf-color-5);
-    min-width: 32px;
-    text-align: right;
 }
 
 /* Shorter slider when expando toggle is present */

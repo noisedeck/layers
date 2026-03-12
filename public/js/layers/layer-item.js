@@ -156,6 +156,15 @@ class LayerItem extends HTMLElement {
             blendSelect.value = layer.blendMode || 'mix'
         }
 
+        // Direct listener on opacity slider — delegated listener may miss events
+        // when browser drag system interferes with event propagation
+        const opacitySlider = this.querySelector('.layer-opacity')
+        if (opacitySlider) {
+            opacitySlider.addEventListener('input', () => {
+                this._handleOpacityChange(parseInt(opacitySlider.value, 10))
+            })
+        }
+
         this._initEffectParams()
         this._renderMaskThumbnail()
     }
@@ -309,8 +318,20 @@ class LayerItem extends HTMLElement {
         })
 
         // Drag and drop - track if mousedown was on handle
+        // Temporarily disable draggable when interacting with controls,
+        // otherwise the browser's drag system steals pointer events from sliders
         this.addEventListener('mousedown', (e) => {
             this._dragFromHandle = !!e.target.closest('.layer-drag-handle')
+            if (e.target.closest('.layer-controls') || e.target.closest('effect-params')) {
+                this.draggable = false
+                const restore = () => {
+                    if (this._layer && !this.classList.contains('base-layer')) {
+                        this.draggable = true
+                    }
+                    document.removeEventListener('mouseup', restore)
+                }
+                document.addEventListener('mouseup', restore)
+            }
         })
 
         this.addEventListener('dragstart', (e) => this._handleDragStart(e))

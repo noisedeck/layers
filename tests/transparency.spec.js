@@ -52,42 +52,7 @@ test.describe('Base layer transparency', () => {
         console.log('Slider value after set:', sliderValue)
         await page.waitForTimeout(1000)
 
-        const opacityText = await page.locator('.layer-opacity-value').first().textContent()
-        console.log('Opacity text:', opacityText)
-
-        // Force a rebuild to apply the opacity change
-        const debugInfo = await page.evaluate(async () => {
-            const app = window.layersApp
-            if (!app || !app._renderer) return 'No app or renderer'
-            const renderer = app._renderer
-            await renderer.rebuild()
-            return {
-                currentDsl: renderer.currentDsl,
-                layerCount: renderer._layers?.length,
-                layerOpacity: renderer._layers?.[0]?.opacity,
-                hasBlendPasses: renderer._renderer?.pipeline?.graph?.passes?.filter(p => p.effectFunc === 'blendMode')?.length
-            }
-        })
-        console.log('Debug info:', debugInfo)
-
-        const shaderCheck = await page.evaluate(() => {
-            const effects = window.noisemaker?.getAllEffects?.() || new Map()
-            for (const [key, effect] of effects) {
-                if (key.includes('blendMode')) {
-                    const glsl = effect?.shaders?.blendMode?.glsl || ''
-                    return {
-                        hasEffect: true,
-                        hasAlphaFix: glsl.includes('mix(color1.a, color2.a, amt)'),
-                        alphaLine: glsl.match(/color\.a = [^;]+;/)?.[0] || 'not found'
-                    }
-                }
-            }
-            return { hasEffect: false }
-        })
-        console.log('Shader check:', shaderCheck)
-
         await page.waitForTimeout(500)
-        await page.screenshot({ path: 'test-results/transparency-test.png' })
 
         // At 50% opacity, alpha should be around 128
         const reducedAlpha = await canvas.evaluate(readCenterAlpha)
