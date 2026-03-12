@@ -28,7 +28,7 @@ test.describe('Image menu adjustments', () => {
         await expect(submenu).toBeVisible()
 
         // Should contain brightness/contrast
-        await expect(submenu.locator('[data-effect="filter/bc"]')).toBeVisible()
+        await expect(submenu.locator('[data-effect="filter/adjust"]')).toBeVisible()
     })
 
     test('add effect from submenu', async ({ page }) => {
@@ -40,7 +40,7 @@ test.describe('Image menu adjustments', () => {
         await page.click('#imageMenu .menu-title')
         const toneItem = page.locator('#imageMenu .has-submenu', { hasText: 'tone' })
         await toneItem.hover()
-        await page.click('[data-effect="filter/bc"]')
+        await page.click('[data-effect="filter/adjust"]')
         await page.waitForTimeout(500)
 
         // Should now have 2 layers
@@ -49,7 +49,7 @@ test.describe('Image menu adjustments', () => {
 
         // New layer should be a brightness/contrast effect
         const effectId = await page.evaluate(() => window.layersApp._layers[1].effectId)
-        expect(effectId).toBe('filter/bc')
+        expect(effectId).toBe('filter/adjust')
     })
 
     test('add effect from stylize submenu', async ({ page }) => {

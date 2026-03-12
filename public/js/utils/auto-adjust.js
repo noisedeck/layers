@@ -63,7 +63,7 @@ function computeHistogram(pixels) {
 /**
  * Auto Levels - stretch per-channel histogram to full range
  *
- * filter/bc shader model:
+ * filter/adjust shader model (brightness/contrast subset):
  *   brightness: default 1, range 0-10, multiplicative (color *= brightness)
  *   contrast: default 0.5, range 0-1, formula: (color - 0.5) * contrast * 2 + 0.5
  *   Identity = brightness 1, contrast 0.5
@@ -97,7 +97,7 @@ export function autoLevels(canvas) {
     const contrast = Math.min(0.5 / range, 1)
 
     return {
-        effectId: 'filter/bc',
+        effectId: 'filter/adjust',
         effectParams: {
             brightness: Math.max(0.1, Math.min(10, brightness)),
             contrast: Math.max(0, Math.min(1, contrast))
@@ -127,7 +127,7 @@ export function autoContrast(canvas) {
     const contrast = Math.min(0.5 / range, 1)
 
     return {
-        effectId: 'filter/bc',
+        effectId: 'filter/adjust',
         effectParams: {
             brightness: Math.max(0.1, Math.min(10, brightness)),
             contrast: Math.max(0, Math.min(1, contrast))
@@ -139,11 +139,11 @@ export function autoContrast(canvas) {
 /**
  * Auto White Balance - neutralize color cast via hue rotation
  *
- * filter/hs shader model:
- *   rotation: default 0, range -180 to 180 (degrees)
- *   hueRange: default 100, range 0-200
+ * filter/adjust shader model (hue/saturation subset):
+ *   rotation: default 120, range -180 to 180 (degrees)
+ *   hueRange: default 40, range 0-200
  *   saturation: default 1, range 0-4 (multiplicative)
- *   Identity = rotation 0, hueRange 100, saturation 1
+ *   Identity = rotation 0, hueRange 200, saturation 1
  *
  * @returns {{ effectId: string, effectParams: object, name: string } | null}
  */
@@ -187,7 +187,7 @@ export function autoWhiteBalance(canvas) {
     }
 
     return {
-        effectId: 'filter/hs',
+        effectId: 'filter/adjust',
         effectParams: {
             rotation: Math.max(-180, Math.min(180, rotation)),
             hueRange: 100,
