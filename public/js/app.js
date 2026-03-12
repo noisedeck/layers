@@ -3893,25 +3893,6 @@ class LayersApp {
             // Restore layers
             this._layers = project.layers
 
-            // Migrate deprecated effect IDs
-            const effectMigrations = {
-                'filter/bc': 'filter/adjust',
-                'filter/hs': 'filter/adjust',
-                'filter/colorspace': 'filter/adjust',
-            }
-            for (const layer of this._layers) {
-                if (effectMigrations[layer.effectId]) {
-                    layer.effectId = effectMigrations[layer.effectId]
-                }
-                if (layer.children) {
-                    for (const child of layer.children) {
-                        if (effectMigrations[child.effectId]) {
-                            child.effectId = effectMigrations[child.effectId]
-                        }
-                    }
-                }
-            }
-
             // Decode serialized masks back to ImageData
             await decodeMasks(this._layers)
 
