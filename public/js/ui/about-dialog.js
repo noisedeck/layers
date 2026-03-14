@@ -218,7 +218,6 @@ class AboutDialog {
                 </div>
                 <div class="about-modal-details" tabindex="-1">
                     <div class="about-modal-title">Layers</div>
-                    <div class="about-modal-subtitle">Development Preview</div>
                     <div class="about-modal-version">version ${APP_VERSION.replace(/-.*$/, '')}</div>
                     <div class="about-modal-copyright">&copy; 2026 <a href="https://noisefactor.io/" class="about-modal-link" target="_blank" rel="noopener">Noise Factor LLC.</a></div>
                     <div class="about-modal-build">build: local / deployed: n/a</div>
