@@ -201,7 +201,7 @@ test.describe('Child effects', () => {
         await page.waitForTimeout(500)
 
         await page.evaluate(async (id) => {
-            await window.layersApp._handleAddChildEffect(id, 'filter/inv')
+            await window.layersApp._handleAddChildEffect(id, 'filter/invert')
         }, parentId)
         await page.waitForTimeout(500)
 
